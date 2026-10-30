@@ -1,0 +1,8 @@
+# Minimal konfiguration för Supabase CLI. Kör `supabase link` mot ditt projekt.
+project_id = "receptappen"
+
+[functions.import-recipe]
+verify_jwt = true
+
+[functions.lv-foods]
+verify_jwt = true

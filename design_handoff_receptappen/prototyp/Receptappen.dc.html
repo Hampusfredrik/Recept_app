@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas"><link rel="stylesheet" href="./_ds/organic-fba8f43d-d02c-43bd-b687-8059f6efb99a/styles.css"><style>body{margin:0;background:#e9dfcc}a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-600)}.dv-turn{padding:40px 44px 36px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}.dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}.dv-tname{font:600 14px/1.2 var(--font-body);color:#1a1a1a}.dv-opts{display:flex;flex-wrap:wrap;gap:36px;align-items:flex-start}.dv-opt{flex:none;display:flex;flex-direction:column;gap:12px;scroll-margin-top:16px}.dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 13px/1.35 var(--font-body);color:rgba(0,0,0,.62);max-width:402px}.dv-opt:target .dv-oid{background:#2a78d6;color:#fff}.dv-next{margin:26px 0 0;font:13px/1.5 var(--font-body);color:rgba(0,0,0,.55)}</style></helmet>
+
+<section class="dv-turn" id="t3">
+  <div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Startsida, veckoplan, slumpa, vad kan jag laga, senast lagad, bocka av och anteckningar</span></div>
+  <p style="margin:-6px 0 24px;max-width:720px;font-size:14px;color:var(--color-neutral-800);text-wrap:pretty">Bygger på <a class="dv-oid" href="#2a">2a</a>. Ny flik "Idag" är startsidan och "Veckan" har fått en egen flik. Alla telefoner är klickbara. Idag är satt till fredag 30 oktober.</p>
+  <div class="dv-opts">
+    <div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a><span>Idag: receptet du lagat för längst sedan och ett förslag per insatsnivå 1–3. Byt-knappen visar nästa på samma nivå.</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="home" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="3b"><div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a><span>Slumpa, filtrerat på insats och taggar</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="random" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="3c"><div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a><span>Vad kan jag laga? Recepten sorteras efter hur lite som saknas.</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="pantry" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="3d"><div class="dv-olabel"><a class="dv-oid" href="#3d">3d</a><span>Veckan</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="week" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="3e"><div class="dv-olabel"><a class="dv-oid" href="#3e">3e</a><span>Välj recept till en dag, sorterat på längst sedan lagad</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="weekPick" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="3f"><div class="dv-olabel"><a class="dv-oid" href="#3f">3f</a><span>Receptet: senast lagad, bocka av ingredienser, egna anteckningar längst ner</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="detail" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+  </div>
+  <p class="dv-next">Prova: ”gör en inköpslista från veckan” · ”visa förslagen för 4–5 på helgen” · ”låt mig dra recept mellan dagar”</p>
+</section>
+
+<section class="dv-turn" id="t2">
+  <div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname"><a class="dv-oid" href="#1a">1a</a> som lista, plus fota en kokbokssida</span></div>
+  <p style="margin:-6px 0 24px;max-width:720px;font-size:14px;color:var(--color-neutral-800);text-wrap:pretty">Appen byggs som webbapp. Texten kopieras med iPhones Live Text i Kamera-appen och klistras in, så ingen AI, API-nyckel eller kostnad behövs. Appen gissar vilka rader som är ingredienser (börjar med en mängd) och vilka som är steg. Du trycker på en rad för att ändra. Ett ensamt tal längst ner tolkas som sidnummer.</p>
+  <div class="dv-opts">
+    <div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a><span>Bibliotek som lista. Tryck på + för att prova hela flödet.</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a><span>Lägg till: fota sidan är nu förstaval för böcker</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="add" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a><span>Kopiera med Live Text och klistra in. Tryck på "Klistra in en spalt till" och sedan "Sortera texten". Raderna som bröts i spalten slås ihop.</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="scanPaste" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="2e"><div class="dv-olabel"><a class="dv-oid" href="#2e">2e</a><span>Reserv: fota i appen (Tesseract, gratis men sämre)</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="scan" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt" id="2d"><div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a><span>Sortera texten och spara</span></div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" start-screen="scanSort" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+  </div>
+  <p class="dv-next">Prova: ”låt mig fota två sidor i samma recept” · ”visa receptet efter att det sparats från bild” · ”gör listan kompaktare”</p>
+</section>
+
+<section class="dv-turn" id="t1" style="background:#e9dfcc">
+  <div style="display:flex;flex-direction:column;gap:10px;max-width:760px;margin-bottom:34px">
+    <h1 style="margin:0;font-size:44px">Receptappen</h1>
+    <p style="margin:0;font-size:16px;color:var(--color-neutral-800);text-wrap:pretty">Tre riktningar för samma app. Alla tre är klickbara: spara recept från länk eller bok, sätt insats 1–5, tagga, sök och filtrera, och se näringsvärde per portion.</p>
+    <ul style="margin:4px 0 0;padding-left:18px;font-size:14px;color:var(--color-neutral-800);display:flex;flex-direction:column;gap:4px">
+      <li>Bilder är platshållare. I appen hämtas bild, ingredienser och steg från receptsidans strukturerade data (schema.org/Recipe, som de flesta receptsajter har).</li>
+      <li>Näringsvärdet räknas ut genom att matcha varje ingrediens mot Livsmedelsverkets livsmedelsdatabas, som har ett öppet API. Osäkra matchningar markeras så att du kan byta.</li>
+      <li>Bokrecept saknar ingredienser tills du skriver in dem (se Pasta puttanesca).</li>
+    </ul>
+  </div>
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Tre riktningar</span></div>
+  <div class="dv-opts">
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a><span><b>Skafferi</b>: fotokort, flammor för insats, helbild överst i receptet.</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import>
+    </div>
+    <div class="dv-opt" id="1b">
+      <div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a><span><b>Runda</b>: runda bildmasker och mjuka former, kockmössor för insats.</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="b" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import>
+    </div>
+    <div class="dv-opt" id="1c">
+      <div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a><span><b>Lapp</b>: inga foton, kort färgade efter tagg, stor rubrik. Kastruller för insats.</span></div>
+      <x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="c" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import>
+    </div>
+  </div>
+
+  <div class="dv-thd" style="margin-top:56px"><span class="dv-tname">Alla skärmar i <a class="dv-oid" href="#1a">1a</a></span></div>
+  <div class="dv-opts">
+    <div class="dv-opt"><div class="dv-olabel">Bibliotek som lista</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-view="list" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt"><div class="dv-olabel">Sök och filter</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-screen="filter" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt"><div class="dv-olabel">Recept från webben</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-screen="detail" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt"><div class="dv-olabel">Näring</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-screen="nutrition" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt"><div class="dv-olabel">Lägg till</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-screen="add" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt"><div class="dv-olabel">Från länk: klistra in</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-screen="addLink" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt"><div class="dv-olabel">Från länk: granska</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-screen="linkReview" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt"><div class="dv-olabel">Från kokbok</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-screen="addBook" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+    <div class="dv-opt"><div class="dv-olabel">Taggar</div><x-import component-from-global-scope="IOSDevice" from="./ios-frame.jsx" hint-size="402px,874px"><dc-import name="ReceptApp" direction="a" start-screen="tags" hint-size="100%,100%" style="display:block;height:100%"></dc-import></x-import></div>
+  </div>
+  <p class="dv-next">Prova: ”kör på <a class="dv-oid" href="#1b">1b</a> men med flammorna från <a class="dv-oid" href="#1a">1a</a>” · ”visa alla skärmar i <a class="dv-oid" href="#1c">1c</a>” · ”lägg till en veckoplanering”</p>
+</section>
+</x-dc>
+</body>
+</html>

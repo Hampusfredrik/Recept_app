@@ -1,0 +1,69 @@
+/* Appspecifika stilar ovanpå designsystemet Organic (tokens.css). */
+:root {
+  --app-max: 480px;
+  --top-pad: max(62px, calc(env(safe-area-inset-top) + 18px));
+  --side: 20px;
+  --edge: max(0px, calc((100vw - var(--app-max)) / 2));
+}
+html { -webkit-text-size-adjust: 100%; background: var(--color-bg); }
+body { font-size: 15px; line-height: 1.45; min-height: 100dvh; overscroll-behavior-y: none; -webkit-tap-highlight-color: transparent; }
+#root { max-width: var(--app-max); margin: 0 auto; min-height: 100dvh; position: relative; }
+button { font-family: var(--font-body); color: inherit; -webkit-appearance: none; appearance: none; }
+input, textarea { font-family: inherit; }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent-600); }
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+@keyframes rpulse { 0%, 100% { opacity: .55 } 50% { opacity: 1 } }
+@keyframes rspin { to { transform: rotate(360deg) } }
+@keyframes rup { from { transform: translateY(40px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes rtoast { from { transform: translate(-50%, -12px); opacity: 0 } to { transform: translate(-50%, 0); opacity: 1 } }
+
+.screen { padding: var(--top-pad) var(--side) 130px; }
+.screen.no-tabs { padding-bottom: 120px; }
+.kicker { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--color-accent-700); font-weight: 600; }
+.h1 { margin: 0; font-size: 38px; line-height: 1.12; }
+.muted { color: var(--color-neutral-700); }
+.err { font-size: 13px; color: var(--color-accent-700); }
+.row { display: flex; align-items: center; }
+.col { display: flex; flex-direction: column; }
+.wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+.label { font-size: 12px; color: var(--color-neutral-700); font-weight: 600; }
+.hscroll { display: flex; gap: 8px; overflow-x: auto; margin: 0 calc(-1 * var(--side)); padding: 0 var(--side) 2px; scrollbar-width: none; }
+.hscroll::-webkit-scrollbar { display: none; }
+
+.circle-btn { width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--color-surface); cursor: pointer; display: grid; place-items: center; color: var(--color-text); flex: none; }
+.icon-btn { flex: none; border: 0; border-radius: 999px; background: transparent; cursor: pointer; display: grid; place-items: center; }
+.hover-surface:hover { background: var(--color-surface); }
+.hover-n300:hover { background: var(--color-neutral-300); }
+.chip { flex: none; height: 36px; padding: 0 14px; border-radius: 999px; cursor: pointer; font: 600 14px var(--font-body); border: 1.5px solid var(--color-divider); background: transparent; color: var(--color-text); display: inline-flex; align-items: center; gap: 6px; }
+.chip.on { border-color: var(--color-text); background: var(--color-text); color: var(--color-bg); }
+.seg2 { display: grid; padding: 4px; border-radius: 999px; background: var(--color-surface); }
+.seg2 button { height: 40px; border: 0; border-radius: 999px; cursor: pointer; font: 600 14px var(--font-body); background: transparent; color: var(--color-neutral-700); }
+.seg2 button.on { background: var(--color-bg); color: var(--color-text); box-shadow: var(--shadow-sm); }
+.bar { height: 8px; border-radius: 999px; background: var(--color-neutral-200); overflow: hidden; }
+.bar > div { height: 100%; border-radius: 999px; }
+.thumb { flex: none; background-size: cover; background-position: center; }
+.spinner { width: 20px; height: 20px; border-radius: 50%; border: 3px solid var(--color-accent-200); border-top-color: var(--color-accent); animation: rspin .8s linear infinite; flex: none; }
+.skeleton { animation: rpulse 1.2s ease-in-out infinite; }
+.input.big { height: 48px; font-size: 16px; }
+.list-row { display: flex; align-items: center; gap: 14px; padding: 8px; margin: 0 -8px; border-radius: 24px; cursor: pointer; }
+.list-row:hover { background: var(--color-surface); }
+
+/* Fasta lager begränsas till appens bredd på stora skärmar. */
+.fixed-layer { position: fixed; left: var(--edge); right: var(--edge); }
+.backdrop { position: fixed; inset: 0; background: color-mix(in srgb, var(--color-neutral-900) 45%, transparent); z-index: 10; }
+.sheet { position: fixed; left: calc(var(--edge) + 10px); right: calc(var(--edge) + 10px); bottom: calc(10px + env(safe-area-inset-bottom) * .5);
+  max-height: calc(100dvh - 40px); overflow-y: auto; padding: 22px 20px 22px; border-radius: 40px; background: var(--color-bg);
+  box-shadow: var(--shadow-lg); z-index: 11; display: flex; flex-direction: column; gap: 16px; animation: rup .25s ease-out; }
+.sheet h3 { margin: 0; font-size: 24px; }
+.tabbar { position: fixed; left: calc(var(--edge) + 16px); right: calc(var(--edge) + 16px); bottom: 30px; height: 66px; border-radius: 999px;
+  background: var(--color-neutral-900); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; box-shadow: var(--shadow-lg); z-index: 5; }
+.tabbar .tab { flex: 1; height: 52px; border: 0; background: transparent; cursor: pointer; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; color: var(--color-neutral-400); font: 600 11px var(--font-body); text-decoration: none; }
+.tabbar .tab.on { color: var(--color-accent-300); }
+.tabbar .plus { flex: none; width: 54px; height: 54px; border-radius: 50%; border: 0; background: var(--color-accent); color: var(--color-bg); cursor: pointer; display: grid; place-items: center; }
+.tabbar .plus:hover { background: var(--color-accent-600); }
+.toast { position: fixed; left: 50%; top: max(60px, calc(env(safe-area-inset-top) + 12px)); transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px;
+  padding: 10px 18px; border-radius: 999px; background: var(--color-neutral-900); color: var(--color-bg); font-weight: 600; font-size: 14px;
+  box-shadow: var(--shadow-lg); white-space: nowrap; animation: rtoast .2s ease-out; }

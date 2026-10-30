@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="./_ds/organic-fba8f43d-d02c-43bd-b687-8059f6efb99a/styles.css">
+<style>a{color:var(--color-accent-700)}a:hover{color:var(--color-accent-600)}input,textarea{font-family:inherit}@keyframes rpulse{0%,100%{opacity:.55}50%{opacity:1}}@keyframes rspin{to{transform:rotate(360deg)}}@keyframes rup{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}</style>
+</helmet>
+<div style="position:relative;height:100%;min-height:874px;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);overflow:hidden;font-size:15px;line-height:1.45">
+
+<!-- ============ LIBRARY ============ -->
+<sc-if value="{{ isLibrary }}" hint-placeholder-val="{{ true }}">
+<div style="position:absolute;inset:0;overflow-y:auto;padding:62px 20px 130px">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-bottom:16px">
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">{{ countLabel }}</span>
+      <h1 style="margin:0;font-size:38px">Mina recept</h1>
+    </div>
+    <div style="display:flex;gap:2px;padding:3px;border-radius:999px;background:var(--color-surface)">
+      <button onClick="{{ setGrid }}" aria-label="Kort" style="width:38px;height:38px;border:0;border-radius:999px;display:grid;place-items:center;cursor:pointer;background:{{ gridBtnBg }};color:{{ gridBtnFg }}"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/layout-grid.svg) center/contain no-repeat"></span></button>
+      <button onClick="{{ setList }}" aria-label="Lista" style="width:38px;height:38px;border:0;border-radius:999px;display:grid;place-items:center;cursor:pointer;background:{{ listBtnBg }};color:{{ listBtnFg }}"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/list.svg) center/contain no-repeat"></span></button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <label style="flex:1;display:flex;align-items:center;gap:10px;height:48px;padding:0 16px;border-radius:999px;background:var(--color-surface);color:var(--color-neutral-700)">
+      <span style="display:block;flex:none;width:18px;height:18px;background:currentColor;mask:url(icons/search.svg) center/contain no-repeat"></span>
+      <input value="{{ q }}" onChange="{{ onQ }}" placeholder="Sök recept, tagg eller bok" style="flex:1;min-width:0;border:0;background:transparent;font-size:15px;color:var(--color-text);outline:none">
+      <sc-if value="{{ hasQ }}"><button onClick="{{ clearQ }}" aria-label="Rensa" style="border:0;background:transparent;padding:0;cursor:pointer;color:var(--color-neutral-700)"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url(icons/x.svg) center/contain no-repeat"></span></button></sc-if>
+    </label>
+    <button onClick="{{ openFilter }}" aria-label="Filtrera" style="position:relative;width:48px;height:48px;flex:none;border:0;border-radius:999px;display:grid;place-items:center;cursor:pointer;background:{{ filterBtnBg }};color:{{ filterBtnFg }}">
+      <span style="display:block;width:20px;height:20px;background:currentColor;mask:url(icons/sliders-horizontal.svg) center/contain no-repeat"></span>
+      <sc-if value="{{ hasFilters }}"><span style="position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:var(--color-accent-2-700);color:var(--color-bg);font-size:11px;font-weight:700;display:grid;place-items:center">{{ filterCount }}</span></sc-if>
+    </button>
+  </div>
+
+  <div style="display:flex;gap:8px;overflow-x:auto;margin:0 -20px 20px;padding:0 20px 2px;scrollbar-width:none">
+    <sc-for list="{{ chips }}" as="c" hint-placeholder-count="4">
+      <button onClick="{{ c.onClick }}" style="flex:none;height:36px;padding:0 16px;border-radius:999px;cursor:pointer;font-size:14px;font-weight:600;font-family:var(--font-body);border:1.5px solid {{ c.border }};background:{{ c.bg }};color:{{ c.fg }}">{{ c.name }}</button>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ noResults }}">
+    <div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:32px 4px">
+      <h3 style="margin:0;font-size:22px">Inga recept matchar</h3>
+      <p style="margin:0;color:var(--color-neutral-700)">Prova en annan sökning eller rensa filtren.</p>
+      <button class="btn btn-secondary" onClick="{{ clearAll }}">Rensa filter</button>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showGridA }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <sc-for list="{{ items }}" as="r" hint-placeholder-count="4">
+        <div onClick="{{ r.open }}" style="display:flex;flex-direction:column;border-radius:26px;background:var(--color-surface);overflow:hidden;cursor:pointer">
+          <div style="height:118px;background:{{ r.stripe }};display:flex;align-items:flex-end;padding:10px 12px"><span style="font:500 10px ui-monospace,Menlo,monospace;color:var(--color-neutral-700)">matbild</span></div>
+          <div style="display:flex;flex-direction:column;gap:7px;padding:11px 13px 14px">
+            <div style="font-family:var(--font-heading);font-size:16px;line-height:1.15;text-wrap:pretty">{{ r.name }}</div>
+            <div style="display:flex;gap:2px">
+              <sc-for list="{{ r.effortIcons }}" as="e" hint-placeholder-count="5"><span style="display:block;width:14px;height:14px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for>
+            </div>
+            <div style="font-size:12px;color:var(--color-neutral-700)">{{ r.meta }}</div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showGridB }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <sc-for list="{{ items }}" as="r" hint-placeholder-count="4">
+        <div onClick="{{ r.open }}" style="position:relative;display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:30px;background:var(--color-surface);cursor:pointer;overflow:hidden">
+          <div style="position:absolute;right:-34px;top:-34px;width:110px;height:110px;border-radius:50%;background:{{ r.blob }}"></div>
+          <div style="position:relative;width:92px;height:92px;border-radius:50%;background:{{ r.stripe }};display:grid;place-items:center"><span style="font:500 9px ui-monospace,Menlo,monospace;color:var(--color-neutral-700)">matbild</span></div>
+          <div style="font-family:var(--font-heading);font-size:16px;line-height:1.15;text-wrap:pretty;margin-top:2px">{{ r.name }}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <div style="display:flex;gap:1px"><sc-for list="{{ r.effortIcons }}" as="e" hint-placeholder-count="5"><span style="display:block;width:14px;height:14px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for></div>
+          </div>
+          <div style="font-size:12px;color:var(--color-neutral-700)">{{ r.meta }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showGridC }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <sc-for list="{{ items }}" as="r" hint-placeholder-count="4">
+        <div onClick="{{ r.open }}" style="display:flex;flex-direction:column;justify-content:space-between;gap:14px;min-height:172px;padding:16px;border-radius:30px;background:{{ r.tint }};color:{{ r.ink }};cursor:pointer">
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">{{ r.firstTag }}</span>
+            <div style="font-family:var(--font-heading);font-size:20px;line-height:1.1;text-wrap:pretty">{{ r.name }}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="display:flex;gap:2px"><sc-for list="{{ r.effortIconsInk }}" as="e" hint-placeholder-count="5"><span style="display:block;width:16px;height:16px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for></div>
+            <span style="font-size:12px;font-weight:600">{{ r.meta }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showList }}">
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <sc-for list="{{ items }}" as="r" hint-placeholder-count="5">
+        <div onClick="{{ r.open }}" style="display:flex;align-items:center;gap:14px;padding:8px;margin:0 -8px;border-radius:24px;cursor:pointer" style-hover="background:var(--color-surface)">
+          <div style="flex:none;width:62px;height:62px;border-radius:{{ thumbRadius }};background:{{ r.thumbBg }};color:{{ r.ink }};display:grid;place-items:center;font-family:var(--font-heading);font-size:24px">{{ r.thumbText }}</div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+            <div style="font-family:var(--font-heading);font-size:16px;line-height:1.15">{{ r.name }}</div>
+            <div style="font-size:12px;color:var(--color-neutral-700)">{{ r.meta }}</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap"><sc-for list="{{ r.tagList }}" as="t" hint-placeholder-count="2"><span class="tag" style="background:{{ t.bg }};color:{{ t.fg }};padding:1px 8px">{{ t.name }}</span></sc-for></div>
+          </div>
+          <div style="flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
+            <div style="display:flex;gap:1px"><sc-for list="{{ r.effortIcons }}" as="e" hint-placeholder-count="5"><span style="display:block;width:12px;height:12px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for></div>
+            <span style="font-size:11px;color:var(--color-neutral-700)">{{ r.effortLabel }}</span>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ============ TAGS ============ -->
+<sc-if value="{{ isTags }}">
+<div style="position:absolute;inset:0;overflow-y:auto;padding:62px 20px 130px">
+  <span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">{{ tagCountLabel }}</span>
+  <h1 style="margin:2px 0 6px;font-size:38px">Taggar</h1>
+  <p style="margin:0 0 18px;color:var(--color-neutral-700);font-size:14px">Tryck på färgen för att byta. Tryck på en tagg för att se dess recept.</p>
+  <div style="display:flex;gap:8px;margin-bottom:8px">
+    <input class="input" value="{{ newTag }}" onChange="{{ onNewTag }}" onKeyDown="{{ onNewTagKey }}" placeholder="Ny tagg, t.ex. Vardag" style="height:48px;font-size:15px">
+    <button class="btn btn-primary" onClick="{{ addTag }}" style="flex:none;height:48px;padding:0 18px;border-radius:999px"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url(icons/plus.svg) center/contain no-repeat"></span>Lägg till</button>
+  </div>
+  <sc-if value="{{ tagError }}"><div style="font-size:13px;color:var(--color-accent-700);margin:0 0 6px 16px">{{ tagError }}</div></sc-if>
+  <div style="display:flex;flex-direction:column;margin-top:14px">
+    <sc-for list="{{ tagRows }}" as="t" hint-placeholder-count="4">
+      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid var(--color-divider)">
+        <button onClick="{{ t.cycle }}" aria-label="Byt färg" style="flex:none;width:36px;height:36px;border-radius:50%;border:0;cursor:pointer;background:{{ t.bg }};display:grid;place-items:center"><span style="width:14px;height:14px;border-radius:50%;background:{{ t.dot }}"></span></button>
+        <div onClick="{{ t.open }}" style="flex:1;display:flex;flex-direction:column;cursor:pointer">
+          <span style="font-family:var(--font-heading);font-size:18px">{{ t.name }}</span>
+          <span style="font-size:12px;color:var(--color-neutral-700)">{{ t.countLabel }}</span>
+        </div>
+        <button onClick="{{ t.remove }}" aria-label="Ta bort" style="flex:none;width:40px;height:40px;border:0;border-radius:999px;background:transparent;cursor:pointer;color:var(--color-neutral-600);display:grid;place-items:center" style-hover="background:var(--color-surface);color:var(--color-accent-700)"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/trash-2.svg) center/contain no-repeat"></span></button>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ HOME ============ -->
+<sc-if value="{{ isHome }}">
+<div style="position:absolute;inset:0;overflow-y:auto;padding:62px 20px 130px;display:grid;align-content:start;grid-template-columns:minmax(0,1fr);gap:26px">
+  <div style="display:flex;flex-direction:column;gap:2px">
+    <span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Fredag 30 oktober</span>
+    <h1 style="margin:0;font-size:38px">Vad blir det idag?</h1>
+  </div>
+
+  <sc-if value="{{ todayPlanned }}">
+    <div onClick="{{ todayPlan.open }}" style="display:flex;align-items:center;gap:12px;padding:12px 16px 12px 12px;margin-top:-10px;border-radius:24px;background:var(--color-accent-2-100);color:var(--color-accent-2-900);cursor:pointer">
+      <span style="flex:none;width:40px;height:40px;border-radius:50%;background:var(--color-accent-2-600);display:grid;place-items:center"><span style="display:block;width:18px;height:18px;background:var(--color-bg);mask:url(icons/calendar-days.svg) center/contain no-repeat"></span></span>
+      <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:12px;font-weight:700">Planerat idag</span><span style="font-family:var(--font-heading);font-size:17px">{{ todayPlan.name }}</span></span>
+    </div>
+  </sc-if>
+
+  <div style="display:flex;flex-direction:column;border-radius:34px;background:var(--color-surface)">
+    <div onClick="{{ hero.open }}" style="height:190px;border-radius:34px 34px 0 0;background:{{ hero.stripe }};display:flex;align-items:flex-start;justify-content:space-between;padding:16px;cursor:pointer">
+      <span style="padding:6px 12px;border-radius:999px;background:var(--color-bg);font-size:12px;font-weight:700;color:var(--color-accent-800)">Länge sedan sist</span>
+      <span style="font:500 10px ui-monospace,Menlo,monospace;color:var(--color-neutral-700)">matbild</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;padding:16px 18px 18px">
+      <div style="font-family:var(--font-heading);font-size:24px;line-height:1.1;text-wrap:pretty">{{ hero.name }}</div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--color-neutral-800)">
+        <div style="display:flex;gap:2px"><sc-for list="{{ hero.effortIcons }}" as="e" hint-placeholder-count="5"><span style="display:block;width:14px;height:14px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for></div>
+        <span>{{ hero.lastLabel }}</span>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn btn-primary" onClick="{{ hero.open }}" style="flex:1;height:46px;font-size:15px">Visa receptet</button>
+        <button class="btn btn-secondary" onClick="{{ hero.plan }}" style="flex:none;height:46px;padding:0 16px;font-size:15px">{{ hero.planLabel }}</button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:10px">
+    <div style="display:flex;flex-direction:column">
+      <h3 style="margin:0;font-size:22px">Ett av varje</h3>
+      <span style="font-size:13px;color:var(--color-neutral-700)">Från superlätt till medel, det du lagat minst nyligen</span>
+    </div>
+    <sc-for list="{{ trio }}" as="t" hint-placeholder-count="3">
+      <div style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:26px;border:1.5px solid var(--color-divider)">
+        <div onClick="{{ t.open }}" style="flex:none;width:58px;height:58px;border-radius:20px;background:{{ t.stripe }};cursor:pointer"></div>
+        <div onClick="{{ t.open }}" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;cursor:pointer">
+          <span style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-accent-700)"><span style="display:flex;gap:1px"><sc-for list="{{ t.effortIcons }}" as="e" hint-placeholder-count="5"><span style="display:block;width:11px;height:11px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for></span>{{ t.level }}</span>
+          <span style="font-family:var(--font-heading);font-size:16px;line-height:1.15">{{ t.name }}</span>
+          <span style="font-size:12px;color:var(--color-neutral-700)">{{ t.lastLabel }}</span>
+        </div>
+        <sc-if value="{{ t.canSwap }}">
+          <button onClick="{{ t.swap }}" aria-label="Byt förslag" style="flex:none;width:40px;height:40px;border-radius:50%;border:0;background:var(--color-surface);cursor:pointer;display:grid;place-items:center;color:var(--color-neutral-800)" style-hover="background:var(--color-neutral-300)"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url(icons/rotate-ccw.svg) center/contain no-repeat"></span></button>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+    <button onClick="{{ openRandom }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:16px;border-radius:28px;border:0;background:var(--color-accent-100);color:var(--color-accent-900);cursor:pointer;text-align:left" style-hover="background:var(--color-accent-200)">
+      <span style="width:44px;height:44px;border-radius:50%;background:var(--color-accent);display:grid;place-items:center"><span style="display:block;width:20px;height:20px;background:var(--color-bg);mask:url(icons/shuffle.svg) center/contain no-repeat"></span></span>
+      <span style="display:flex;flex-direction:column"><span style="font-family:var(--font-heading);font-size:18px">Slumpa</span><span style="font-size:12px">Välj insats och tagg</span></span>
+    </button>
+    <button onClick="{{ goPantry }}" style="display:flex;flex-direction:column;align-items:flex-start;gap:16px;padding:16px;border-radius:28px;border:0;background:var(--color-accent-2-100);color:var(--color-accent-2-900);cursor:pointer;text-align:left" style-hover="background:var(--color-accent-2-200)">
+      <span style="width:44px;height:44px;border-radius:50%;background:var(--color-accent-2-600);display:grid;place-items:center"><span style="display:block;width:20px;height:20px;background:var(--color-bg);mask:url(icons/refrigerator.svg) center/contain no-repeat"></span></span>
+      <span style="display:flex;flex-direction:column"><span style="font-family:var(--font-heading);font-size:18px">Vad kan jag laga?</span><span style="font-size:12px">Utgå från det du har</span></span>
+    </button>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ WEEK ============ -->
+<sc-if value="{{ isWeek }}">
+<div style="position:absolute;inset:0;overflow-y:auto;padding:62px 20px 130px">
+  <span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-700);font-weight:600">Vecka 44 · 26 okt – 1 nov</span>
+  <h1 style="margin:2px 0 6px;font-size:38px">Veckan</h1>
+  <p style="margin:0 0 18px;color:var(--color-neutral-700);font-size:14px">{{ weekSummary }}</p>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <sc-for list="{{ week }}" as="w" hint-placeholder-count="7">
+      <div style="display:flex;align-items:stretch;gap:12px">
+        <div style="flex:none;width:48px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:20px;background:{{ w.dayBg }};color:{{ w.dayFg }};opacity:{{ w.dayOpacity }}">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">{{ w.short }}</span>
+          <span style="font-family:var(--font-heading);font-size:20px;line-height:1.1">{{ w.date }}</span>
+        </div>
+        <sc-if value="{{ w.has }}">
+          <div style="flex:1;min-width:0;display:flex;align-items:center;gap:10px;padding:10px 6px 10px 14px;border-radius:22px;background:var(--color-surface);opacity:{{ w.dayOpacity }}">
+            <div onClick="{{ w.open }}" style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px;cursor:pointer">
+              <span style="font-family:var(--font-heading);font-size:16px;line-height:1.15">{{ w.name }}</span>
+              <div style="display:flex;gap:1px"><sc-for list="{{ w.effortIcons }}" as="e" hint-placeholder-count="5"><span style="display:block;width:12px;height:12px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for></div>
+            </div>
+            <button onClick="{{ w.remove }}" aria-label="Ta bort" style="flex:none;width:36px;height:36px;border:0;border-radius:50%;background:transparent;cursor:pointer;color:var(--color-neutral-600);display:grid;place-items:center" style-hover="background:var(--color-neutral-300)"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url(icons/x.svg) center/contain no-repeat"></span></button>
+          </div>
+        </sc-if>
+        <sc-if value="{{ w.empty }}">
+          <button onClick="{{ w.add }}" style="flex:1;min-height:62px;display:flex;align-items:center;gap:8px;padding:0 16px;border-radius:22px;border:1.5px dashed var(--color-neutral-400);background:transparent;cursor:pointer;font:600 14px var(--font-body);color:var(--color-neutral-700);opacity:{{ w.dayOpacity }}" style-hover="background:var(--color-surface)"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url(icons/plus.svg) center/contain no-repeat"></span>Välj recept</button>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ PANTRY ============ -->
+<sc-if value="{{ isPantry }}">
+<div style="position:absolute;inset:0;overflow-y:auto;padding:58px 20px 60px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+    <button onClick="{{ goHome }}" aria-label="Tillbaka" style="width:44px;height:44px;border:0;border-radius:50%;background:var(--color-surface);cursor:pointer;display:grid;place-items:center;color:var(--color-text)"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url(icons/chevron-left.svg) center/contain no-repeat"></span></button>
+    <span style="width:44px"></span>
+  </div>
+  <h1 style="margin:0 0 6px;font-size:34px">Vad kan jag laga?</h1>
+  <p style="margin:0 0 18px;color:var(--color-neutral-700);font-size:14px">Lägg till det du har hemma. Recepten där minst fattas hamnar först.</p>
+  <div style="display:flex;gap:8px">
+    <input class="input" value="{{ pantryInput }}" onChange="{{ onPantryInput }}" onKeyDown="{{ onPantryKey }}" placeholder="t.ex. kyckling" style="height:48px;font-size:15px">
+    <button class="btn btn-primary" onClick="{{ addPantry }}" aria-label="Lägg till" style="flex:none;width:48px;height:48px;padding:0;border-radius:50%"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/plus.svg) center/contain no-repeat"></span></button>
+  </div>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">
+    <sc-for list="{{ pantry }}" as="p" hint-placeholder-count="4">
+      <button onClick="{{ p.remove }}" style="display:flex;align-items:center;gap:6px;height:34px;padding:0 10px 0 14px;border-radius:999px;border:0;background:var(--color-accent-2-600);color:var(--color-bg);cursor:pointer;font:600 14px var(--font-body)">{{ p.name }}<span style="display:block;width:13px;height:13px;background:currentColor;mask:url(icons/x.svg) center/contain no-repeat"></span></button>
+    </sc-for>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px">
+    <span style="font-size:12px;color:var(--color-neutral-700);font-weight:600">Vanligt i dina recept</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <sc-for list="{{ pantrySuggest }}" as="p" hint-placeholder-count="6">
+        <button onClick="{{ p.add }}" style="height:32px;padding:0 12px;border-radius:999px;border:1.5px solid var(--color-divider);background:transparent;cursor:pointer;font:600 13px var(--font-body);color:var(--color-text)" style-hover="background:var(--color-surface)">+ {{ p.name }}</button>
+      </sc-for>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:10px;margin-top:26px">
+    <h3 style="margin:0;font-size:22px">Förslag</h3>
+    <sc-for list="{{ pantryResults }}" as="r" hint-placeholder-count="4">
+      <div onClick="{{ r.open }}" style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:26px;background:var(--color-surface);cursor:pointer">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+          <span style="font-family:var(--font-heading);font-size:17px;line-height:1.15">{{ r.name }}</span>
+          <span class="tag" style="flex:none;background:{{ r.badgeBg }};color:{{ r.badgeFg }};font-weight:700">{{ r.badge }}</span>
+        </div>
+        <div style="height:8px;border-radius:999px;background:var(--color-neutral-200);overflow:hidden"><div style="height:100%;border-radius:999px;width:{{ r.pct }};background:var(--color-accent-2-600)"></div></div>
+        <span style="font-size:13px;color:var(--color-neutral-800)">{{ r.missing }}</span>
+      </div>
+    </sc-for>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ TAB BAR ============ -->
+<sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+  <div style="position:absolute;left:16px;right:16px;bottom:30px;height:66px;border-radius:999px;background:var(--color-neutral-900);display:flex;align-items:center;justify-content:space-between;padding:0 8px;box-shadow:var(--shadow-lg);z-index:5">
+    <button onClick="{{ goHome }}" style="flex:1;height:52px;border:0;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:{{ tabHomeFg }};font:600 11px var(--font-body)"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url(icons/house.svg) center/contain no-repeat"></span>Idag</button>
+    <button onClick="{{ goLibrary }}" style="flex:1;height:52px;border:0;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:{{ tabLibFg }};font:600 11px var(--font-body)"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url(icons/book-marked.svg) center/contain no-repeat"></span>Recept</button>
+    <button onClick="{{ openAdd }}" aria-label="Lägg till recept" style="flex:none;width:54px;height:54px;border-radius:50%;border:0;background:var(--color-accent);color:var(--color-bg);cursor:pointer;display:grid;place-items:center" style-hover="background:var(--color-accent-600)"><span style="display:block;width:24px;height:24px;background:currentColor;mask:url(icons/plus.svg) center/contain no-repeat"></span></button>
+    <button onClick="{{ goWeek }}" style="flex:1;height:52px;border:0;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:{{ tabWeekFg }};font:600 11px var(--font-body)"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url(icons/calendar-days.svg) center/contain no-repeat"></span>Veckan</button>
+    <button onClick="{{ goTags }}" style="flex:1;height:52px;border:0;background:transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:{{ tabTagFg }};font:600 11px var(--font-body)"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url(icons/tag.svg) center/contain no-repeat"></span>Taggar</button>
+  </div>
+</sc-if>
+
+<!-- ============ DETAIL ============ -->
+<sc-if value="{{ isDetail }}">
+<div style="position:absolute;inset:0;overflow-y:auto;padding-bottom:60px">
+  <sc-if value="{{ heroA }}">
+    <div style="height:330px;background:{{ d.stripe }};border-radius:0 0 34px 34px;display:flex;align-items:flex-end;justify-content:flex-end;padding:16px 20px"><span style="font:500 11px ui-monospace,Menlo,monospace;color:var(--color-neutral-700)">{{ d.photoLabel }}</span></div>
+    <div style="padding:22px 20px 0"><h1 style="margin:0;font-size:31px;text-wrap:pretty">{{ d.name }}</h1></div>
+  </sc-if>
+  <sc-if value="{{ heroB }}">
+    <div style="position:relative;padding:112px 20px 0;overflow:hidden">
+      <div style="position:absolute;right:-70px;top:30px;width:300px;height:300px;border-radius:50%;background:{{ d.blob }}"></div>
+      <div style="position:relative;margin-left:auto;margin-right:6px;width:230px;height:230px;border-radius:50%;background:{{ d.stripe }};display:grid;place-items:center;box-shadow:var(--shadow-md)"><span style="font:500 11px ui-monospace,Menlo,monospace;color:var(--color-neutral-700)">{{ d.photoLabel }}</span></div>
+      <h1 style="position:relative;margin:-30px 0 0;font-size:34px;max-width:300px;text-wrap:pretty">{{ d.name }}</h1>
+    </div>
+  </sc-if>
+  <sc-if value="{{ heroC }}">
+    <div style="background:{{ d.tint }};color:{{ d.ink }};padding:116px 20px 28px;border-radius:0 0 40px 40px;display:flex;flex-direction:column;gap:10px">
+      <span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;font-weight:700">{{ d.tagLine }}</span>
+      <h1 style="margin:0;font-size:38px;line-height:1.04;text-wrap:pretty">{{ d.name }}</h1>
+    </div>
+  </sc-if>
+
+  <div style="display:flex;flex-direction:column;gap:18px;padding:16px 20px 0">
+    <div style="display:flex;gap:16px;font-size:14px;color:var(--color-neutral-700)">
+      <span style="display:flex;align-items:center;gap:6px"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url(icons/users.svg) center/contain no-repeat"></span>{{ d.portionsLabel }}</span>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-radius:24px;background:var(--color-surface)">
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--color-neutral-700);font-weight:600">Insats</span>
+        <span style="font-family:var(--font-heading);font-size:19px">{{ d.effortLabel }}</span>
+      </div>
+      <div style="display:flex;gap:4px"><sc-for list="{{ d.effortIcons }}" as="e" hint-placeholder-count="5"><span style="display:block;width:24px;height:24px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for></div>
+    </div>
+
+    <sc-if value="{{ d.isWeb }}">
+      <a href="{{ d.url }}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:12px;padding:12px 14px 12px 12px;border-radius:24px;border:1.5px solid var(--color-divider);text-decoration:none;color:var(--color-text)" style-hover="background:var(--color-surface)">
+        <span style="flex:none;width:40px;height:40px;border-radius:50%;background:var(--color-accent-2-100);color:var(--color-accent-2-800);display:grid;place-items:center"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/globe.svg) center/contain no-repeat"></span></span>
+        <span style="flex:1;display:flex;flex-direction:column;min-width:0"><span style="font-weight:700;font-size:15px">{{ d.domain }}</span><span style="font-size:12px;color:var(--color-neutral-700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Hämtat {{ d.fetched }} · Öppna originalet</span></span>
+        <span style="display:block;flex:none;width:18px;height:18px;background:var(--color-accent-700);mask:url(icons/arrow-up-right.svg) center/contain no-repeat"></span>
+      </a>
+    </sc-if>
+    <sc-if value="{{ d.isBook }}">
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 14px 12px 12px;border-radius:24px;border:1.5px solid var(--color-divider)">
+        <span style="flex:none;width:40px;height:40px;border-radius:50%;background:var(--color-accent-100);color:var(--color-accent-800);display:grid;place-items:center"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/book-open.svg) center/contain no-repeat"></span></span>
+        <span style="flex:1;display:flex;flex-direction:column"><span style="font-weight:700;font-size:15px">{{ d.book }}</span><span style="font-size:12px;color:var(--color-neutral-700)">Kokbok</span></span>
+        <span style="flex:none;display:flex;flex-direction:column;align-items:flex-end"><span style="font-size:11px;color:var(--color-neutral-700);text-transform:uppercase;letter-spacing:.08em;font-weight:600">Sida</span><span style="font-family:var(--font-heading);font-size:22px;line-height:1">{{ d.page }}</span></span>
+      </div>
+    </sc-if>
+
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 12px 12px 18px;border-radius:24px;background:var(--color-accent-2-100);color:var(--color-accent-2-900)">
+      <span style="flex:1;display:flex;flex-direction:column"><span style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Senast lagad</span><span style="font-family:var(--font-heading);font-size:17px">{{ d.lastLabel }}</span></span>
+      <button onClick="{{ cookedToday }}" style="flex:none;display:flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:999px;border:0;cursor:pointer;font:700 13px var(--font-body);background:{{ d.cookedBg }};color:{{ d.cookedFg }}"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url(icons/circle-check.svg) center/contain no-repeat"></span>{{ d.cookedBtn }}</button>
+    </div>
+
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><sc-for list="{{ d.tagList }}" as="t" hint-placeholder-count="2"><span class="tag" style="background:{{ t.bg }};color:{{ t.fg }};font-size:13px;padding:5px 12px;font-weight:600">{{ t.name }}</span></sc-for></div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);padding:4px;border-radius:999px;background:var(--color-surface);margin-top:4px">
+      <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3">
+        <button onClick="{{ t.onClick }}" style="height:40px;border:0;border-radius:999px;cursor:pointer;font:600 14px var(--font-body);background:{{ t.bg }};color:{{ t.fg }};box-shadow:{{ t.shadow }}">{{ t.label }}</button>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ tabIngr }}">
+      <sc-if value="{{ d.hasIngr }}">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:14px;color:var(--color-neutral-700)">Räknat för</span>
+            <div style="display:flex;align-items:center;gap:4px;padding:3px;border-radius:999px;border:1.5px solid var(--color-divider)">
+              <button onClick="{{ decPort }}" aria-label="Färre" style="width:34px;height:34px;border:0;border-radius:50%;background:transparent;cursor:pointer;display:grid;place-items:center" style-hover="background:var(--color-surface)"><span style="display:block;width:14px;height:14px;background:currentColor;mask:url(icons/minus.svg) center/contain no-repeat"></span></button>
+              <span style="min-width:72px;text-align:center;font-weight:700;font-size:14px">{{ portLabel }}</span>
+              <button onClick="{{ incPort }}" aria-label="Fler" style="width:34px;height:34px;border:0;border-radius:50%;background:transparent;cursor:pointer;display:grid;place-items:center" style-hover="background:var(--color-surface)"><span style="display:block;width:14px;height:14px;background:currentColor;mask:url(icons/plus.svg) center/contain no-repeat"></span></button>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column">
+            <sc-for list="{{ d.ingr }}" as="i" hint-placeholder-count="6">
+              <button onClick="{{ i.toggle }}" style="display:grid;grid-template-columns:26px 78px 1fr;align-items:center;gap:10px;padding:11px 0;border:0;border-bottom:1px solid var(--color-divider);background:transparent;cursor:pointer;text-align:left;font:15px var(--font-body);color:var(--color-text);opacity:{{ i.opacity }}">
+                <span style="width:24px;height:24px;border-radius:50%;border:2px solid {{ i.ring }};background:{{ i.fill }};display:grid;place-items:center"><span style="display:block;width:12px;height:12px;background:var(--color-bg);mask:url(icons/check.svg) center/contain no-repeat"></span></span>
+                <span style="font-weight:700;color:var(--color-accent-700);text-decoration:{{ i.deco }}">{{ i.amt }}</span><span style="text-decoration:{{ i.deco }}">{{ i.name }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <sc-if value="{{ d.anyChecked }}">
+            <button class="btn btn-ghost" onClick="{{ resetChecks }}" style="align-self:flex-start;color:var(--color-accent-700);margin-top:4px">{{ d.checkedLabel }} · Återställ</button>
+          </sc-if>
+        </div>
+      </sc-if>
+      <sc-if value="{{ d.noIngr }}">
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:18px;border-radius:28px;background:var(--color-surface)">
+          <span style="font-family:var(--font-heading);font-size:18px">Står i boken</span>
+          <p style="margin:0;font-size:14px;color:var(--color-neutral-800)">Slå upp sida {{ d.page }} i {{ d.book }}. Skriv in ingredienserna om du vill skala portioner och se näringsvärde.</p>
+          <button class="btn btn-secondary" style="padding:9px 16px">Skriv in ingredienser</button>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ tabSteps }}">
+      <sc-if value="{{ d.hasSteps }}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <span style="font-size:14px;color:var(--color-neutral-700)">Mängder för</span>
+            <div style="display:flex;align-items:center;gap:4px;padding:3px;border-radius:999px;border:1.5px solid var(--color-divider)">
+              <button onClick="{{ decPort }}" aria-label="Färre" style="width:34px;height:34px;border:0;border-radius:50%;background:transparent;cursor:pointer;display:grid;place-items:center" style-hover="background:var(--color-surface)"><span style="display:block;width:14px;height:14px;background:currentColor;mask:url(icons/minus.svg) center/contain no-repeat"></span></button>
+              <span style="min-width:72px;text-align:center;font-weight:700;font-size:14px">{{ portLabel }}</span>
+              <button onClick="{{ incPort }}" aria-label="Fler" style="width:34px;height:34px;border:0;border-radius:50%;background:transparent;cursor:pointer;display:grid;place-items:center" style-hover="background:var(--color-surface)"><span style="display:block;width:14px;height:14px;background:currentColor;mask:url(icons/plus.svg) center/contain no-repeat"></span></button>
+            </div>
+          </div>
+          <sc-for list="{{ d.steps }}" as="s" hint-placeholder-count="4">
+            <div style="display:flex;gap:14px">
+              <span style="flex:none;width:32px;height:32px;border-radius:50%;background:var(--color-accent-2-200);color:var(--color-accent-2-900);display:grid;place-items:center;font-family:var(--font-heading);font-size:15px">{{ s.n }}</span>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:8px">
+                <p style="margin:4px 0 0;font-size:15px;text-wrap:pretty">{{ s.text }}</p>
+                <sc-if value="{{ s.hasUse }}">
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{ s.use }}" as="u" hint-placeholder-count="2">
+                      <span style="display:inline-flex;align-items:baseline;gap:5px;padding:4px 11px;border-radius:999px;background:var(--color-surface);font-size:13px"><b style="color:var(--color-accent-700)">{{ u.amt }}</b><span>{{ u.name }}</span></span>
+                    </sc-for>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <sc-if value="{{ d.noSteps }}">
+        <div style="padding:18px;border-radius:28px;background:var(--color-surface);font-size:14px">Instruktionerna finns på sida {{ d.page }} i {{ d.book }}.</div>
+      </sc-if>
+    </sc-if>
+
+    <sc-if value="{{ tabNut }}">
+      <sc-if value="{{ d.hasNut }}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;padding:18px 20px;border-radius:30px;background:var(--color-accent-2-200);color:var(--color-accent-2-900)">
+            <div style="display:flex;flex-direction:column">
+              <span style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:700">Per portion</span>
+              <span style="font-family:var(--font-heading);font-size:46px;line-height:1">{{ d.nut.kcal }}<span style="font-size:20px"> kcal</span></span>
+            </div>
+            <span style="font-size:13px;font-weight:600;text-align:right">{{ d.nut.kj }} kJ</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <sc-for list="{{ d.nut.macros }}" as="m" hint-placeholder-count="4">
+              <div style="display:flex;flex-direction:column;gap:6px;padding:14px;border-radius:24px;background:var(--color-surface)">
+                <span style="font-size:12px;color:var(--color-neutral-700);font-weight:600">{{ m.label }}</span>
+                <span style="font-family:var(--font-heading);font-size:22px;line-height:1">{{ m.val }}</span>
+                <div style="height:8px;border-radius:999px;background:var(--color-neutral-200);overflow:hidden"><div style="height:100%;border-radius:999px;width:{{ m.pct }};background:{{ m.color }}"></div></div>
+                <span style="font-size:11px;color:var(--color-neutral-700)">{{ m.sub }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <h4 style="margin:8px 0 2px;font-size:19px">Vitaminer och mineraler</h4>
+            <span style="font-size:12px;color:var(--color-neutral-700);margin-bottom:6px">Andel av dagligt referensintag (NNR) per portion</span>
+            <sc-for list="{{ d.nut.micros }}" as="m" hint-placeholder-count="6">
+              <div style="display:grid;grid-template-columns:96px 1fr 64px;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-divider)">
+                <span style="font-size:14px;font-weight:600">{{ m.label }}</span>
+                <div style="height:8px;border-radius:999px;background:var(--color-neutral-200);overflow:hidden"><div style="height:100%;border-radius:999px;width:{{ m.bar }};background:{{ m.color }}"></div></div>
+                <span style="font-size:12px;text-align:right;color:var(--color-neutral-800)"><b>{{ m.pct }}</b><br>{{ m.val }}</span>
+              </div>
+            </sc-for>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
+              <sc-for list="{{ d.nut.other }}" as="o" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;padding:10px 12px;border-radius:18px;border:1.5px solid var(--color-divider)"><span style="font-size:11px;color:var(--color-neutral-700);font-weight:600">{{ o.label }}</span><span style="font-weight:700">{{ o.val }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <h4 style="margin:8px 0 2px;font-size:19px">Matchat mot Livsmedelsverket</h4>
+            <span style="font-size:12px;color:var(--color-neutral-700);margin-bottom:6px">Varje ingrediens kopplas till ett livsmedel i databasen. Tryck för att byta.</span>
+            <sc-for list="{{ d.matches }}" as="m" hint-placeholder-count="5">
+              <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-divider)">
+                <div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:14px">{{ m.ing }}</span><span style="font-size:12px;color:var(--color-neutral-700)">→ {{ m.lv }}</span></div>
+                <span class="tag" style="flex:none;background:{{ m.bg }};color:{{ m.fg }};font-weight:600">{{ m.conf }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <p style="margin:0;font-size:12px;color:var(--color-neutral-700)">Källa: Livsmedelsverkets livsmedelsdatabas. Värdena är uppskattningar baserade på råvarorna.</p>
+        </div>
+      </sc-if>
+      <sc-if value="{{ d.noNut }}">
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:18px;border-radius:28px;background:var(--color-accent-2-100);color:var(--color-accent-2-900)">
+          <span style="font-family:var(--font-heading);font-size:18px">Inget näringsvärde än</span>
+          <p style="margin:0;font-size:14px">Näringen räknas ut från ingredienserna. Skriv in dem från boken så matchar vi mot Livsmedelsverkets databas.</p>
+        </div>
+      </sc-if>
+    </sc-if>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:8px;padding:28px 20px 0">
+    <div style="display:flex;align-items:center;gap:8px"><span style="display:block;width:18px;height:18px;background:var(--color-accent-700);mask:url(icons/notebook-pen.svg) center/contain no-repeat"></span><h4 style="margin:0;font-size:19px">Mina anteckningar</h4></div>
+    <textarea class="input" value="{{ d.note }}" onChange="{{ onNote }}" placeholder="Vad ändrade du? Vad vill du komma ihåg till nästa gång?" style="border-radius:24px;min-height:96px;padding:12px 16px;font-size:15px"></textarea>
+  </div>
+
+  <button onClick="{{ goBack }}" aria-label="Tillbaka" style="position:absolute;top:58px;left:16px;width:44px;height:44px;border:0;border-radius:50%;background:var(--color-bg);box-shadow:var(--shadow-md);cursor:pointer;display:grid;place-items:center;color:var(--color-text);z-index:3"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url(icons/chevron-left.svg) center/contain no-repeat"></span></button>
+</div>
+</sc-if>
+
+<!-- ============ ADD FROM LINK ============ -->
+<sc-if value="{{ isAddLink }}">
+<div style="position:absolute;inset:0;overflow-y:auto;padding:58px 20px 120px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+    <button onClick="{{ goLibrary }}" aria-label="Stäng" style="width:44px;height:44px;border:0;border-radius:50%;background:var(--color-surface);cursor:pointer;display:grid;place-items:center;color:var(--color-text)"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/x.svg) center/contain no-repeat"></span></button>
+    <span style="font-weight:700;font-size:14px;color:var(--color-neutral-700)">Från webben</span>
+    <span style="width:44px"></span>
+  </div>
+
+  <sc-if value="{{ linkInput }}">
+    <h1 style="margin:0 0 8px;font-size:34px">Klistra in en länk</h1>
+    <p style="margin:0 0 22px;color:var(--color-neutral-700);text-wrap:pretty">Vi läser namn, bild, ingredienser och steg från sidan. Du får granska allt innan det sparas.</p>
+    <label style="display:flex;align-items:center;gap:10px;height:54px;padding:0 18px;border-radius:999px;background:var(--color-surface);border:1.5px solid {{ linkBorder }}">
+      <span style="display:block;flex:none;width:18px;height:18px;background:var(--color-neutral-700);mask:url(icons/link.svg) center/contain no-repeat"></span>
+      <input value="{{ linkUrl }}" onChange="{{ onLinkUrl }}" placeholder="https://" inputmode="url" style="flex:1;min-width:0;border:0;background:transparent;font-size:15px;outline:none;color:var(--color-text)">
+    </label>
+    <sc-if value="{{ linkError }}"><div style="font-size:13px;color:var(--color-accent-700);margin:8px 0 0 18px">{{ linkError }}</div></sc-if>
+    <button onClick="{{ pasteLink }}" style="margin-top:12px;display:flex;align-items:center;gap:8px;max-width:100%;padding:8px 14px;border-radius:999px;border:1.5px dashed var(--color-neutral-400);background:transparent;cursor:pointer;font:500 13px var(--font-body);color:var(--color-neutral-800)"><span style="flex:none;font-weight:700">Urklipp:</span><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">koket.se/kycklinggryta-med-kokos-och-lime</span></button>
+    <button class="btn btn-primary btn-block" onClick="{{ fetchLink }}" style="height:54px;margin-top:26px;font-size:17px">Hämta recept</button>
+  </sc-if>
+
+  <sc-if value="{{ linkLoading }}">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:22px">
+      <span style="width:20px;height:20px;border-radius:50%;border:3px solid var(--color-accent-200);border-top-color:var(--color-accent);animation:rspin .8s linear infinite"></span>
+      <span style="font-weight:600">Läser {{ linkDomain }}…</span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;animation:rpulse 1.2s ease-in-out infinite">
+      <div style="height:190px;border-radius:30px;background:var(--color-surface)"></div>
+      <div style="height:30px;width:80%;border-radius:999px;background:var(--color-surface)"></div>
+      <div style="height:16px;width:50%;border-radius:999px;background:var(--color-surface)"></div>
+      <div style="height:54px;border-radius:24px;background:var(--color-surface);margin-top:10px"></div>
+      <div style="height:54px;border-radius:24px;background:var(--color-surface)"></div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ linkReview }}">
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-2-700);font-weight:700">Hittat på {{ linkDomain }}</span>
+        <h1 style="margin:0;font-size:30px">Granska och spara</h1>
+      </div>
+      <div style="height:170px;border-radius:30px;background:repeating-linear-gradient(135deg,var(--color-accent-200) 0 8px,var(--color-accent-100) 8px 16px);display:flex;align-items:flex-end;padding:12px 16px"><span style="font:500 11px ui-monospace,Menlo,monospace;color:var(--color-neutral-700)">bild från sidan</span></div>
+      <div class="field"><label>Namn</label><input class="input" value="{{ linkName }}" onChange="{{ onLinkName }}" style="height:48px;font-size:16px"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:24px;background:var(--color-accent-2-100);color:var(--color-accent-2-900)">
+        <sc-for list="{{ foundRows }}" as="f" hint-placeholder-count="3">
+          <div style="display:flex;align-items:center;gap:10px;font-size:14px"><span style="flex:none;width:22px;height:22px;border-radius:50%;background:var(--color-accent-2-600);display:grid;place-items:center"><span style="display:block;width:12px;height:12px;background:var(--color-bg);mask:url(icons/check.svg) center/contain no-repeat"></span></span><span style="flex:1">{{ f.label }}</span><b>{{ f.val }}</b></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:12px;color:var(--color-neutral-700)">Insats · <b style="color:var(--color-text)">{{ pickLabel }}</b></span>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+          <sc-for list="{{ pick }}" as="p" hint-placeholder-count="5">
+            <button onClick="{{ p.onClick }}" style="height:62px;border-radius:22px;cursor:pointer;border:1.5px solid {{ p.border }};background:{{ p.bg }};color:{{ p.fg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url({{ effIcon }}) center/contain no-repeat"></span><span style="font:700 13px var(--font-body)">{{ p.n }}</span></button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ pickError }}"><span style="font-size:13px;color:var(--color-accent-700)">Välj hur mycket insats receptet kräver.</span></sc-if>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:12px;color:var(--color-neutral-700)">Taggar</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ tagPick }}" as="t" hint-placeholder-count="4">
+            <button onClick="{{ t.onClick }}" style="height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font:600 14px var(--font-body);border:1.5px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }};display:flex;align-items:center;gap:6px">{{ t.name }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-radius:24px;border:1.5px solid var(--color-divider)">
+        <span style="display:flex;flex-direction:column"><span style="font-weight:700;font-size:14px">Näringsvärde</span><span style="font-size:12px;color:var(--color-neutral-700)">Beräknas mot Livsmedelsverket</span></span>
+        <span style="font-family:var(--font-heading);font-size:20px">≈ 520 kcal</span>
+      </div>
+      <button class="btn btn-primary btn-block" onClick="{{ saveLink }}" style="height:54px;font-size:17px">Spara recept</button>
+    </div>
+  </sc-if>
+</div>
+</sc-if>
+
+<!-- ============ ADD FROM BOOK ============ -->
+<sc-if value="{{ isAddBook }}">
+<div style="position:absolute;inset:0;overflow-y:auto;padding:58px 20px 120px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+    <button onClick="{{ goLibrary }}" aria-label="Stäng" style="width:44px;height:44px;border:0;border-radius:50%;background:var(--color-surface);cursor:pointer;display:grid;place-items:center;color:var(--color-text)"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/x.svg) center/contain no-repeat"></span></button>
+    <span style="font-weight:700;font-size:14px;color:var(--color-neutral-700)">Från kokbok</span>
+    <span style="width:44px"></span>
+  </div>
+  <h1 style="margin:0 0 20px;font-size:34px">Ett recept ur bokhyllan</h1>
+  <div style="display:flex;flex-direction:column;gap:16px">
+    <div class="field"><label>Namn på receptet</label><input class="input" value="{{ bookName }}" onChange="{{ onBookName }}" placeholder="t.ex. Kycklinggryta" style="height:48px;font-size:16px;border-color:{{ bookNameBorder }}"></div>
+    <div style="display:grid;grid-template-columns:1fr 96px;gap:10px">
+      <div class="field"><label>Bok</label><input class="input" value="{{ bookBook }}" onChange="{{ onBookBook }}" placeholder="Bokens titel" style="height:48px;font-size:16px;border-color:{{ bookBookBorder }}"></div>
+      <div class="field"><label>Sida</label><input class="input" value="{{ bookPage }}" onChange="{{ onBookPage }}" inputmode="numeric" placeholder="123" style="height:48px;font-size:16px;text-align:center"></div>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:-6px">
+      <sc-for list="{{ bookSuggest }}" as="b" hint-placeholder-count="2">
+        <button onClick="{{ b.onClick }}" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:0;cursor:pointer;background:var(--color-accent-100);color:var(--color-accent-800);font:600 13px var(--font-body)"><span style="display:block;width:14px;height:14px;background:currentColor;mask:url(icons/book-open.svg) center/contain no-repeat"></span>{{ b.name }}</button>
+      </sc-for>
+    </div>
+    <sc-if value="{{ bookError }}"><div style="font-size:13px;color:var(--color-accent-700)">Fyll i receptets namn och vilken bok det står i.</div></sc-if>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;color:var(--color-neutral-700)">Insats · <b style="color:var(--color-text)">{{ pickLabel }}</b></span>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+        <sc-for list="{{ pick }}" as="p" hint-placeholder-count="5">
+          <button onClick="{{ p.onClick }}" style="height:62px;border-radius:22px;cursor:pointer;border:1.5px solid {{ p.border }};background:{{ p.bg }};color:{{ p.fg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url({{ effIcon }}) center/contain no-repeat"></span><span style="font:700 13px var(--font-body)">{{ p.n }}</span></button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ pickError }}"><span style="font-size:13px;color:var(--color-accent-700)">Välj hur mycket insats receptet kräver.</span></sc-if>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;color:var(--color-neutral-700)">Taggar</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ tagPick }}" as="t" hint-placeholder-count="4">
+          <button onClick="{{ t.onClick }}" style="height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font:600 14px var(--font-body);border:1.5px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }}">{{ t.name }}</button>
+        </sc-for>
+      </div>
+    </div>
+    <div class="field"><label>Ingredienser (valfritt) · en per rad, ger näringsvärde</label><textarea class="input" value="{{ bookIngr }}" onChange="{{ onBookIngr }}" placeholder="400 g kycklingfilé&#10;1 gul lök&#10;4 dl kokosmjölk" style="border-radius:24px;min-height:110px;padding:12px 16px;font-size:15px"></textarea></div>
+    <button class="btn btn-primary btn-block" onClick="{{ saveBook }}" style="height:54px;font-size:17px">Spara recept</button>
+  </div>
+</div>
+</sc-if>
+
+<!-- ============ SCAN BOOK PAGE ============ -->
+<sc-if value="{{ isScan }}">
+  <sc-if value="{{ scanPaste }}">
+  <div style="position:absolute;inset:0;overflow-y:auto;padding:58px 20px 60px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <button onClick="{{ goLibrary }}" aria-label="Stäng" style="width:44px;height:44px;border:0;border-radius:50%;background:var(--color-surface);cursor:pointer;display:grid;place-items:center;color:var(--color-text)"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/x.svg) center/contain no-repeat"></span></button>
+      <span style="font-weight:700;font-size:14px;color:var(--color-neutral-700)">Från kokbok</span>
+      <span style="width:44px"></span>
+    </div>
+    <h1 style="margin:0 0 16px;font-size:32px">Kopiera texten med kameran</h1>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      <sc-for list="{{ pasteSteps }}" as="p" hint-placeholder-count="3">
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          <span style="flex:none;width:28px;height:28px;border-radius:50%;background:var(--color-accent-2-200);color:var(--color-accent-2-900);display:grid;place-items:center;font-family:var(--font-heading);font-size:14px">{{ p.n }}</span>
+          <span style="font-size:15px;padding-top:3px;text-wrap:pretty">{{ p.text }}</span>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <textarea class="input" value="{{ scanRaw }}" onChange="{{ onScanRaw }}" placeholder="Klistra in texten här" style="border-radius:26px;min-height:200px;padding:14px 16px;font-size:14px;line-height:1.45"></textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button onClick="{{ pasteClip }}" style="display:flex;align-items:center;gap:6px;height:40px;padding:0 16px;border-radius:999px;border:0;background:var(--color-text);color:var(--color-bg);cursor:pointer;font:700 14px var(--font-body)">{{ pasteBtnLabel }}</button>
+        <sc-if value="{{ hasRaw }}"><button onClick="{{ clearRaw }}" style="height:40px;padding:0 14px;border-radius:999px;border:1.5px solid var(--color-divider);background:transparent;cursor:pointer;font:600 14px var(--font-body);color:var(--color-text)">Rensa</button></sc-if>
+      </div>
+      <span style="font-size:12px;color:var(--color-neutral-700)">Två spalter? Kopiera en i taget och klistra in båda. Texten läggs till efter den förra.</span>
+    </div>
+    <button class="btn btn-primary btn-block" onClick="{{ sortRaw }}" style="height:54px;margin-top:22px;font-size:17px;opacity:{{ sortOpacity }}">Sortera texten</button>
+    <button onClick="{{ toCamera }}" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:44px;margin-top:8px;border:0;background:transparent;cursor:pointer;font:600 14px var(--font-body);color:var(--color-accent-700)"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url(icons/camera.svg) center/contain no-repeat"></span>Fota i appen istället (sämre på svår text)</button>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ scanCamera }}">
+  <div style="position:absolute;inset:0;background:var(--color-neutral-900);color:var(--color-neutral-100);display:flex;flex-direction:column;padding:58px 20px 40px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <button onClick="{{ goLibrary }}" aria-label="Stäng" style="width:44px;height:44px;border:0;border-radius:50%;background:var(--color-neutral-800);color:var(--color-neutral-100);cursor:pointer;display:grid;place-items:center"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/x.svg) center/contain no-repeat"></span></button>
+      <span style="font-weight:700;font-size:14px">Fota kokbokssida</span>
+      <span style="width:44px"></span>
+    </div>
+    <div style="position:relative;flex:1;margin:22px 0 18px;border-radius:34px;overflow:hidden;background:repeating-linear-gradient(135deg,var(--color-neutral-800) 0 10px,var(--color-neutral-900) 10px 20px);display:grid;place-items:center">
+      <span style="font:500 11px ui-monospace,Menlo,monospace;color:var(--color-neutral-500)">kamerabild</span>
+      <div style="position:absolute;top:22px;left:22px;width:38px;height:38px;border-top:4px solid var(--color-accent-300);border-left:4px solid var(--color-accent-300);border-radius:18px 0 0 0"></div>
+      <div style="position:absolute;top:22px;right:22px;width:38px;height:38px;border-top:4px solid var(--color-accent-300);border-right:4px solid var(--color-accent-300);border-radius:0 18px 0 0"></div>
+      <div style="position:absolute;bottom:22px;left:22px;width:38px;height:38px;border-bottom:4px solid var(--color-accent-300);border-left:4px solid var(--color-accent-300);border-radius:0 0 0 18px"></div>
+      <div style="position:absolute;bottom:22px;right:22px;width:38px;height:38px;border-bottom:4px solid var(--color-accent-300);border-right:4px solid var(--color-accent-300);border-radius:0 0 18px 0"></div>
+      <span style="position:absolute;bottom:72px;left:50%;transform:translateX(-50%);padding:7px 14px;border-radius:999px;background:var(--color-neutral-900);font-size:13px;font-weight:600;white-space:nowrap">Håll sidan plant och i bra ljus</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center">
+      <button onClick="{{ snap }}" aria-label="Ta bild" style="width:78px;height:78px;border-radius:50%;border:4px solid var(--color-neutral-100);background:transparent;padding:5px;cursor:pointer"><span style="display:block;width:100%;height:100%;border-radius:50%;background:var(--color-neutral-100)"></span></button>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ scanReading }}">
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:12px;padding:0 28px">
+    <span style="width:28px;height:28px;border-radius:50%;border:4px solid var(--color-accent-200);border-top-color:var(--color-accent);animation:rspin .8s linear infinite"></span>
+    <h2 style="margin:0;font-size:28px">Läser texten…</h2>
+    <p style="margin:0;color:var(--color-neutral-700)">Texten tolkas i telefonen. Ingen internetuppkoppling behövs.</p>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ scanSort }}">
+  <div style="position:absolute;inset:0;overflow-y:auto;padding:58px 20px 120px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:22px">
+      <button onClick="{{ retake }}" aria-label="Fota igen" style="width:44px;height:44px;border:0;border-radius:50%;background:var(--color-surface);cursor:pointer;display:grid;place-items:center;color:var(--color-text)"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/chevron-left.svg) center/contain no-repeat"></span></button>
+      <span style="font-weight:700;font-size:14px;color:var(--color-neutral-700)">Från kokbok</span>
+      <span style="width:44px"></span>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:18px">
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <span style="font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--color-accent-2-700);font-weight:700">{{ scanFoundLabel }}</span>
+        <h1 style="margin:0;font-size:30px">Sortera texten</h1>
+        <p style="margin:2px 0 0;font-size:14px;color:var(--color-neutral-700);text-wrap:pretty">Vi har gissat vad som är ingredienser och steg. Tryck på en rad för att ändra.</p>
+      </div>
+      <div class="field"><label>Namn</label><input class="input" value="{{ scanName }}" onChange="{{ onScanName }}" style="height:48px;font-size:16px"></div>
+      <div style="display:grid;grid-template-columns:1fr 96px;gap:10px">
+        <div class="field"><label>Bok</label><input class="input" value="{{ scanBook }}" onChange="{{ onScanBook }}" placeholder="Bokens titel" style="height:48px;font-size:16px;border-color:{{ scanBookBorder }}"></div>
+        <div class="field"><label>Sida</label><input class="input" value="{{ scanPage }}" onChange="{{ onScanPage }}" inputmode="numeric" style="height:48px;font-size:16px;text-align:center"></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:-6px">
+        <sc-for list="{{ scanBookSuggest }}" as="b" hint-placeholder-count="2">
+          <button onClick="{{ b.onClick }}" style="display:flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:0;cursor:pointer;background:var(--color-accent-100);color:var(--color-accent-800);font:600 13px var(--font-body)"><span style="display:block;width:14px;height:14px;background:currentColor;mask:url(icons/book-open.svg) center/contain no-repeat"></span>{{ b.name }}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ scanPageHint }}"><span style="font-size:12px;color:var(--color-accent-2-700);margin-top:-8px;font-weight:600">Sidnumret hittades nederst på sidan.</span></sc-if>
+
+      <div style="display:flex;gap:8px">
+        <sc-for list="{{ scanCounts }}" as="c" hint-placeholder-count="3">
+          <span class="tag" style="background:{{ c.bg }};color:{{ c.fg }};font-weight:700;font-size:12px;padding:4px 10px">{{ c.label }}</span>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:-6px">
+        <sc-for list="{{ scanLines }}" as="l" hint-placeholder-count="8">
+          <button onClick="{{ l.onClick }}" style="display:flex;align-items:flex-start;gap:10px;width:100%;padding:10px 12px;border-radius:20px;border:1.5px solid {{ l.border }};background:{{ l.bg }};cursor:pointer;text-align:left;font-family:var(--font-body);color:var(--color-text)">
+            <span style="flex:none;width:82px;padding:2px 0;border-radius:999px;background:{{ l.pillBg }};color:{{ l.pillFg }};font-size:11px;font-weight:700;text-align:center">{{ l.kindLabel }}</span>
+            <span style="flex:1;font-size:14px;line-height:1.35;text-decoration:{{ l.deco }};color:{{ l.fg }}">{{ l.text }}</span>
+          </button>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:12px;color:var(--color-neutral-700)">Insats · <b style="color:var(--color-text)">{{ pickLabel }}</b></span>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+          <sc-for list="{{ pick }}" as="p" hint-placeholder-count="5">
+            <button onClick="{{ p.onClick }}" style="height:62px;border-radius:22px;cursor:pointer;border:1.5px solid {{ p.border }};background:{{ p.bg }};color:{{ p.fg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px"><span style="display:block;width:20px;height:20px;background:currentColor;mask:url({{ effIcon }}) center/contain no-repeat"></span><span style="font:700 13px var(--font-body)">{{ p.n }}</span></button>
+          </sc-for>
+        </div>
+        <sc-if value="{{ pickError }}"><span style="font-size:13px;color:var(--color-accent-700)">Välj hur mycket insats receptet kräver.</span></sc-if>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <span style="font-size:12px;color:var(--color-neutral-700)">Taggar</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <sc-for list="{{ tagPick }}" as="t" hint-placeholder-count="4">
+            <button onClick="{{ t.onClick }}" style="height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font:600 14px var(--font-body);border:1.5px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }}">{{ t.name }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" onClick="{{ retake }}" style="height:54px;flex:none;padding:0 18px;font-size:16px">Fota igen</button>
+        <button class="btn btn-primary" onClick="{{ saveScan }}" style="height:54px;flex:1;font-size:17px">Spara recept</button>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+</sc-if>
+
+<!-- ============ SHEETS ============ -->
+<sc-if value="{{ sheetAdd }}">
+  <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:color-mix(in srgb,var(--color-neutral-900) 45%,transparent);z-index:10"></div>
+  <div style="position:absolute;left:10px;right:10px;bottom:10px;padding:22px 20px 26px;border-radius:40px;background:var(--color-bg);box-shadow:var(--shadow-lg);z-index:11;display:flex;flex-direction:column;gap:12px;animation:rup .25s ease-out">
+    <h3 style="margin:0 0 4px;font-size:24px">Lägg till recept</h3>
+    <button onClick="{{ startLink }}" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:28px;border:0;background:var(--color-accent-2-100);color:var(--color-accent-2-900);cursor:pointer;text-align:left">
+      <span style="flex:none;width:48px;height:48px;border-radius:50%;background:var(--color-accent-2-600);display:grid;place-items:center"><span style="display:block;width:22px;height:22px;background:var(--color-bg);mask:url(icons/link.svg) center/contain no-repeat"></span></span>
+      <span style="display:flex;flex-direction:column"><span style="font-family:var(--font-heading);font-size:18px">Från en länk</span><span style="font-size:13px">Vi hämtar receptet från sidan</span></span>
+    </button>
+    <button onClick="{{ startScan }}" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:28px;border:0;background:var(--color-accent-100);color:var(--color-accent-900);cursor:pointer;text-align:left">
+      <span style="flex:none;width:48px;height:48px;border-radius:50%;background:var(--color-accent);display:grid;place-items:center"><span style="display:block;width:22px;height:22px;background:var(--color-bg);mask:url(icons/camera.svg) center/contain no-repeat"></span></span>
+      <span style="display:flex;flex-direction:column"><span style="font-family:var(--font-heading);font-size:18px">Från en kokbokssida</span><span style="font-size:13px">Kopiera texten med kameran</span></span>
+    </button>
+    <button onClick="{{ startBook }}" style="display:flex;align-items:center;gap:14px;padding:14px;border-radius:28px;border:1.5px solid var(--color-divider);background:transparent;color:var(--color-text);cursor:pointer;text-align:left">
+      <span style="flex:none;width:48px;height:48px;border-radius:50%;background:var(--color-surface);display:grid;place-items:center"><span style="display:block;width:22px;height:22px;background:var(--color-neutral-800);mask:url(icons/book-open.svg) center/contain no-repeat"></span></span>
+      <span style="display:flex;flex-direction:column"><span style="font-family:var(--font-heading);font-size:18px">Bara bok och sida</span><span style="font-size:13px;color:var(--color-neutral-700)">Snabbast, utan ingredienser</span></span>
+    </button>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sheetFilter }}">
+  <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:color-mix(in srgb,var(--color-neutral-900) 45%,transparent);z-index:10"></div>
+  <div style="position:absolute;left:10px;right:10px;bottom:10px;padding:22px 20px 22px;border-radius:40px;background:var(--color-bg);box-shadow:var(--shadow-lg);z-index:11;display:flex;flex-direction:column;gap:18px;animation:rup .25s ease-out">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <h3 style="margin:0;font-size:24px">Filtrera</h3>
+      <button class="btn btn-ghost" onClick="{{ clearFilters }}" style="color:var(--color-accent-700)">Rensa</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;color:var(--color-neutral-700);font-weight:600">Insats</span>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+        <sc-for list="{{ fEffort }}" as="p" hint-placeholder-count="5">
+          <button onClick="{{ p.onClick }}" style="height:56px;border-radius:20px;cursor:pointer;border:1.5px solid {{ p.border }};background:{{ p.bg }};color:{{ p.fg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url({{ effIcon }}) center/contain no-repeat"></span><span style="font:700 12px var(--font-body)">{{ p.n }}</span></button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;color:var(--color-neutral-700);font-weight:600">Källa</span>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);padding:4px;border-radius:999px;background:var(--color-surface)">
+        <sc-for list="{{ fSource }}" as="s" hint-placeholder-count="3"><button onClick="{{ s.onClick }}" style="height:38px;border:0;border-radius:999px;cursor:pointer;font:600 14px var(--font-body);background:{{ s.bg }};color:{{ s.fg }}">{{ s.label }}</button></sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;color:var(--color-neutral-700);font-weight:600">Taggar</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ fTags }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.onClick }}" style="height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font:600 14px var(--font-body);border:1.5px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }}">{{ t.name }}</button></sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;color:var(--color-neutral-700);font-weight:600">Sortera</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ fSort }}" as="s" hint-placeholder-count="3"><button onClick="{{ s.onClick }}" style="height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font:600 14px var(--font-body);border:1.5px solid {{ s.border }};background:{{ s.bg }};color:{{ s.fg }}">{{ s.label }}</button></sc-for>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" onClick="{{ closeSheet }}" style="height:52px;font-size:16px">{{ showNLabel }}</button>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sheetRandom }}">
+  <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:color-mix(in srgb,var(--color-neutral-900) 45%,transparent);z-index:10"></div>
+  <div style="position:absolute;left:10px;right:10px;bottom:10px;padding:22px 20px 22px;border-radius:40px;background:var(--color-bg);box-shadow:var(--shadow-lg);z-index:11;display:flex;flex-direction:column;gap:16px;animation:rup .25s ease-out">
+    <h3 style="margin:0;font-size:24px">Slumpa ett recept</h3>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;color:var(--color-neutral-700);font-weight:600">Insats · lämna tomt för alla</span>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+        <sc-for list="{{ rEffort }}" as="p" hint-placeholder-count="5">
+          <button onClick="{{ p.onClick }}" style="height:52px;border-radius:20px;cursor:pointer;border:1.5px solid {{ p.border }};background:{{ p.bg }};color:{{ p.fg }};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"><span style="display:block;width:16px;height:16px;background:currentColor;mask:url({{ effIcon }}) center/contain no-repeat"></span><span style="font:700 12px var(--font-body)">{{ p.n }}</span></button>
+        </sc-for>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <span style="font-size:12px;color:var(--color-neutral-700);font-weight:600">Taggar</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ rTags }}" as="t" hint-placeholder-count="4"><button onClick="{{ t.onClick }}" style="height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font:600 14px var(--font-body);border:1.5px solid {{ t.border }};background:{{ t.bg }};color:{{ t.fg }}">{{ t.name }}</button></sc-for>
+      </div>
+    </div>
+    <sc-if value="{{ rHasResult }}">
+      <div onClick="{{ rResult.open }}" style="display:flex;align-items:center;gap:12px;padding:10px;border-radius:26px;background:var(--color-surface);cursor:pointer;animation:rup .25s ease-out">
+        <div style="flex:none;width:64px;height:64px;border-radius:20px;background:{{ rResult.stripe }}"></div>
+        <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:3px">
+          <span style="font-family:var(--font-heading);font-size:18px;line-height:1.1">{{ rResult.name }}</span>
+          <span style="font-size:12px;color:var(--color-neutral-700)">{{ rResult.meta }}</span>
+        </div>
+        <span style="display:block;flex:none;width:18px;height:18px;margin-right:6px;background:var(--color-accent-700);mask:url(icons/arrow-up-right.svg) center/contain no-repeat"></span>
+      </div>
+    </sc-if>
+    <sc-if value="{{ rNone }}"><div style="padding:12px 16px;border-radius:22px;background:var(--color-accent-100);color:var(--color-accent-900);font-size:14px">Inget recept matchar. Prova färre val.</div></sc-if>
+    <div style="display:flex;gap:8px">
+      <sc-if value="{{ rPickMode }}"><button class="btn btn-secondary" onClick="{{ rUse }}" style="height:52px;flex:1;font-size:16px">{{ rUseLabel }}</button></sc-if>
+      <button class="btn btn-primary" onClick="{{ rRoll }}" style="height:52px;flex:1;font-size:16px"><span style="display:block;width:18px;height:18px;background:currentColor;mask:url(icons/shuffle.svg) center/contain no-repeat"></span>{{ rRollLabel }}</button>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sheetPick }}">
+  <div onClick="{{ closeSheet }}" style="position:absolute;inset:0;background:color-mix(in srgb,var(--color-neutral-900) 45%,transparent);z-index:10"></div>
+  <div style="position:absolute;left:10px;right:10px;bottom:10px;max-height:620px;padding:22px 20px 18px;border-radius:40px;background:var(--color-bg);box-shadow:var(--shadow-lg);z-index:11;display:flex;flex-direction:column;gap:12px;animation:rup .25s ease-out">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <h3 style="margin:0;font-size:24px">{{ pickDayLabel }}</h3>
+      <button onClick="{{ pickRandom }}" style="display:flex;align-items:center;gap:6px;height:38px;padding:0 14px;border-radius:999px;border:0;background:var(--color-accent-100);color:var(--color-accent-900);cursor:pointer;font:700 13px var(--font-body)"><span style="display:block;width:15px;height:15px;background:currentColor;mask:url(icons/shuffle.svg) center/contain no-repeat"></span>Slumpa</button>
+    </div>
+    <span style="font-size:12px;color:var(--color-neutral-700);margin-top:-6px">Sorterat på längst sedan du lagade dem</span>
+    <div style="display:flex;flex-direction:column;overflow-y:auto;margin:0 -8px">
+      <sc-for list="{{ pickList }}" as="r" hint-placeholder-count="6">
+        <button onClick="{{ r.choose }}" style="display:flex;align-items:center;gap:12px;padding:8px;border:0;border-radius:22px;background:transparent;cursor:pointer;text-align:left;font-family:var(--font-body);color:var(--color-text)" style-hover="background:var(--color-surface)">
+          <span style="flex:none;width:48px;height:48px;border-radius:16px;background:{{ r.stripe }}"></span>
+          <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-family:var(--font-heading);font-size:15px;line-height:1.15">{{ r.name }}</span><span style="font-size:12px;color:var(--color-neutral-700)">{{ r.lastLabel }}</span></span>
+          <span style="display:flex;gap:1px;flex:none"><sc-for list="{{ r.effortIcons }}" as="e" hint-placeholder-count="5"><span style="display:block;width:11px;height:11px;background:{{ e.c }};mask:url({{ effIcon }}) center/contain no-repeat"></span></sc-for></span>
+        </button>
+      </sc-for>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ toast }}">
+  <div style="position:absolute;left:50%;top:60px;transform:translateX(-50%);z-index:20;display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:999px;background:var(--color-neutral-900);color:var(--color-bg);font-weight:600;font-size:14px;box-shadow:var(--shadow-lg);white-space:nowrap;animation:rup .2s ease-out"><span style="display:block;width:16px;height:16px;background:var(--color-accent-2-300);mask:url(icons/check.svg) center/contain no-repeat"></span>{{ toast }}</div>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:402,&quot;height&quot;:874},&quot;direction&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;a&quot;,&quot;b&quot;,&quot;c&quot;],&quot;default&quot;:&quot;a&quot;,&quot;tsType&quot;:&quot;'a'|'b'|'c'&quot;},&quot;startScreen&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;random&quot;,&quot;pantry&quot;,&quot;week&quot;,&quot;weekPick&quot;,&quot;library&quot;,&quot;filter&quot;,&quot;add&quot;,&quot;detail&quot;,&quot;nutrition&quot;,&quot;addLink&quot;,&quot;linkReview&quot;,&quot;addBook&quot;,&quot;scan&quot;,&quot;scanSort&quot;,&quot;tags&quot;],&quot;default&quot;:&quot;library&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;grid&quot;,&quot;list&quot;],&quot;default&quot;:&quot;list&quot;,&quot;tsType&quot;:&quot;'grid'|'list'&quot;}}">
+const TONES = {
+  accent:  { bg: 'var(--color-accent-100)', fg: 'var(--color-accent-800)', tint: 'var(--color-accent-200)', ink: 'var(--color-accent-900)', dot: 'var(--color-accent)', s1: 'var(--color-accent-200)', s2: 'var(--color-accent-100)', blob: 'var(--color-accent-200)' },
+  sage:    { bg: 'var(--color-accent-2-100)', fg: 'var(--color-accent-2-800)', tint: 'var(--color-accent-2-200)', ink: 'var(--color-accent-2-900)', dot: 'var(--color-accent-2)', s1: 'var(--color-accent-2-200)', s2: 'var(--color-accent-2-100)', blob: 'var(--color-accent-2-200)' },
+  sand:    { bg: 'var(--color-neutral-200)', fg: 'var(--color-neutral-800)', tint: 'var(--color-neutral-300)', ink: 'var(--color-neutral-900)', dot: 'var(--color-neutral-600)', s1: 'var(--color-neutral-300)', s2: 'var(--color-neutral-200)', blob: 'var(--color-neutral-300)' },
+  clay:    { bg: 'var(--color-accent-200)', fg: 'var(--color-accent-900)', tint: 'var(--color-accent-300)', ink: 'var(--color-accent-900)', dot: 'var(--color-accent-700)', s1: 'var(--color-accent-300)', s2: 'var(--color-accent-200)', blob: 'var(--color-accent-300)' },
+};
+const TONE_ORDER = ['accent', 'sage', 'sand', 'clay'];
+const EFFORT = ['', 'Superlätt', 'Lätt', 'Medel', 'Lite mer att göra', 'Helgprojekt'];
+const ICONS = { a: 'icons/flame.svg', b: 'icons/chef-hat.svg', c: 'icons/cooking-pot.svg' };
+const OSAKER = 0;
+
+function rnd(s) { const x = Math.sin(s * 99.13) * 10000; return x - Math.floor(x); }
+function fmt(n) { if (n == null) return ''; const v = n >= 10 ? Math.round(n) : Math.round(n * 10) / 10; return String(v).replace('.', ','); }
+function domainOf(u) { try { return new URL(u.startsWith('http') ? u : 'https://' + u).hostname.replace(/^www\./, ''); } catch (e) { return 'webbsidan'; } }
+
+const MICRO_DEF = [['Vitamin D', 'µg', 10], ['Vitamin B12', 'µg', 4], ['Vitamin C', 'mg', 95], ['Folat', 'µg', 330], ['Järn', 'mg', 9], ['Kalcium', 'mg', 950], ['Jod', 'µg', 150], ['Selen', 'µg', 75]];
+function genNut(seed, kcal, micros) {
+  const p = kcal * (0.16 + rnd(seed) * 0.12) / 4, f = kcal * (0.28 + rnd(seed + 1) * 0.14) / 9, c = (kcal - p * 4 - f * 9) / 4;
+  return {
+    kcal, protein: p, fat: f, carbs: c, fiber: 1.5 + rnd(seed + 2) * 6, salt: 0.8 + rnd(seed + 3) * 1.8, sugar: 2 + rnd(seed + 4) * 8, satfat: f * 0.35,
+    micros: micros || MICRO_DEF.map((m, i) => m[2] * (0.06 + rnd(seed + 10 + i) * 0.6)),
+  };
+}
+
+const SEED = [
+  { id: 1, name: 'Krämig fisksoppa med saffran', src: { type: 'web', url: 'https://www.koket.se/kramig-fisksoppa-med-saffran', fetched: '12 okt' }, effort: 3, tags: ['Fisk', 'Soppa'], time: '45 min', portions: 4, tone: 'accent', added: 7,
+    ingr: [[400, 'g', 'torskfilé', 'Torsk filé rå', 1], [200, 'g', 'skalade räkor', 'Räkor kokta skalade', 1], [1, 'st', 'gul lök', 'Lök gul rå', 1], [2, 'st', 'vitlöksklyftor', 'Vitlök rå', 1], [1, 'st', 'morot', 'Morot rå', 1], [1, 'msk', 'tomatpuré', 'Tomatpuré', 1], [0.5, 'g', 'saffran', 'Saffran torkad', 0], [1, 'l', 'fiskbuljong', 'Buljong fisk färdig att äta', 1], [2, 'dl', 'vispgrädde', 'Grädde vispgrädde fett 40%', 1], [1, 'dl', 'torrt vitt vin', 'Vin vitt torrt', 0]],
+    use: [[2, 3, 4], [5, 6], [9, 7], [8, 0], [1]],
+    steps: ['Hacka lök och vitlök fint. Skala och skär moroten i tunna skivor.', 'Fräs lök, vitlök och morot i lite olja i en stor kastrull. Rör ner tomatpuré och saffran.', 'Häll i vin och buljong. Låt koka under lock i 15 minuter.', 'Tillsätt grädden. Skär fisken i bitar och lägg i soppan. Sjud 5 minuter.', 'Vänd ner räkorna precis innan servering. Smaka av med salt och peppar.'],
+    nut: { kcal: 410, protein: 32, fat: 22, carbs: 14, fiber: 2.5, salt: 2.1, sugar: 5.2, satfat: 12, micros: [5.8, 2.9, 9, 48, 1.6, 95, 78, 38] } },
+  { id: 2, name: 'Pasta puttanesca', src: { type: 'book', book: 'Pasta för alla', page: 112 }, effort: 2, tags: ['Pasta'], time: '25 min', portions: 2, tone: 'sage', added: 6, ingr: [], steps: [] },
+  { id: 3, name: 'Ugnsbakad lax med citron och dill', src: { type: 'web', url: 'https://www.ica.se/recept/ugnsbakad-lax-med-citron', fetched: '3 okt' }, effort: 1, tags: ['Fisk'], time: '25 min', portions: 4, tone: 'sand', added: 5,
+    ingr: [[600, 'g', 'laxfilé', 'Lax odlad rå', 1], [1, 'st', 'citron', 'Citron', 1], [1, 'kruka', 'dill', 'Dill färsk', 1], [2, 'msk', 'olivolja', 'Olivolja', 1], [800, 'g', 'potatis', 'Potatis rå', 1]],
+    use: [[], [0, 3, 1], [], [2, 4]],
+    steps: ['Sätt ugnen på 200°C.', 'Lägg laxen i en ugnsform, ringla över olja och lägg på citronskivor.', 'Baka i mitten av ugnen i 15–18 minuter.', 'Toppa med hackad dill och servera med kokt potatis.'], kcal: 520 },
+  { id: 4, name: 'Röd linssoppa med kokos', src: { type: 'web', url: 'https://www.arla.se/recept/rod-linssoppa-med-kokos', fetched: '28 sep' }, effort: 2, tags: ['Soppa', 'Vegetarisk'], time: '35 min', portions: 4, tone: 'clay', added: 4,
+    ingr: [[3, 'dl', 'röda linser', 'Linser röda torkade', 1], [4, 'dl', 'kokosmjölk', 'Kokosmjölk', 1], [1, 'st', 'gul lök', 'Lök gul rå', 1], [1, 'msk', 'riven ingefära', 'Ingefära färsk', 1], [1, 'l', 'grönsaksbuljong', 'Buljong grönsak', 1], [1, 'st', 'lime', 'Lime', 0]],
+    use: [[2, 3], [0, 4], [1], [5]],
+    steps: ['Fräs lök och ingefära mjuka.', 'Tillsätt sköljda linser och buljong. Koka 15 minuter.', 'Häll i kokosmjölken och mixa slät.', 'Smaka av med limesaft och salt.'], kcal: 380 },
+  { id: 5, name: 'Lasagne al forno', src: { type: 'book', book: 'Silverskeden', page: 284 }, effort: 5, tags: ['Pasta'], time: '3 tim', portions: 6, tone: 'accent', added: 3,
+    ingr: [[500, 'g', 'nötfärs', 'Nötfärs 10% fett rå', 1], [12, 'st', 'lasagneplattor', 'Pasta lasagneplattor torkade', 1], [800, 'g', 'krossade tomater', 'Tomat krossad konserv', 1], [5, 'dl', 'mjölk', 'Mjölk standard 3%', 1], [150, 'g', 'parmesan', 'Ost parmesan', 1], [50, 'g', 'smör', 'Smör', 1]],
+    use: [[0, 2], [5, 3], [1, 4], []],
+    steps: ['Gör ragun och låt den puttra i minst två timmar.', 'Koka bechamel av smör, mjöl och mjölk.', 'Varva plattor, ragu, bechamel och parmesan.', 'Gratinera i 200°C i 35 minuter. Låt vila innan servering.'], kcal: 690 },
+  { id: 6, name: 'Shoyu ramen från grunden', src: { type: 'web', url: 'https://www.koket.se/shoyu-ramen', fetched: '20 sep' }, effort: 5, tags: ['Soppa'], time: '5 tim', portions: 4, tone: 'sage', added: 2,
+    ingr: [[1, 'kg', 'kycklingvingar', 'Kyckling vingar rå', 1], [400, 'g', 'ramennudlar', 'Nudlar vete', 1], [1, 'dl', 'japansk soja', 'Soja sås', 1], [4, 'st', 'ägg', 'Ägg hönsägg rå', 1], [1, 'bit', 'kombu', 'Alg kombu torkad', 0]],
+    use: [[0, 4], [3, 2], [1], []],
+    steps: ['Koka buljong på kycklingvingar och kombu i minst fyra timmar.', 'Marinera löskokta ägg i soja över natten.', 'Koka nudlarna och fördela i skålar.', 'Häll över het buljong, toppa med ägg och salladslök.'], kcal: 610 },
+  { id: 7, name: 'Pasta med räkor och chili', src: { type: 'web', url: 'https://www.ica.se/recept/pasta-med-rakor-och-chili', fetched: '15 sep' }, effort: 1, tags: ['Pasta', 'Fisk'], time: '20 min', portions: 2, tone: 'clay', added: 1,
+    ingr: [[250, 'g', 'spaghetti', 'Pasta spaghetti torkad', 1], [200, 'g', 'skalade räkor', 'Räkor kokta skalade', 1], [1, 'st', 'röd chili', 'Chilipeppar röd', 1], [2, 'st', 'vitlöksklyftor', 'Vitlök rå', 1], [3, 'msk', 'olivolja', 'Olivolja', 1]],
+    use: [[0], [4, 3, 2, 1], []],
+    steps: ['Koka pastan enligt förpackningen.', 'Fräs vitlök och chili i olja, vänd ner räkorna.', 'Blanda med pastan och lite pastavatten.'], kcal: 560 },
+];
+
+const DAYS = [['Mån', 'Måndag', 26], ['Tis', 'Tisdag', 27], ['Ons', 'Onsdag', 28], ['Tor', 'Torsdag', 29], ['Fre', 'Fredag', 30], ['Lör', 'Lördag', 31], ['Sön', 'Söndag', 1]];
+const TODAY = 4;
+function lastLabel(d) {
+  if (d == null) return 'Aldrig lagad';
+  if (d === 0) return 'Lagad idag';
+  if (d === 1) return 'Lagad igår';
+  if (d < 14) return `Lagad för ${d} dagar sedan`;
+  if (d < 60) return `Lagad för ${Math.round(d / 7)} veckor sedan`;
+  return `Lagad för ${Math.round(d / 30)} månader sedan`;
+}
+function guessUse(step, ingr) {
+  const t = step.toLowerCase(), out = [];
+  ingr.forEach((ig, k) => {
+    const words = ig[2].toLowerCase().split(/\s+/).filter(w => w.length >= 4);
+    if (words.some(w => t.includes(w.slice(0, Math.min(5, w.length))))) out.push(k);
+  });
+  return out;
+}
+const OCR_LINES = ['Kycklinggryta med aprikoser', '4 portioner', '600 g kycklinglårfilé', '1 gul lök', '2 vitlöksklyftor', '1 msk rapsolja', '2 tsk spiskummin', '1 burk krossade tomater', '1 dl torkade aprikoser', '2 dl vatten', 'Skär kycklingen i bitar och bryn den i oljan i en gryta.', 'Hacka lök och vitlök. Fräs med spiskummin tills löken mjuknat.', 'Tillsätt tomater, aprikoser och vatten. Låt puttra under lock i 25 minuter.', 'Servera med couscous och färsk koriander.', '147'];
+function guessKind(line, i) {
+  if (i === 0) return 'title';
+  if (/^\d+$/.test(line)) return 'page';
+  if (/^\d+\s*portion/i.test(line)) return 'portions';
+  if (/^[\d½¼,.]+\s*(g|kg|dl|l|ml|cl|msk|tsk|krm|st|burk|paket|kruka)?\s+\S/i.test(line) && line.length < 48) return 'ingr';
+  return 'step';
+}
+const KIND_CYCLE = ['ingr', 'step', 'skip'];
+const KIND_META = {
+  ingr: { label: 'Ingrediens', pillBg: 'var(--color-accent-2-200)', pillFg: 'var(--color-accent-2-900)', bg: 'var(--color-accent-2-100)', border: 'transparent' },
+  step: { label: 'Steg', pillBg: 'var(--color-accent-200)', pillFg: 'var(--color-accent-900)', bg: 'var(--color-accent-100)', border: 'transparent' },
+  skip: { label: 'Ignoreras', pillBg: 'var(--color-neutral-200)', pillFg: 'var(--color-neutral-700)', bg: 'transparent', border: 'var(--color-divider)' },
+};
+const CLIP_1 = 'Kycklinggryta med\naprikoser\n4 portioner\nIngredienser\n600 g kycklinglårfilé\n1 gul lök\n2 vitlöksklyftor\n1 msk rapsolja\n2 tsk spiskummin\n1 burk krossade tomater\n1 dl torkade aprikoser\n2 dl vatten';
+const CLIP_2 = 'Gör så här\n1. Skär kycklingen i bitar och\nbryn den i oljan i en gryta.\n2. Hacka lök och vitlök. Fräs med\nspiskummin tills löken mjuknat.\n3. Tillsätt tomater, aprikoser och\nvatten. Låt puttra under lock i 25 minuter.\n4. Servera med couscous och färsk koriander.\n147';
+const HEADERS = /^(ingredienser|ingrediens|gör så här|så här gör du|tillagning|instruktioner|du behöver)\s*:?$/i;
+function parseRaw(raw) {
+  const rows = raw.split('\n').map(x => x.trim()).filter(Boolean);
+  let name = '', portions = 4, page = '', lines = [], i = 0;
+  while (i < rows.length && !/^\d/.test(rows[i]) && !HEADERS.test(rows[i]) && i < 3 && rows[i].length < 40) { name += (name ? ' ' : '') + rows[i]; i++; }
+  for (; i < rows.length; i++) {
+    let t = rows[i];
+    if (HEADERS.test(t)) continue;
+    if (/^\d{1,4}$/.test(t)) { page = t; continue; }
+    if (/^\d+\s*portion/i.test(t)) { portions = parseInt(t); continue; }
+    const k = guessKind(t, 1);
+    const prev = lines[lines.length - 1];
+    if (k === 'step' && prev && prev.kind === 'step' && !/[.!?]$/.test(prev.text) && !/^\d+[.)]/.test(t)) { prev.text += ' ' + t; continue; }
+    lines.push({ text: k === 'step' ? t.replace(/^\d+[.)]\s*/, '') : t, kind: k === 'page' ? 'skip' : k });
+  }
+  return { name, portions, page, lines };
+}
+function freshScan(phase) {
+  const lines = OCR_LINES.map((t, i) => ({ text: t, kind: guessKind(t, i) }));
+  const page = (lines.find(l => l.kind === 'page') || {}).text || '';
+  return { phase: phase || 'camera', lines: lines.filter(l => l.kind === 'ingr' || l.kind === 'step'), name: OCR_LINES[0], book: '', page, pageFound: !!page,
+    portions: parseInt((lines.find(l => l.kind === 'portions') || {}).text) || 4, err: false, raw: '', clips: 0 };
+}
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const s = props.startScreen || 'library';
+    this.state = {
+      screen: ['detail', 'nutrition'].includes(s) ? 'detail' : s === 'linkReview' ? 'addLink' : s === 'filter' || s === 'add' ? 'library' : s === 'scanSort' || s === 'scanPaste' ? 'scan' : s === 'random' ? 'home' : s === 'weekPick' ? 'week' : s,
+      scan: s === 'scanPaste' ? { ...freshScan('paste'), raw: CLIP_1, clips: 1 } : freshScan(s === 'scanSort' ? 'sort' : s === 'scan' ? 'camera' : 'paste'),
+      prev: 'library',
+      last: { 1: 12, 2: 45, 3: 6, 4: 30, 5: 120, 6: 200, 7: 3 },
+      checked: s === 'detail' ? { 1: [0, 2, 3] } : {}, notes: { 1: 'Halva mängden grädde räcker. Gott med aioli och rostat bröd.' },
+      plan: [3, null, 4, null, null, 5, null], pickDay: s === 'weekPick' ? 4 : null,
+      pantry: ['gul lök', 'vitlök', 'olivolja', 'pasta'], pantryInput: '',
+      rand: { eff: s === 'random' ? [1, 2] : [], tags: [], resultId: s === 'random' ? 7 : null, none: false }, trioOff: [0, 0, 0],
+      sheet: s === 'filter' ? 'filter' : s === 'add' ? 'add' : s === 'random' ? 'random' : s === 'weekPick' ? 'pick' : null,
+      view: props.startView || 'grid', q: '', chip: null, fEff: [], fSrc: 'alla', fTagSel: [], sort: 'new',
+      detailId: 1, tab: s === 'nutrition' ? 'nut' : 'ingr', port: null,
+      recipes: SEED,
+      tags: [{ name: 'Fisk', tone: 'sage' }, { name: 'Soppa', tone: 'accent' }, { name: 'Pasta', tone: 'sand' }, { name: 'Vegetarisk', tone: 'clay' }],
+      newTag: '', tagError: '',
+      link: { url: s === 'linkReview' ? 'https://www.koket.se/kycklinggryta-med-kokos-och-lime' : '', phase: s === 'linkReview' ? 'review' : 'input', name: 'Kycklinggryta med kokos och lime', err: '' },
+      book: { name: '', book: '', page: '', ingr: '', err: false },
+      pickEff: s === 'linkReview' ? 2 : 0, pickTags: s === 'linkReview' ? ['Vardag'] : [], pickErr: false, toast: '',
+    };
+    if (s === 'linkReview') this.state.tags = [...this.state.tags];
+  }
+  componentWillUnmount() { clearTimeout(this.t1); clearTimeout(this.t2); }
+  dir() { return ['a', 'b', 'c'].includes(this.props.direction) ? this.props.direction : 'a'; }
+  tone(name) { const t = this.state.tags.find(x => x.name === name); return TONES[(t && t.tone) || 'sand']; }
+  showToast(msg) { this.setState({ toast: msg }); clearTimeout(this.t2); this.t2 = setTimeout(() => this.setState({ toast: '' }), 2200); }
+  go(screen, extra) { this.setState(s => ({ screen, sheet: null, prev: screen === 'detail' && s.screen !== 'detail' ? s.screen : s.prev, ...(extra || {}) })); }
+  openRecipe(id) { this.go('detail', { detailId: id, tab: 'ingr', port: null }); }
+
+  effIcons(n, on, off) { return [1, 2, 3, 4, 5].map(i => ({ c: i <= n ? on : off })); }
+
+  filtered() {
+    const { recipes, q, chip, fEff, fSrc, fTagSel, sort } = this.state;
+    const ql = q.trim().toLowerCase();
+    let list = recipes.filter(r => {
+      if (chip && !r.tags.includes(chip)) return false;
+      if (fEff.length && !fEff.includes(r.effort)) return false;
+      if (fSrc !== 'alla' && r.src.type !== fSrc) return false;
+      if (fTagSel.length && !fTagSel.every(t => r.tags.includes(t))) return false;
+      if (ql) { const hay = [r.name, ...r.tags, r.src.book || '', r.src.url || ''].join(' ').toLowerCase(); if (!hay.includes(ql)) return false; }
+      return true;
+    });
+    list = [...list].sort((a, b) => sort === 'low' ? a.effort - b.effort : sort === 'high' ? b.effort - a.effort : b.added - a.added);
+    return list;
+  }
+
+  nutOf(r) {
+    if (!r.ingr || !r.ingr.length) return null;
+    return r.nut || genNut(r.id, r.kcal || 480);
+  }
+
+  pickBtns(sel, onPick) {
+    return [1, 2, 3, 4, 5].map(n => {
+      const on = sel.includes ? sel.includes(n) : sel === n;
+      return { n, onClick: () => onPick(n), border: on ? 'var(--color-accent)' : 'var(--color-divider)', bg: on ? 'var(--color-accent)' : 'transparent', fg: on ? 'var(--color-bg)' : 'var(--color-neutral-800)' };
+    });
+  }
+  chipStyle(on, tone) {
+    return on ? { border: 'var(--color-text)', bg: 'var(--color-text)', fg: 'var(--color-bg)' } : { border: 'var(--color-divider)', bg: tone ? tone.bg : 'transparent', fg: tone ? tone.fg : 'var(--color-text)' };
+  }
+
+  saveRecipe(r) {
+    const id = Math.max(...this.state.recipes.map(x => x.id)) + 1;
+    const maxAdded = Math.max(...this.state.recipes.map(x => x.added));
+    const rec = { ...r, id, added: maxAdded + 1, tone: TONE_ORDER[id % 4] };
+    this.setState(s => ({ recipes: [rec, ...s.recipes], screen: 'detail', detailId: id, tab: 'ingr', port: null, pickEff: 0, pickTags: [], pickErr: false, sheet: null,
+      link: { url: '', phase: 'input', name: 'Kycklinggryta med kokos och lime', err: '' }, book: { name: '', book: '', page: '', ingr: '', err: false } }));
+    this.showToast('Receptet är sparat');
+  }
+
+  extraVals(st, r, on, off) {
+    const recs = st.recipes, byId = id => recs.find(x => x.id === id);
+    const days = id => st.last[id] == null ? 9999 : st.last[id];
+    const stripe = (x, a, b) => { const t = TONES[x.tone]; return `repeating-linear-gradient(135deg, ${t.s1} 0 ${a}px, ${t.s2} ${a}px ${b}px)`; };
+    const planned = st.plan.filter(Boolean);
+    const longest = [...recs].sort((a, b) => days(b.id) - days(a.id));
+    const heroR = longest.find(x => !planned.includes(x.id)) || longest[0];
+    const isPlanned = planned.includes(heroR.id);
+    const planHero = () => {
+      if (isPlanned) return this.go('week');
+      const idx = st.plan.findIndex((p, i) => i >= TODAY && !p);
+      if (idx < 0) return this.showToast('Veckan är redan full');
+      this.setState(s => ({ plan: s.plan.map((p, i) => i === idx ? heroR.id : p) }));
+      this.showToast(`Lagt på ${DAYS[idx][1].toLowerCase()}`);
+    };
+    const trio = [1, 2, 3].map((lvl, k) => {
+      const pool = recs.filter(x => x.effort === lvl).sort((a, b) => days(b.id) - days(a.id));
+      if (!pool.length) return null;
+      const x = pool[st.trioOff[k] % pool.length];
+      return { level: EFFORT[lvl], name: x.name, lastLabel: lastLabel(st.last[x.id]), stripe: stripe(x, 6, 12), effortIcons: this.effIcons(lvl, on, off),
+        open: () => this.openRecipe(x.id), canSwap: pool.length > 1, swap: () => this.setState(s => ({ trioOff: s.trioOff.map((o, j) => j === k ? o + 1 : o) })) };
+    }).filter(Boolean);
+    const todayId = st.plan[TODAY], todayR = todayId && byId(todayId);
+
+    const week = DAYS.map((dd, i) => {
+      const x = st.plan[i] && byId(st.plan[i]), today = i === TODAY;
+      return { short: dd[0], date: dd[2], has: !!x, empty: !x, name: x ? x.name : '', effortIcons: x ? this.effIcons(x.effort, on, off) : [],
+        dayBg: today ? 'var(--color-accent)' : 'var(--color-surface)', dayFg: today ? 'var(--color-bg)' : 'var(--color-text)', dayOpacity: i < TODAY ? 0.55 : 1,
+        open: () => x && this.openRecipe(x.id), remove: () => this.setState(s => ({ plan: s.plan.map((p, j) => j === i ? null : p) })),
+        add: () => this.setState({ sheet: 'pick', pickDay: i }) };
+    });
+    const planRecs = planned.map(byId).filter(Boolean);
+    const weekSummary = planRecs.length ? `${planRecs.length} middagar planerade · ${planRecs.filter(x => x.effort >= 4).length} helgprojekt eller mer` : 'Inget planerat än.';
+    const pickList = [...recs].sort((a, b) => days(b.id) - days(a.id)).map(x => ({ name: x.name, lastLabel: lastLabel(st.last[x.id]), stripe: stripe(x, 5, 10), effortIcons: this.effIcons(x.effort, on, off),
+      choose: () => { const d = st.pickDay; this.setState(s => ({ plan: s.plan.map((p, j) => j === d ? x.id : p), sheet: null, pickDay: null })); } }));
+
+    // random
+    const rd = st.rand, toggle = (arr, v) => arr.includes(v) ? arr.filter(q => q !== v) : [...arr, v];
+    const pool = recs.filter(x => (!rd.eff.length || rd.eff.includes(x.effort)) && (!rd.tags.length || rd.tags.some(t => x.tags.includes(t))));
+    const roll = () => {
+      if (!pool.length) return this.setState(s => ({ rand: { ...s.rand, resultId: null, none: true } }));
+      const others = pool.filter(x => x.id !== rd.resultId), from = others.length ? others : pool;
+      this.setState(s => ({ rand: { ...s.rand, resultId: from[Math.floor(Math.random() * from.length)].id, none: false } }));
+    };
+    const res = rd.resultId && byId(rd.resultId);
+    const setRand = patch => this.setState(s => ({ rand: { ...s.rand, ...patch, resultId: null, none: false } }));
+
+    // pantry
+    const pn = st.pantry.map(p => p.toLowerCase());
+    const has = name => { const n = name.toLowerCase(); return pn.some(p => n.includes(p) || p.includes(n) || n.split(' ').some(w => w.length > 3 && p.includes(w.slice(0, 5)))); };
+    const pantryResults = recs.filter(x => x.ingr.length).map(x => {
+      const miss = x.ingr.filter(i => !has(i[2])).map(i => i[2]);
+      return { x, miss, n: x.ingr.length };
+    }).sort((a, b) => a.miss.length - b.miss.length || b.n - a.n).map(({ x, miss, n }) => ({
+      name: x.name, open: () => this.openRecipe(x.id), pct: Math.round((n - miss.length) / n * 100) + '%',
+      badge: miss.length === 0 ? 'Du har allt' : `Har ${n - miss.length} av ${n}`,
+      badgeBg: miss.length === 0 ? 'var(--color-accent-2-600)' : miss.length <= 2 ? 'var(--color-accent-2-100)' : 'var(--color-neutral-200)',
+      badgeFg: miss.length === 0 ? 'var(--color-bg)' : miss.length <= 2 ? 'var(--color-accent-2-800)' : 'var(--color-neutral-800)',
+      missing: miss.length ? 'Saknas: ' + miss.slice(0, 4).join(', ') + (miss.length > 4 ? ` +${miss.length - 4}` : '') : 'Allt finns hemma.' }));
+    const freq = {};
+    recs.forEach(x => x.ingr.forEach(i => { const k = i[2].toLowerCase(); freq[k] = (freq[k] || 0) + 1; }));
+    const pantrySuggest = Object.keys(freq).sort((a, b) => freq[b] - freq[a]).filter(k => !has(k)).slice(0, 8)
+      .map(k => ({ name: k, add: () => this.setState(s => ({ pantry: [...s.pantry, k] })) }));
+    const addPantry = () => { const v = st.pantryInput.trim().toLowerCase(); if (!v || pn.includes(v)) return this.setState({ pantryInput: '' }); this.setState(s => ({ pantry: [...s.pantry, v], pantryInput: '' })); };
+
+    return {
+      isHome: st.screen === 'home', isWeek: st.screen === 'week', isPantry: st.screen === 'pantry',
+      goHome: () => this.go('home'), goWeek: () => this.go('week'), goPantry: () => this.go('pantry'), goBack: () => this.go(st.prev || 'library'),
+      tabHomeFg: st.screen === 'home' ? 'var(--color-accent-300)' : 'var(--color-neutral-400)', tabWeekFg: st.screen === 'week' ? 'var(--color-accent-300)' : 'var(--color-neutral-400)',
+      todayPlanned: !!todayR, todayPlan: todayR ? { name: todayR.name, open: () => this.openRecipe(todayR.id) } : {},
+      hero: { name: heroR.name, lastLabel: lastLabel(st.last[heroR.id]), stripe: stripe(heroR, 10, 20), effortIcons: this.effIcons(heroR.effort, on, off),
+        open: () => this.openRecipe(heroR.id), plan: planHero, planLabel: isPlanned ? 'I veckan ✓' : 'Lägg i veckan' },
+      trio, week, weekSummary, pickList, sheetPick: st.sheet === 'pick',
+      pickDayLabel: st.pickDay != null ? DAYS[st.pickDay][1] + ' ' + DAYS[st.pickDay][2] + (st.pickDay === 6 ? ' nov' : ' okt') : '',
+      pickRandom: () => this.setState({ sheet: 'random' }),
+      openRandom: () => this.setState({ sheet: 'random', pickDay: null }), sheetRandom: st.sheet === 'random',
+      rEffort: this.pickBtns(rd.eff, n => setRand({ eff: toggle(rd.eff, n) })),
+      rTags: st.tags.map(t => ({ name: t.name, onClick: () => setRand({ tags: toggle(rd.tags, t.name) }), ...this.chipStyle(rd.tags.includes(t.name), null) })),
+      rRoll: roll, rRollLabel: res ? 'Slumpa igen' : `Slumpa bland ${pool.length}`, rHasResult: !!res, rNone: rd.none,
+      rResult: res ? { name: res.name, stripe: stripe(res, 6, 12), meta: `${EFFORT[res.effort]} · ${lastLabel(st.last[res.id])}`, open: () => this.openRecipe(res.id) } : {},
+      rPickMode: st.pickDay != null && !!res, rUseLabel: st.pickDay != null ? 'Välj för ' + DAYS[st.pickDay][1].toLowerCase() : '',
+      rUse: () => { const d = st.pickDay; this.setState(s => ({ plan: s.plan.map((p, j) => j === d ? res.id : p), sheet: null, pickDay: null })); },
+      pantry: st.pantry.map(p => ({ name: p, remove: () => this.setState(s => ({ pantry: s.pantry.filter(q => q !== p) })) })),
+      pantryInput: st.pantryInput, onPantryInput: e => this.setState({ pantryInput: e.target.value }), onPantryKey: e => { if (e.key === 'Enter') addPantry(); }, addPantry,
+      pantrySuggest, pantryResults,
+      cookedToday: () => { this.setState(s => ({ last: { ...s.last, [r.id]: 0 }, checked: { ...s.checked, [r.id]: [] } })); this.showToast('Markerad som lagad idag'); },
+      resetChecks: () => this.setState(s => ({ checked: { ...s.checked, [r.id]: [] } })),
+      onNote: e => { const v = e.target.value; this.setState(s => ({ notes: { ...s.notes, [r.id]: v } })); },
+    };
+  }
+
+  renderVals() {
+    const st = this.state, dir = this.dir();
+    const on = 'var(--color-accent)', off = 'var(--color-neutral-300)';
+    const list = this.filtered();
+    const filterCount = st.fEff.length + st.fTagSel.length + (st.fSrc !== 'alla' ? 1 : 0) + (st.sort !== 'new' ? 1 : 0);
+
+    const items = list.map(r => {
+      const t = this.tone(r.tags[0]), base = TONES[r.tone];
+      const src = r.src.type === 'web' ? domainOf(r.src.url) : `${r.src.book} s. ${r.src.page}`;
+      return {
+        id: r.id, name: r.name, open: () => this.go('detail', { detailId: r.id, tab: 'ingr', port: null }),
+        meta: src, effortLabel: EFFORT[r.effort],
+        effortIcons: this.effIcons(r.effort, on, off),
+        effortIconsInk: this.effIcons(r.effort, t.ink, 'color-mix(in srgb, currentColor 22%, transparent)'),
+        tagList: r.tags.map(n => ({ name: n, ...this.tone(n) })),
+        stripe: `repeating-linear-gradient(135deg, ${base.s1} 0 8px, ${base.s2} 8px 16px)`, blob: base.blob,
+        tint: t.tint, ink: t.ink, firstTag: r.tags.join(' · '),
+        thumbBg: dir === 'c' ? t.tint : `repeating-linear-gradient(135deg, ${base.s1} 0 6px, ${base.s2} 6px 12px)`,
+        thumbText: dir === 'c' ? r.name[0] : '',
+      };
+    });
+
+    const chips = [{ name: 'Alla', n: null }, ...st.tags.map(t => ({ name: t.name, n: t.name }))].map(c => {
+      const act = st.chip === c.n;
+      return { name: c.name, onClick: () => this.setState({ chip: c.n }), ...this.chipStyle(act, null) };
+    });
+
+    const tagRows = st.tags.map((t, i) => {
+      const n = st.recipes.filter(r => r.tags.includes(t.name)).length, tn = TONES[t.tone];
+      return { name: t.name, countLabel: n === 1 ? '1 recept' : `${n} recept`, bg: tn.bg, dot: tn.dot,
+        cycle: () => this.setState(s => ({ tags: s.tags.map((x, j) => j === i ? { ...x, tone: TONE_ORDER[(TONE_ORDER.indexOf(x.tone) + 1) % 4] } : x) })),
+        open: () => this.go('library', { chip: t.name }),
+        remove: () => this.setState(s => ({ tags: s.tags.filter((_, j) => j !== i), recipes: s.recipes.map(r => ({ ...r, tags: r.tags.filter(x => x !== t.name) })), chip: s.chip === t.name ? null : s.chip })) };
+    });
+
+    const addTag = () => {
+      const v = st.newTag.trim();
+      if (!v) return this.setState({ tagError: 'Skriv ett namn på taggen.' });
+      if (st.tags.some(t => t.name.toLowerCase() === v.toLowerCase())) return this.setState({ tagError: `Taggen ”${v}” finns redan.` });
+      const name = v[0].toUpperCase() + v.slice(1);
+      this.setState(s => ({ tags: [...s.tags, { name, tone: TONE_ORDER[s.tags.length % 4] }], newTag: '', tagError: '' }));
+      this.showToast(`Taggen ${name} har lagts till`);
+    };
+
+    // detail
+    const r = st.recipes.find(x => x.id === st.detailId) || st.recipes[0];
+    const base = TONES[r.tone], t0 = this.tone(r.tags[0]);
+    const port = st.port || r.portions, scale = port / r.portions;
+    const nut = this.nutOf(r);
+    let dNut = null;
+    if (nut) {
+      const tot = nut.kcal;
+      const mk = (label, g, kcalPer, color, max) => ({ label, val: `${fmt(g)} g`, pct: Math.min(100, Math.round(g / max * 100)) + '%', color, sub: kcalPer ? `${Math.round(g * kcalPer / tot * 100)} E%` : 'Rek. 25–35 g/dag' });
+      dNut = {
+        kcal: Math.round(tot), kj: Math.round(tot * 4.184),
+        macros: [mk('Protein', nut.protein, 4, 'var(--color-accent-2-600)', 50), mk('Fett', nut.fat, 9, 'var(--color-accent)', 70), mk('Kolhydrater', nut.carbs, 4, 'var(--color-neutral-600)', 90), mk('Fiber', nut.fiber, 0, 'var(--color-accent-2-500)', 30)],
+        micros: MICRO_DEF.map((m, i) => { const v = nut.micros[i], p = Math.round(v / m[2] * 100); return { label: m[0], val: `${fmt(v)} ${m[1]}`, pct: p + '%', bar: Math.min(100, p) + '%', color: p >= 30 ? 'var(--color-accent-2-600)' : 'var(--color-accent-2-400)' }; }),
+        other: [{ label: 'Salt', val: `${fmt(nut.salt)} g` }, { label: 'Socker', val: `${fmt(nut.sugar)} g` }, { label: 'Mättat fett', val: `${fmt(nut.satfat)} g` }],
+      };
+    }
+    const d = {
+      name: r.name, time: r.time, portionsLabel: `${r.portions} portioner`, effortLabel: `${r.effort}/5 · ${EFFORT[r.effort]}`,
+      effortIcons: this.effIcons(r.effort, on, off),
+      isWeb: r.src.type === 'web', isBook: r.src.type === 'book', url: r.src.url, domain: r.src.url ? domainOf(r.src.url) : '', fetched: r.src.fetched || 'idag',
+      book: r.src.book, page: r.src.page || '–',
+      tagList: r.tags.map(n => ({ name: n, ...this.tone(n) })), tagLine: r.tags.join(' · '),
+      stripe: `repeating-linear-gradient(135deg, ${base.s1} 0 10px, ${base.s2} 10px 20px)`, blob: base.blob, tint: t0.tint, ink: t0.ink,
+      photoLabel: r.src.type === 'web' ? 'bild från ' + domainOf(r.src.url) : 'egen bild',
+      hasIngr: r.ingr.length > 0, noIngr: r.ingr.length === 0,
+      ingr: r.ingr.map((i, k) => { const c = (st.checked[r.id] || []).includes(k);
+        return { amt: i[0] == null ? '' : `${fmt(i[0] * scale)} ${i[1]}`, name: i[2], deco: c ? 'line-through' : 'none', opacity: c ? 0.5 : 1,
+          ring: c ? 'var(--color-accent-2-600)' : 'var(--color-neutral-400)', fill: c ? 'var(--color-accent-2-600)' : 'transparent',
+          toggle: () => this.setState(s2 => { const cur = s2.checked[r.id] || []; return { checked: { ...s2.checked, [r.id]: cur.includes(k) ? cur.filter(x => x !== k) : [...cur, k] } }; }) }; }),
+      anyChecked: (st.checked[r.id] || []).length > 0, checkedLabel: `${(st.checked[r.id] || []).length} av ${r.ingr.length} avbockade`,
+      lastLabel: lastLabel(st.last[r.id]).replace('Lagad ', '').replace(/^./, c => c.toUpperCase()),
+      cookedBtn: st.last[r.id] === 0 ? 'Lagad idag' : 'Lagade idag', cookedBg: st.last[r.id] === 0 ? 'var(--color-accent-2-600)' : 'var(--color-bg)', cookedFg: st.last[r.id] === 0 ? 'var(--color-bg)' : 'var(--color-accent-2-900)',
+      note: st.notes[r.id] || '',
+      hasSteps: r.steps.length > 0, noSteps: r.steps.length === 0,
+      steps: r.steps.map((s, i) => {
+        const idx = (r.use && r.use[i]) || guessUse(s, r.ingr);
+        const use = idx.map(k => r.ingr[k]).filter(Boolean).map(ig => ({ amt: ig[0] == null ? '' : `${fmt(ig[0] * scale)} ${ig[1]}`, name: ig[2] }));
+        return { n: i + 1, text: s, use, hasUse: use.length > 0 };
+      }),
+      hasNut: !!dNut, noNut: !dNut, nut: dNut || {},
+    };
+    const matches = r.ingr.map(i => ({ ing: i[0] == null ? i[2] : `${fmt(i[0])} ${i[1]} ${i[2]}`, lv: i[3] || (i[2][0].toUpperCase() + i[2].slice(1)), conf: i[4] === OSAKER ? 'Osäker' : 'Säker',
+      bg: i[4] === OSAKER ? 'var(--color-accent-100)' : 'var(--color-accent-2-100)', fg: i[4] === OSAKER ? 'var(--color-accent-800)' : 'var(--color-accent-2-800)' }));
+    d.matches = matches;
+    const tabs = [['ingr', 'Ingredienser'], ['steps', 'Gör så här'], ['nut', 'Näring']].map(([k, label]) => ({ label, onClick: () => this.setState({ tab: k }),
+      bg: st.tab === k ? 'var(--color-bg)' : 'transparent', fg: st.tab === k ? 'var(--color-text)' : 'var(--color-neutral-700)', shadow: st.tab === k ? 'var(--shadow-sm)' : 'none' }));
+
+    // add flows
+    const pick = this.pickBtns(st.pickEff, n => this.setState({ pickEff: n, pickErr: false }));
+    const allPickTags = [...st.tags.map(t => t.name), ...st.pickTags.filter(n => !st.tags.some(t => t.name === n))];
+    const tagPick = allPickTags.map(n => {
+      const sel = st.pickTags.includes(n);
+      return { name: sel ? '✓ ' + n : n, onClick: () => this.setState(s => ({ pickTags: sel ? s.pickTags.filter(x => x !== n) : [...s.pickTags, n] })), ...this.chipStyle(sel, null) };
+    });
+    const linkDomain = domainOf(st.link.url || 'koket.se');
+    const fetchLink = () => {
+      const u = st.link.url.trim();
+      if (!/^(https?:\/\/)?[\w-]+(\.[\w-]+)+/.test(u)) return this.setState(s => ({ link: { ...s.link, err: 'Klistra in en webbadress, t.ex. https://www.koket.se/…' } }));
+      this.setState(s => ({ link: { ...s.link, phase: 'loading', err: '' } }));
+      clearTimeout(this.t1);
+      this.t1 = setTimeout(() => this.setState(s => ({ link: { ...s.link, phase: 'review' } })), 1600);
+    };
+    const saveLink = () => {
+      if (!st.pickEff) return this.setState({ pickErr: true });
+      const u = st.link.url.startsWith('http') ? st.link.url : 'https://' + st.link.url;
+      this.saveRecipe({ name: st.link.name.trim() || 'Namnlöst recept', src: { type: 'web', url: u, fetched: 'idag' }, effort: st.pickEff, tags: st.pickTags, time: '40 min', portions: 4, kcal: 520,
+        ingr: [[600, 'g', 'kycklingfilé', 'Kyckling bröstfilé rå', 1], [4, 'dl', 'kokosmjölk', 'Kokosmjölk', 1], [1, 'st', 'gul lök', 'Lök gul rå', 1], [2, 'st', 'lime', 'Lime', 0], [1, 'msk', 'röd currypasta', 'Currypasta röd', 0], [3, 'dl', 'jasminris', 'Ris jasmin torkat', 1]],
+        steps: ['Skär kycklingen i bitar och bryn den i olja.', 'Fräs lök och currypasta, häll i kokosmjölken.', 'Låt sjuda 15 minuter. Smaka av med limesaft.', 'Servera med ris och limeklyftor.'] });
+    };
+    const bookBooks = [...new Set(st.recipes.filter(x => x.src.type === 'book').map(x => x.src.book))];
+    const saveBook = () => {
+      const b = st.book;
+      if (!b.name.trim() || !b.book.trim()) return this.setState(s => ({ book: { ...s.book, err: true } }));
+      if (!st.pickEff) return this.setState({ pickErr: true });
+      const lines = b.ingr.split('\n').map(x => x.trim()).filter(Boolean).map(line => { const m = line.match(/^([\d.,]+)\s*(\S+)?\s+(.*)$/); return m ? [parseFloat(m[1].replace(',', '.')), m[2] || '', m[3]] : [null, '', line]; });
+      this.saveRecipe({ name: b.name.trim(), src: { type: 'book', book: b.book.trim(), page: b.page || '–' }, effort: st.pickEff, tags: st.pickTags, time: '–', portions: 4, kcal: 500, ingr: lines, steps: [] });
+    };
+    const setLink = (patch) => this.setState(s => ({ link: { ...s.link, ...patch } }));
+    const setBook = (patch) => this.setState(s => ({ book: { ...s.book, ...patch, err: false } }));
+
+    const toggle = (arr, v) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
+
+    const sc = st.scan;
+    const setScan = (patch) => this.setState(s => ({ scan: { ...s.scan, ...patch } }));
+    const snap = () => { setScan({ phase: 'reading' }); clearTimeout(this.t1); this.t1 = setTimeout(() => setScan({ phase: 'sort' }), 1400); };
+    const scanLines = sc.lines.map((l, i) => { const m = KIND_META[l.kind];
+      return { text: l.text, kindLabel: m.label, pillBg: m.pillBg, pillFg: m.pillFg, bg: m.bg, border: m.border,
+        deco: l.kind === 'skip' ? 'line-through' : 'none', fg: l.kind === 'skip' ? 'var(--color-neutral-600)' : 'var(--color-text)',
+        onClick: () => this.setState(s => ({ scan: { ...s.scan, lines: s.scan.lines.map((x, j) => j === i ? { ...x, kind: KIND_CYCLE[(KIND_CYCLE.indexOf(x.kind) + 1) % 3] } : x) } })) }; });
+    const nI = sc.lines.filter(l => l.kind === 'ingr').length, nS = sc.lines.filter(l => l.kind === 'step').length;
+    const saveScan = () => {
+      if (!sc.book.trim()) return setScan({ err: true });
+      if (!st.pickEff) return this.setState({ pickErr: true });
+      const ingr = sc.lines.filter(l => l.kind === 'ingr').map(l => { const m = l.text.match(/^([\d.,]+)\s*(g|kg|dl|l|ml|cl|msk|tsk|krm|st|burk|paket|kruka)?\s+(.*)$/i); return m ? [parseFloat(m[1].replace(',', '.')), m[2] || 'st', m[3]] : [null, '', l.text]; });
+      this.saveRecipe({ name: sc.name.trim() || 'Namnlöst recept', src: { type: 'book', book: sc.book.trim(), page: sc.page || '–' }, effort: st.pickEff, tags: st.pickTags,
+        time: '40 min', portions: sc.portions, kcal: 470, ingr, steps: sc.lines.filter(l => l.kind === 'step').map(l => l.text) });
+      this.setState({ scan: freshScan('camera') });
+    };
+
+    return {
+      effIcon: ICONS[dir],
+      isLibrary: st.screen === 'library', isTags: st.screen === 'tags', isDetail: st.screen === 'detail', isAddLink: st.screen === 'addLink', isAddBook: st.screen === 'addBook',
+      showTabs: ['library', 'tags', 'home', 'week'].includes(st.screen),
+      tabLibFg: st.screen === 'library' ? 'var(--color-accent-300)' : 'var(--color-neutral-400)', tabTagFg: st.screen === 'tags' ? 'var(--color-accent-300)' : 'var(--color-neutral-400)',
+      goLibrary: () => this.go('library'), goTags: () => this.go('tags'), openAdd: () => this.setState({ sheet: 'add' }),
+      countLabel: st.recipes.length + ' sparade', tagCountLabel: st.tags.length + ' st',
+      setGrid: () => this.setState({ view: 'grid' }), setList: () => this.setState({ view: 'list' }),
+      gridBtnBg: st.view === 'grid' ? 'var(--color-bg)' : 'transparent', gridBtnFg: st.view === 'grid' ? 'var(--color-text)' : 'var(--color-neutral-600)',
+      listBtnBg: st.view === 'list' ? 'var(--color-bg)' : 'transparent', listBtnFg: st.view === 'list' ? 'var(--color-text)' : 'var(--color-neutral-600)',
+      q: st.q, hasQ: !!st.q, onQ: e => this.setState({ q: e.target.value }), clearQ: () => this.setState({ q: '' }),
+      openFilter: () => this.setState({ sheet: 'filter' }), hasFilters: filterCount > 0, filterCount,
+      filterBtnBg: filterCount ? 'var(--color-text)' : 'var(--color-surface)', filterBtnFg: filterCount ? 'var(--color-bg)' : 'var(--color-text)',
+      chips, items, noResults: items.length === 0,
+      clearAll: () => this.setState({ q: '', chip: null, fEff: [], fSrc: 'alla', fTagSel: [], sort: 'new' }),
+      showGridA: st.view === 'grid' && dir === 'a' && items.length > 0, showGridB: st.view === 'grid' && dir === 'b' && items.length > 0, showGridC: st.view === 'grid' && dir === 'c' && items.length > 0,
+      showList: st.view === 'list' && items.length > 0, thumbRadius: dir === 'b' ? '50%' : dir === 'c' ? '22px' : '20px',
+      tagRows, newTag: st.newTag, onNewTag: e => this.setState({ newTag: e.target.value, tagError: '' }), onNewTagKey: e => { if (e.key === 'Enter') addTag(); }, addTag, tagError: st.tagError,
+      heroA: dir === 'a', heroB: dir === 'b', heroC: dir === 'c', d, tabs,
+      tabIngr: st.tab === 'ingr', tabSteps: st.tab === 'steps', tabNut: st.tab === 'nut',
+      portLabel: port === 1 ? '1 portion' : `${port} portioner`,
+      decPort: () => this.setState({ port: Math.max(1, port - 1) }), incPort: () => this.setState({ port: Math.min(20, port + 1) }),
+      sheetAdd: st.sheet === 'add', sheetFilter: st.sheet === 'filter', closeSheet: () => this.setState({ sheet: null }),
+      startLink: () => this.go('addLink', { pickEff: 0, pickTags: [], pickErr: false }), startBook: () => this.go('addBook', { pickEff: 0, pickTags: [], pickErr: false }),
+      linkInput: st.link.phase === 'input', linkLoading: st.link.phase === 'loading', linkReview: st.link.phase === 'review',
+      linkUrl: st.link.url, onLinkUrl: e => setLink({ url: e.target.value, err: '' }), linkError: st.link.err, linkBorder: st.link.err ? 'var(--color-accent)' : 'transparent',
+      pasteLink: () => setLink({ url: 'https://www.koket.se/kycklinggryta-med-kokos-och-lime', err: '' }), fetchLink, linkDomain,
+      linkName: st.link.name, onLinkName: e => setLink({ name: e.target.value }),
+      foundRows: [{ label: 'Ingredienser', val: '6 st' }, { label: 'Steg', val: '4 st' }, { label: 'Portioner', val: '4' }],
+      pick, pickLabel: st.pickEff ? `${st.pickEff}/5 · ${EFFORT[st.pickEff]}` : 'välj 1–5', pickError: st.pickErr && !st.pickEff, tagPick, saveLink,
+      bookName: st.book.name, bookBook: st.book.book, bookPage: st.book.page, bookIngr: st.book.ingr,
+      onBookName: e => setBook({ name: e.target.value }), onBookBook: e => setBook({ book: e.target.value }), onBookPage: e => setBook({ page: e.target.value.replace(/\D/g, '').slice(0, 4) }), onBookIngr: e => setBook({ ingr: e.target.value }),
+      bookError: st.book.err, bookNameBorder: st.book.err && !st.book.name.trim() ? 'var(--color-accent)' : 'var(--color-divider)', bookBookBorder: st.book.err && !st.book.book.trim() ? 'var(--color-accent)' : 'var(--color-divider)',
+      bookSuggest: bookBooks.map(n => ({ name: n, onClick: () => setBook({ book: n }) })), saveBook,
+      fEffort: this.pickBtns(st.fEff, n => this.setState(s => ({ fEff: toggle(s.fEff, n) }))),
+      fSource: [['alla', 'Alla'], ['web', 'Webb'], ['book', 'Kokbok']].map(([k, label]) => ({ label, onClick: () => this.setState({ fSrc: k }), bg: st.fSrc === k ? 'var(--color-bg)' : 'transparent', fg: st.fSrc === k ? 'var(--color-text)' : 'var(--color-neutral-700)' })),
+      fTags: st.tags.map(t => ({ name: t.name, onClick: () => this.setState(s => ({ fTagSel: toggle(s.fTagSel, t.name) })), ...this.chipStyle(st.fTagSel.includes(t.name), null) })),
+      fSort: [['new', 'Senast sparade'], ['low', 'Minst insats'], ['high', 'Mest insats']].map(([k, label]) => ({ label, onClick: () => this.setState({ sort: k }), ...this.chipStyle(st.sort === k, null) })),
+      clearFilters: () => this.setState({ fEff: [], fSrc: 'alla', fTagSel: [], sort: 'new' }),
+      showNLabel: items.length === 1 ? 'Visa 1 recept' : `Visa ${items.length} recept`,
+      toast: st.toast,
+      ...this.extraVals(st, r, on, off),
+      scanPaste: sc.phase === 'paste',
+      pasteSteps: [{ n: 1, text: 'Öppna Kamera och rikta den mot receptet.' }, { n: 2, text: 'Tryck på textikonen nere till höger och välj Kopiera allt.' }, { n: 3, text: 'Kom tillbaka hit och klistra in.' }],
+      scanRaw: sc.raw, hasRaw: !!sc.raw.trim(), onScanRaw: e => setScan({ raw: e.target.value }), clearRaw: () => setScan({ raw: '', clips: 0 }),
+      pasteBtnLabel: sc.clips === 0 ? 'Klistra in' : 'Klistra in en spalt till',
+      pasteClip: () => setScan({ raw: (sc.raw.trim() ? sc.raw.trim() + '\n' : '') + (sc.clips % 2 === 0 ? CLIP_1 : CLIP_2), clips: sc.clips + 1 }),
+      sortOpacity: sc.raw.trim() ? 1 : 0.45,
+      sortRaw: () => { if (!sc.raw.trim()) return; const p = parseRaw(sc.raw); setScan({ phase: 'sort', name: p.name || 'Namnlöst recept', lines: p.lines, page: p.page, pageFound: !!p.page, portions: p.portions }); },
+      toCamera: () => setScan({ phase: 'camera' }),
+      isScan: st.screen === 'scan', scanCamera: sc.phase === 'camera', scanReading: sc.phase === 'reading', scanSort: sc.phase === 'sort',
+      startScan: () => this.go('scan', { scan: freshScan('paste'), pickEff: 0, pickTags: [], pickErr: false }),
+      snap, retake: () => setScan({ phase: 'paste' }), saveScan, scanLines,
+      scanFoundLabel: `${sc.lines.length} rader hittades`,
+      scanCounts: [{ label: `${nI} ingredienser`, ...KIND_META.ingr }, { label: `${nS} steg`, ...KIND_META.step }].map(c => ({ label: c.label, bg: c.pillBg, fg: c.pillFg })),
+      scanName: sc.name, onScanName: e => setScan({ name: e.target.value }),
+      scanBook: sc.book, onScanBook: e => setScan({ book: e.target.value, err: false }),
+      scanPage: sc.page, onScanPage: e => setScan({ page: e.target.value.replace(/\D/g, '').slice(0, 4), pageFound: false }), scanPageHint: sc.pageFound,
+      scanBookBorder: sc.err ? 'var(--color-accent)' : 'var(--color-divider)',
+      scanBookSuggest: [...bookBooks, 'Vardagsmat'].filter((v, i, a) => a.indexOf(v) === i).map(n => ({ name: n, onClick: () => setScan({ book: n, err: false }) })),
+    };
+  }
+}
+</script>
+</body>
+</html>

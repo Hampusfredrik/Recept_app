@@ -1,0 +1,242 @@
+import { useEffect, useRef, useState } from 'react';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { useBack } from '../components/useBack';
+import { ArrowUpRight, BookOpen, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Users } from 'lucide-react';
+import { useStore } from '../lib/store';
+import { EffortIcons, Ico, Sheet, Stepper, TagPill, Thumb, useToast } from '../components/ui';
+import { daysSince, lastLabel, shortDate } from '../lib/dates';
+import { amountLabel, domainOf, EFFORT } from '../lib/format';
+import { guessUse, parseIngredientLine } from '../../supabase/functions/_shared/parse';
+import { NutritionTab } from './NutritionTab';
+import type { Recipe } from '../lib/types';
+
+type Tab = 'ingr' | 'steps' | 'nut';
+
+export function Detail() {
+  const { id } = useParams();
+  const { recipes, tags, cookedToday, toggleChecked, resetChecked, deleteRecipe } = useStore();
+  const nav = useNavigate();
+  const toast = useToast();
+  const r = recipes.find((x) => x.id === id);
+  const [tab, setTab] = useState<Tab>('ingr');
+  const [port, setPort] = useState<number | null>(null);
+  const [writeIngr, setWriteIngr] = useState(false);
+  useEffect(() => { window.scrollTo(0, 0); }, [id]);
+
+  if (!r) return <Navigate to="/recept" replace />;
+  const portions = port ?? r.portions;
+  const scale = portions / r.portions;
+  const days = daysSince(r.last_cooked_on);
+  const cooked = days === 0;
+  const back = useBack();
+  const recTags = r.tagIds.map((t) => tags.find((x) => x.id === t)).filter((t) => !!t);
+  const sinceLabel = lastLabel(days).replace('Lagad ', '').replace(/^./, (c) => c.toUpperCase());
+
+  return (
+    <div style={{ paddingBottom: 60, position: 'relative' }}>
+      <div style={{ position: 'relative', height: 330 }}>
+        <Thumb id={r.id} image={r.image_url} radius="0 0 34px 34px" stripeW={10} style={{ position: 'absolute', inset: 0 }} />
+      </div>
+      <button onClick={back} aria-label="Tillbaka"
+        style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', left: 16, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--color-text)', zIndex: 3 }}>
+        <Ico icon={ChevronLeft} size={20} />
+      </button>
+      <div style={{ padding: '22px 20px 0' }}><h1 style={{ margin: 0, fontSize: 31, textWrap: 'pretty' }}>{r.name}</h1></div>
+
+      <div className="col" style={{ gap: 18, padding: '16px 20px 0' }}>
+        <div className="row" style={{ gap: 16, fontSize: 14, color: 'var(--color-neutral-700)' }}>
+          <span className="row" style={{ gap: 6 }}><Ico icon={Users} size={16} />{r.portions} {r.portions === 1 ? 'portion' : 'portioner'}</span>
+        </div>
+
+        <div className="row" style={{ justifyContent: 'space-between', gap: 12, padding: '14px 18px', borderRadius: 24, background: 'var(--color-surface)' }}>
+          <div className="col" style={{ gap: 1 }}>
+            <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', fontWeight: 600 }}>Insats</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 19 }}>{r.effort}/5 · {EFFORT[r.effort]}</span>
+          </div>
+          <EffortIcons n={r.effort} size={24} gap={4} />
+        </div>
+
+        {r.source_type === 'web' && r.url ? (
+          <a href={r.url} target="_blank" rel="noopener noreferrer" className="row hover-surface"
+            style={{ gap: 12, padding: '12px 14px 12px 12px', borderRadius: 24, border: '1.5px solid var(--color-divider)', textDecoration: 'none', color: 'var(--color-text)' }}>
+            <span style={{ flex: 'none', width: 40, height: 40, borderRadius: '50%', background: 'var(--color-accent-2-100)', color: 'var(--color-accent-2-800)', display: 'grid', placeItems: 'center' }}><Ico icon={Globe} /></span>
+            <span className="col" style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontWeight: 700, fontSize: 15 }}>{r.domain || domainOf(r.url)}</span>
+              <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Hämtat {r.fetched_at ? shortDate(r.fetched_at) : shortDate(r.created_at)} · Öppna originalet</span>
+            </span>
+            <Ico icon={ArrowUpRight} color="var(--color-accent-700)" />
+          </a>
+        ) : (
+          <div className="row" style={{ gap: 12, padding: '12px 14px 12px 12px', borderRadius: 24, border: '1.5px solid var(--color-divider)' }}>
+            <span style={{ flex: 'none', width: 40, height: 40, borderRadius: '50%', background: 'var(--color-accent-100)', color: 'var(--color-accent-800)', display: 'grid', placeItems: 'center' }}><Ico icon={BookOpen} /></span>
+            <span className="col" style={{ flex: 1 }}><span style={{ fontWeight: 700, fontSize: 15 }}>{r.book_title}</span><span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Kokbok</span></span>
+            <span className="col" style={{ flex: 'none', alignItems: 'flex-end' }}>
+              <span style={{ fontSize: 11, color: 'var(--color-neutral-700)', textTransform: 'uppercase', letterSpacing: '.08em', fontWeight: 600 }}>Sida</span>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 22, lineHeight: 1 }}>{r.page || '–'}</span>
+            </span>
+          </div>
+        )}
+
+        <div className="row" style={{ gap: 12, padding: '12px 12px 12px 18px', borderRadius: 24, background: 'var(--color-accent-2-100)', color: 'var(--color-accent-2-900)' }}>
+          <span className="col" style={{ flex: 1 }}>
+            <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>Senast lagad</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>{sinceLabel}</span>
+          </span>
+          <button onClick={async () => { await cookedToday(r.id); toast('Markerad som lagad idag'); }}
+            className="row" style={{ flex: 'none', gap: 6, height: 40, padding: '0 14px', borderRadius: 999, border: 0, cursor: 'pointer', font: '700 13px var(--font-body)',
+              background: cooked ? 'var(--color-accent-2-600)' : 'var(--color-bg)', color: cooked ? 'var(--color-bg)' : 'var(--color-accent-2-900)' }}>
+            <Ico icon={CircleCheck} size={16} />{cooked ? 'Lagad idag' : 'Lagade idag'}
+          </button>
+        </div>
+
+        {recTags.length > 0 && (
+          <div className="wrap">{recTags.map((t) => <TagPill key={t.id} tag={t} style={{ fontSize: 13, padding: '5px 12px', fontWeight: 600 }} />)}</div>
+        )}
+
+        <div className="seg2" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 4 }}>
+          {([['ingr', 'Ingredienser'], ['steps', 'Gör så här'], ['nut', 'Näring']] as const).map(([k, label]) => (
+            <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{label}</button>
+          ))}
+        </div>
+
+        {tab === 'ingr' && (r.ingredients.length ? (
+          <div className="col" style={{ gap: 6 }}>
+            <Stepper label="Räknat för" value={portions} onChange={setPort} />
+            <div className="col">
+              {r.ingredients.map((i) => {
+                const c = r.checked.includes(i.id);
+                return (
+                  <button key={i.id} onClick={() => toggleChecked(r.id, i.id)} aria-pressed={c}
+                    style={{ display: 'grid', gridTemplateColumns: '26px 78px 1fr', alignItems: 'center', gap: 10, padding: '11px 0', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: '15px var(--font-body)', color: 'var(--color-text)', opacity: c ? 0.5 : 1 }}>
+                    <span style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${c ? 'var(--color-accent-2-600)' : 'var(--color-neutral-400)'}`, background: c ? 'var(--color-accent-2-600)' : 'transparent', display: 'grid', placeItems: 'center' }}>
+                      <Ico icon={Check} size={12} color="var(--color-bg)" />
+                    </span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-accent-700)', textDecoration: c ? 'line-through' : 'none' }}>{amountLabel(i.amount, i.unit, scale)}</span>
+                    <span style={{ textDecoration: c ? 'line-through' : 'none' }}>{i.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {r.checked.length > 0 && (
+              <button className="btn btn-ghost" onClick={() => resetChecked(r.id)} style={{ alignSelf: 'flex-start', color: 'var(--color-accent-700)', marginTop: 4 }}>
+                {r.checked.length} av {r.ingredients.length} avbockade · Återställ
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="col" style={{ alignItems: 'flex-start', gap: 10, padding: 18, borderRadius: 28, background: 'var(--color-surface)' }}>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>{r.source_type === 'book' ? 'Står i boken' : 'Inga ingredienser'}</span>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--color-neutral-800)' }}>
+              {r.source_type === 'book' ? `Slå upp sida ${r.page || '–'} i ${r.book_title}. ` : 'Sidan hade inga ingredienser vi kunde läsa. '}
+              Skriv in ingredienserna om du vill skala portioner och se näringsvärde.
+            </p>
+            <button className="btn btn-secondary" style={{ padding: '9px 16px' }} onClick={() => setWriteIngr(true)}>Skriv in ingredienser</button>
+          </div>
+        ))}
+
+        {tab === 'steps' && (r.steps.length ? <Steps r={r} portions={portions} scale={scale} setPort={setPort} /> : (
+          <div style={{ padding: 18, borderRadius: 28, background: 'var(--color-surface)', fontSize: 14 }}>
+            {r.source_type === 'book' ? `Instruktionerna finns på sida ${r.page || '–'} i ${r.book_title}.` : 'Instruktionerna finns på originalsidan.'}
+          </div>
+        ))}
+
+        {tab === 'nut' && <NutritionTab r={r} />}
+      </div>
+
+      <Notes r={r} />
+
+      <div style={{ padding: '28px 20px 0' }}>
+        <button className="btn btn-ghost" style={{ color: 'var(--color-neutral-700)' }}
+          onClick={async () => { if (confirm(`Ta bort ”${r.name}”? Det går inte att ångra.`)) { await deleteRecipe(r.id); nav('/recept', { replace: true }); } }}>
+          Ta bort receptet
+        </button>
+      </div>
+
+      {writeIngr && <WriteIngredients r={r} onClose={() => setWriteIngr(false)} />}
+    </div>
+  );
+}
+
+function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; scale: number; setPort: (n: number) => void }) {
+  const names = r.ingredients.map((i) => i.name);
+  return (
+    <div className="col" style={{ gap: 18 }}>
+      {r.ingredients.length > 0 && <Stepper label="Mängder för" value={portions} onChange={setPort} />}
+      {r.steps.map((s, k) => {
+        const used = s.ingredient_ids?.length
+          ? s.ingredient_ids.map((iid) => r.ingredients.find((i) => i.id === Number(iid))).filter((i) => !!i)
+          : guessUse(s.text, names).map((x) => r.ingredients[x]);
+        return (
+          <div key={s.id} className="row" style={{ gap: 14, alignItems: 'flex-start' }}>
+            <span style={{ flex: 'none', width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-heading)', fontSize: 15 }}>{k + 1}</span>
+            <div className="col" style={{ flex: 1, minWidth: 0, gap: 8 }}>
+              <p style={{ margin: '4px 0 0', fontSize: 15, textWrap: 'pretty' }}>{s.text}</p>
+              {used.length > 0 && (
+                <div className="wrap">
+                  {used.map((u) => (
+                    <span key={u.id} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '4px 11px', borderRadius: 999, background: 'var(--color-surface)', fontSize: 13 }}>
+                      {u.amount != null && <b style={{ color: 'var(--color-accent-700)' }}>{amountLabel(u.amount, u.unit, scale)}</b>}<span>{u.name}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Notes({ r }: { r: Recipe }) {
+  const { saveNote } = useStore();
+  const [text, setText] = useState(r.note?.text ?? '');
+  const dirty = useRef(false);
+  const focused = useRef(false);
+  const timer = useRef<number | undefined>(undefined);
+
+  // Ta emot ändringar från den andra personen när man inte själv skriver.
+  useEffect(() => {
+    if (!focused.current && !dirty.current) setText(r.note?.text ?? '');
+  }, [r.note?.text, r.note?.updated_at]);
+  useEffect(() => () => clearTimeout(timer.current), []);
+
+  const onChange = (v: string) => {
+    setText(v);
+    dirty.current = true;
+    clearTimeout(timer.current);
+    timer.current = window.setTimeout(async () => { await saveNote(r.id, v); dirty.current = false; }, 600);
+  };
+
+  return (
+    <div className="col" style={{ gap: 8, padding: '28px 20px 0' }}>
+      <div className="row" style={{ gap: 8 }}><Ico icon={NotebookPen} color="var(--color-accent-700)" /><h4 style={{ margin: 0, fontSize: 19 }}>Mina anteckningar</h4></div>
+      <textarea className="input" value={text} onChange={(e) => onChange(e.target.value)}
+        onFocus={() => { focused.current = true; }} onBlur={() => { focused.current = false; }}
+        placeholder="Vad ändrade du? Vad vill du komma ihåg till nästa gång?" style={{ borderRadius: 24, minHeight: 96, padding: '12px 16px', fontSize: 16 }} />
+    </div>
+  );
+}
+
+function WriteIngredients({ r, onClose }: { r: Recipe; onClose: () => void }) {
+  const { addIngredients } = useStore();
+  const [v, setV] = useState('');
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    const lines = v.split('\n').map((x) => x.trim()).filter(Boolean).map(parseIngredientLine);
+    if (!lines.length) return onClose();
+    setBusy(true);
+    await addIngredients(r.id, lines);
+    setBusy(false);
+    onClose();
+  };
+  return (
+    <Sheet onClose={onClose}>
+      <h3>Skriv in ingredienser</h3>
+      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: -8 }}>En per rad, t.ex. ”400 g kycklingfilé”.</span>
+      <textarea className="input" autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder={'400 g kycklingfilé\n1 gul lök\n4 dl kokosmjölk'}
+        style={{ borderRadius: 24, minHeight: 160, padding: '12px 16px', fontSize: 16 }} />
+      <button className="btn btn-primary btn-block" disabled={busy} onClick={save} style={{ height: 52, fontSize: 16 }}>Spara ingredienser</button>
+    </Sheet>
+  );
+}
