@@ -93,19 +93,42 @@ export async function fetchNutrients(ids: number[]): Promise<{ map: Map<number, 
   return { map, errors: Object.values((data?.errors ?? {}) as Record<string, string>) };
 }
 
-export async function fetchUnitWeights(ids: number[]) {
+const VOLUME = (u: string) => ML_PER_UNIT[u] != null;
+/** Enheten som en vikt sparas under: volym som dl, tom enhet som st. */
+export const weightUnit = (unit: string) => {
+  const u = unit.toLowerCase().trim();
+  return VOLUME(u) ? 'dl' : u || 'st';
+};
+
+/** Vikter per enhet: köket egna går före den gemensamma tabellen. */
+export async function fetchUnitWeights(ids: number[], householdId?: string) {
   const map = new Map<string, number>();
   if (!ids.length) return map;
   const { data } = await supabase.from('unit_weights').select('lv_food_id,unit,grams').in('lv_food_id', ids);
   for (const w of data ?? []) map.set(`${w.lv_food_id}:${w.unit}`, Number(w.grams));
+  if (householdId) {
+    const { data: own } = await supabase.from('household_unit_weights').select('lv_food_id,unit,grams')
+      .eq('household_id', householdId).in('lv_food_id', ids);
+    for (const w of own ?? []) map.set(`${w.lv_food_id}:${w.unit}`, Number(w.grams));
+  }
   return map;
+}
+
+/** Sparar köket vikt för 1 enhet av livsmedlet (volym räknas om till 1 dl). */
+export async function saveUnitWeight(householdId: string, lvFoodId: number, unit: string, gramsPerUnit: number) {
+  const u = unit.toLowerCase().trim();
+  const key = weightUnit(u);
+  const grams = VOLUME(u) ? gramsPerUnit * 100 / ML_PER_UNIT[u] : gramsPerUnit;
+  const { error } = await supabase.from('household_unit_weights')
+    .upsert({ household_id: householdId, lv_food_id: lvFoodId, unit: key, grams, updated_at: new Date().toISOString() });
+  if (error) throw new Error(error.message);
 }
 
 /** Mängd → gram. null om vikt saknas (t.ex. "1 st" utan känd styckvikt). */
 export function toGrams(i: Ingredient, weights: Map<string, number>): { grams: number | null; assumed: boolean } {
   if (i.grams != null) return { grams: i.grams, assumed: false };
   if (i.amount == null) return { grams: null, assumed: false };
-  const u = i.unit.toLowerCase();
+  const u = i.unit.toLowerCase().trim() || 'st';
   if (G_PER_UNIT[u]) return { grams: i.amount * G_PER_UNIT[u], assumed: false };
   const own = i.lv_food_id != null ? weights.get(`${i.lv_food_id}:${u}`) : undefined;
   if (own) return { grams: i.amount * own, assumed: false };
@@ -123,6 +146,7 @@ export interface NutResult {
   noWeight: Ingredient[];
   noFood: Ingredient[];
   assumedDensity: number;
+  assumed: Ingredient[];
 }
 
 export function computeNutrition(ingredients: Ingredient[], portions: number, foods: Map<number, Per100>, weights: Map<string, number>): NutResult {
@@ -130,12 +154,13 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   const noWeight: Ingredient[] = [];
   const noFood: Ingredient[] = [];
   let counted = 0, assumedDensity = 0;
+  const assumed: Ingredient[] = [];
   for (const i of ingredients) {
     const food = i.lv_food_id != null ? foods.get(i.lv_food_id) : undefined;
     if (!food) { noFood.push(i); continue; }
     const g = toGrams(i, weights);
     if (g.grams == null) { noWeight.push(i); continue; }
-    if (g.assumed) assumedDensity++;
+    if (g.assumed) { assumedDensity++; assumed.push(i); }
     counted++;
     for (const [k, v] of Object.entries(food)) {
       if (typeof v !== 'number') continue;
@@ -145,7 +170,7 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   }
   const p = Math.max(1, portions);
   const perPortion: Per100 = Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, v / p]));
-  return { perPortion, counted, noWeight, noFood, assumedDensity };
+  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed };
 }
 
 /** Uppskattad energi per portion för granskningsvyn (innan receptet är sparat). */

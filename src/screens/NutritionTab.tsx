@@ -1,14 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { Ico, Sheet, Spinner } from '../components/ui';
-import { computeNutrition, fetchNutrients, fetchUnitWeights, foodList, matchFood, matchMissing, toGrams, type LvFood, type Per100 } from '../lib/nutrition';
+import { Ico, Sheet, Spinner, useToast } from '../components/ui';
+import { ML_PER_UNIT } from '../data/units';
+import { computeNutrition, fetchNutrients, fetchUnitWeights, foodList, matchFood, matchMissing, saveUnitWeight, toGrams, weightUnit, type LvFood, type Per100 } from '../lib/nutrition';
 import { amountLabel, fmt } from '../lib/format';
 import { NNR } from '../data/nnr';
 import type { Ingredient, Recipe } from '../lib/types';
 
 export function NutritionTab({ r }: { r: Recipe }) {
-  const { updateIngredient } = useStore();
+  const { updateIngredient, household } = useStore();
   const [foods, setFoods] = useState<Map<number, Per100> | null>(null);
   const [weights, setWeights] = useState<Map<string, number>>(new Map());
   const [err, setErr] = useState('');
@@ -25,7 +26,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
         setErr('');
         await matchMissing(r.ingredients, updateIngredient);
         const ids = [...new Set(r.ingredients.map((i) => i.lv_food_id).filter((x): x is number => x != null))];
-        const [f, w] = await Promise.all([fetchNutrients(ids), fetchUnitWeights(ids)]);
+        const [f, w] = await Promise.all([fetchNutrients(ids), fetchUnitWeights(ids, household?.id)]);
         if (alive) { setFoods(f.map); setLvErrors(f.errors); setWeights(w); }
       } catch (e) {
         if (alive) setErr(e instanceof Error ? e.message : String(e));
@@ -33,6 +34,11 @@ export function NutritionTab({ r }: { r: Recipe }) {
     })();
     return () => { alive = false; };
   }, [idsKey]);
+
+  const reloadWeights = async () => {
+    const ids = [...new Set(r.ingredients.map((i) => i.lv_food_id).filter((x): x is number => x != null))];
+    setWeights(await fetchUnitWeights(ids, household?.id));
+  };
 
   const res = useMemo(() => (foods ? computeNutrition(r.ingredients, r.portions, foods, weights) : null), [foods, weights, r.ingredients, r.portions]);
 
@@ -91,6 +97,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
           )}
         </div>
       )}
+      {household && <WeightPrompts items={[...res.noWeight, ...res.assumed]} householdId={household.id} onSaved={reloadWeights} />}
       {res.counted > 0 && (<>
       <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'space-between', padding: '18px 20px', borderRadius: 30, background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)' }}>
         <div className="col">
@@ -220,5 +227,71 @@ function FoodSheet({ ing, onClose, weights }: { ing: Ingredient; onClose: () => 
         </div>
       </div>
     </Sheet>
+  );
+}
+
+const unitLabel = (u: string) => (u.trim() ? u.trim() : 'st');
+
+/** Frågar efter vikt för 1 enhet (t.ex. 1 st gul lök). Sparas i köket och gäller alla recept. */
+function WeightPrompts({ items, householdId, onSaved }: { items: Ingredient[]; householdId: string; onSaved: () => Promise<void> }) {
+  const toast = useToast();
+  const [vals, setVals] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  // En rad per livsmedel och enhet (volym delar rad, eftersom den sparas per dl).
+  const seen = new Set<string>();
+  const rows = items.filter((i) => {
+    if (i.lv_food_id == null) return false;
+    const k = `${i.lv_food_id}:${weightUnit(i.unit)}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  if (!rows.length) return null;
+
+  const save = async (i: Ingredient) => {
+    const k = `${i.lv_food_id}:${weightUnit(i.unit)}`;
+    const g = parseFloat((vals[k] ?? '').replace(',', '.'));
+    if (!Number.isFinite(g) || g <= 0) return;
+    setBusy(k);
+    try {
+      await saveUnitWeight(householdId, i.lv_food_id!, i.unit || 'st', g);
+      await onSaved();
+      toast('Vikten är sparad');
+    } catch (e) {
+      toast('Kunde inte spara vikten');
+      console.error(e);
+    }
+    setBusy(null);
+  };
+
+  return (
+    <div className="col" style={{ gap: 8 }}>
+      <h4 style={{ margin: '8px 0 0', fontSize: 19 }}>Vikter att fylla i</h4>
+      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: -4 }}>
+        Väg gärna eller titta på förpackningen. Vikten sparas i köket och används i alla recept med samma livsmedel.
+      </span>
+      {rows.map((i) => {
+        const k = `${i.lv_food_id}:${weightUnit(i.unit)}`;
+        const unit = unitLabel(i.unit);
+        const volume = weightUnit(i.unit) === 'dl';
+        return (
+          <div key={k} className="col" style={{ gap: 6, padding: '12px 14px', borderRadius: 22, background: 'var(--color-surface)' }}>
+            <span style={{ fontSize: 14 }}>
+              <b>{i.name}</b>: vikt för 1 {unit}
+              {volume && <span style={{ color: 'var(--color-neutral-700)' }}> (räknas nu som {fmt(ML_PER_UNIT[i.unit.toLowerCase()] ?? 0)} g, 1 g/ml)</span>}
+            </span>
+            <div className="row" style={{ gap: 8 }}>
+              <label className="row" style={{ flex: 1, gap: 6, height: 44, padding: '0 16px', borderRadius: 999, background: 'var(--color-bg)', border: '1px solid var(--color-divider)' }}>
+                <input inputMode="decimal" value={vals[k] ?? ''} onChange={(e) => setVals((v) => ({ ...v, [k]: e.target.value }))}
+                  onKeyDown={(e) => e.key === 'Enter' && save(i)} placeholder="t.ex. 150"
+                  style={{ flex: 1, minWidth: 0, border: 0, background: 'transparent', fontSize: 16, outline: 'none', color: 'var(--color-text)' }} />
+                <span style={{ color: 'var(--color-neutral-700)', fontSize: 14 }}>g</span>
+              </label>
+              <button className="btn btn-primary" disabled={busy === k || !(vals[k] ?? '').trim()} onClick={() => save(i)} style={{ flex: 'none', height: 44, padding: '0 16px' }}>Spara</button>
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
