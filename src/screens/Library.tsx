@@ -8,7 +8,9 @@ import { emptyFilter, FAV_CHIP, filterCount, filterRecipes, toggle, type LibFilt
 import { EFFORT, sourceLabel } from '../lib/format';
 
 export function Library() {
-  const { recipes, tags } = useStore();
+  const { recipes, tags, members, memberName } = useStore();
+  const named = members.filter((m) => m.display_name);
+  const by = (r: { created_by?: string | null }) => { const n = memberName(r.created_by); return n ? ` · ${n}` : ''; };
   const { filter: f, setFilter, view, setView } = useUi();
   const [showFilter, setShowFilter] = useState(false);
   const nav = useNavigate();
@@ -73,7 +75,7 @@ export function Library() {
               <div className="col" style={{ gap: 7, padding: '11px 13px 14px' }}>
                 <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.15, textWrap: 'pretty' }}>{r.name}</div>
                 <EffortIcons n={r.effort} size={14} gap={2} />
-                <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{sourceLabel(r)}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{sourceLabel(r)}{by(r)}</div>
               </div>
             </div>
           ))}
@@ -89,7 +91,7 @@ export function Library() {
                 <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.15 }}>
                   {r.is_favorite && <Heart size={13} strokeWidth={2.75} fill="currentColor" color="var(--color-accent)" aria-label="Favorit" style={{ display: 'inline', marginRight: 5, verticalAlign: '-1px' }} />}{r.name}
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{sourceLabel(r)}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{sourceLabel(r)}{by(r)}</div>
                 <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
                   {r.tagIds.map(tagById).filter((t) => !!t).map((t) => <TagPill key={t.id} tag={t} />)}
                 </div>
@@ -107,7 +109,7 @@ export function Library() {
         <Sheet onClose={() => setShowFilter(false)} style={{ gap: 18 }}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
             <h3>Filtrera</h3>
-            <button className="btn btn-ghost" onClick={() => set({ eff: [], src: 'alla', tagSel: [], sort: 'new' })} style={{ color: 'var(--color-accent-700)' }}>Rensa</button>
+            <button className="btn btn-ghost" onClick={() => set({ eff: [], src: 'alla', tagSel: [], sort: 'new', by: null })} style={{ color: 'var(--color-accent-700)' }}>Rensa</button>
           </div>
           <div className="col" style={{ gap: 8 }}>
             <span className="label">Insats</span>
@@ -121,6 +123,14 @@ export function Library() {
               ))}
             </div>
           </div>
+          {named.length > 1 && (
+            <div className="col" style={{ gap: 8 }}>
+              <span className="label">Inlagt av</span>
+              <div className="wrap">
+                {named.map((m) => <button key={m.user_id} className={'chip' + (f.by === m.user_id ? ' on' : '')} onClick={() => set({ by: f.by === m.user_id ? null : m.user_id })}>{m.display_name}</button>)}
+              </div>
+            </div>
+          )}
           <div className="col" style={{ gap: 8 }}>
             <span className="label">Taggar</span>
             <div className="wrap">{tags.map((t) => <button key={t.id} className={'chip' + (f.tagSel.includes(t.id) ? ' on' : '')} onClick={() => set({ tagSel: toggle(f.tagSel, t.id) })}>{t.name}</button>)}</div>

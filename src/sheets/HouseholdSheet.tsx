@@ -1,10 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../lib/store';
 import { Sheet, useToast } from '../components/ui';
 
 // Inbjudan och utloggning. Inte ritat i designen; följer arkens formspråk.
 export function HouseholdSheet({ onClose }: { onClose: () => void }) {
-  const { household, households, selectHousehold, session, rotateInvite, renameHousehold, joinHousehold, leaveHousehold, signOut } = useStore();
+  const { household, households, selectHousehold, session, rotateInvite, renameHousehold, joinHousehold, leaveHousehold, signOut, members, setMyName } = useStore();
+  const myName = members.find((m) => m.user_id === session?.user.id)?.display_name ?? '';
+  const [me, setMe] = useState(myName);
+  useEffect(() => { setMe(myName); }, [myName]);
+  const meDirty = me.trim() !== myName;
+  const saveMe = async () => {
+    if (!meDirty) return;
+    setBusy(true);
+    try { await setMyName(me); toast('Ditt namn är sparat'); } catch (e) { toast(e instanceof Error ? e.message : 'Kunde inte spara namnet'); }
+    setBusy(false);
+  };
+  const others = members.filter((m) => m.user_id !== session?.user.id);
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(household?.name ?? '');
@@ -56,6 +67,16 @@ export function HouseholdSheet({ onClose }: { onClose: () => void }) {
           <input className="input big" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveName()} placeholder="t.ex. Hemma hos oss" />
           {dirty && <button className="btn btn-primary" disabled={busy} onClick={saveName} style={{ flex: 'none', height: 48, padding: '0 18px' }}>Spara</button>}
         </div>
+      </div>
+      <div className="field">
+        <label>Ditt namn</label>
+        <div className="row" style={{ gap: 8 }}>
+          <input className="input big" value={me} maxLength={40} onChange={(e) => setMe(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveMe()} placeholder="Visas på recepten du lägger in" />
+          {meDirty && <button className="btn btn-primary" disabled={busy} onClick={saveMe} style={{ flex: 'none', height: 48, padding: '0 18px' }}>Spara</button>}
+        </div>
+        {others.length > 0 && <span style={{ display: 'block', marginTop: 6, fontSize: 13, color: 'var(--color-neutral-700)' }}>
+          Också i köket: {others.map((m) => m.display_name ?? 'namn saknas').join(', ')}
+        </span>}
       </div>
       <p style={{ margin: 0, fontSize: 14, color: 'var(--color-neutral-700)' }}>Bjud in den du lagar mat med. Ni ser samma recept, vecka och anteckningar direkt.</p>
       <div className="col" style={{ gap: 4, padding: '14px 18px', borderRadius: 24, background: 'var(--color-surface)' }}>

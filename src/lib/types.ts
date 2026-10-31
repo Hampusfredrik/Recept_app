@@ -56,6 +56,8 @@ export interface Recipe {
   checked: number[];
   /** Saknas om databasen inte har kolumnen ännu. */
   is_favorite?: boolean;
+  /** Användaren som lade in receptet. Saknas om databasen inte har kolumnen. */
+  created_by?: string | null;
 }
 
 export interface Household {
@@ -64,6 +66,8 @@ export interface Household {
   invite_code: string;
   recipeCount?: number;
 }
+
+export interface Member { user_id: string; display_name: string | null }
 
 export interface PlanEntry { date: string; recipe_id: string }
 

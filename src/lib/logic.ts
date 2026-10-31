@@ -54,7 +54,7 @@ export function pantrySuggestions(recipes: Recipe[], pantry: string[], max = 8) 
 }
 
 // ── Receptlistan ──
-export interface LibFilter { q: string; chip: string | null; eff: number[]; src: 'alla' | 'web' | 'book'; tagSel: string[]; sort: 'new' | 'low' | 'high' }
+export interface LibFilter { q: string; chip: string | null; eff: number[]; src: 'alla' | 'web' | 'book'; tagSel: string[]; sort: 'new' | 'low' | 'high'; by?: string | null }
 /** Filterchipet "Favoriter" i receptlistan (inte en tagg). */
 export const FAV_CHIP = '__fav';
 export const emptyFilter: LibFilter = { q: '', chip: null, eff: [], src: 'alla', tagSel: [], sort: 'new' };
@@ -67,6 +67,7 @@ export function filterRecipes(recipes: Recipe[], tags: Tag[], f: LibFilter) {
     else if (f.chip && !r.tagIds.includes(f.chip)) return false;
     if (f.eff.length && !f.eff.includes(r.effort)) return false;
     if (f.src !== 'alla' && r.source_type !== f.src) return false;
+    if (f.by && r.created_by !== f.by) return false;
     if (f.tagSel.length && !f.tagSel.every((t) => r.tagIds.includes(t))) return false;
     if (ql) {
       const hay = [r.name, ...r.tagIds.map(tagName), r.book_title ?? '', r.url ?? ''].join(' ').toLowerCase();
@@ -78,6 +79,6 @@ export function filterRecipes(recipes: Recipe[], tags: Tag[], f: LibFilter) {
     f.sort === 'low' ? a.effort - b.effort : f.sort === 'high' ? b.effort - a.effort : b.created_at.localeCompare(a.created_at));
 }
 
-export const filterCount = (f: LibFilter) => f.eff.length + f.tagSel.length + (f.src !== 'alla' ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
+export const filterCount = (f: LibFilter) => f.eff.length + f.tagSel.length + (f.src !== 'alla' ? 1 : 0) + (f.sort !== 'new' ? 1 : 0) + (f.by ? 1 : 0);
 
 export const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);

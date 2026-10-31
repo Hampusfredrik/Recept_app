@@ -12,7 +12,8 @@ import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
 // Inte ritad i designen; följer formspråket från "Bara bok och sida".
 export function EditRecipe() {
   const { id } = useParams();
-  const { recipes, tags, editRecipe } = useStore();
+  const { recipes, tags, editRecipe, members } = useStore();
+  const named = members.filter((m) => m.display_name);
   const r = recipes.find((x) => x.id === id);
   const back = useBack(`/recept/${id}`);
   const nav = useNavigate();
@@ -22,6 +23,7 @@ export function EditRecipe() {
   const [portions, setPortions] = useState(String(r?.portions ?? 4));
   const [effort, setEffort] = useState(r?.effort ?? 0);
   const [tagIds, setTagIds] = useState<string[]>(r?.tagIds ?? []);
+  const [author, setAuthor] = useState<string | null>(r?.created_by ?? null);
   const [book, setBook] = useState(r?.book_title ?? '');
   const [page, setPage] = useState(r?.page ?? '');
   const [ingr, setIngr] = useState(r ? r.ingredients.map((i) => [amountLabel(i.amount, i.unit, 1, i.amount_max), i.name].filter(Boolean).join(' ')).join('\n') : '');
@@ -49,6 +51,7 @@ export function EditRecipe() {
         fields: {
           name: name.trim(), effort, portions: Number.isFinite(p) && p > 0 ? Math.min(p, 100) : r.portions,
           ...(r.source_type === 'book' ? { book_title: book.trim(), page: page || null } : {}),
+          ...(author !== (r.created_by ?? null) ? { created_by: author } : {}),
         },
         ingredients: ingr.split('\n').map((x) => x.trim()).filter(Boolean).map(parseIngredientLine),
         steps: steps.map((x) => x.trim().replace(/\s+/g, ' ')).filter(Boolean),
@@ -85,6 +88,18 @@ export function EditRecipe() {
         </div>
         <EffortField value={effort} onChange={setEffort} error={false} />
         <TagChooser tags={tags} selected={tagIds} onToggle={(t) => setTagIds((x) => toggle(x, t))} />
+        {named.length > 0 && (
+          <div className="col" style={{ gap: 8 }}>
+            <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Inlagt av</span>
+            <div className="wrap">
+              {named.map((m) => (
+                <button key={m.user_id} type="button" className={'chip' + (author === m.user_id ? ' on' : '')} onClick={() => setAuthor(author === m.user_id ? null : m.user_id)}>
+                  {author === m.user_id ? '✓ ' : ''}{m.display_name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="field"><label>Ingredienser · en per rad</label>
           <textarea className="input" value={ingr} onChange={(e) => setIngr(e.target.value)} placeholder={'400 g kycklingfilé\n1 gul lök'}

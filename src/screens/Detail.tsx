@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
-import { ArrowUpRight, Heart, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Search, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, Heart, UserRound, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Search, Sparkles, Users } from 'lucide-react';
 import { creditOf, searchImages, withCredit, type PexelsPhoto } from '../lib/images';
 import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
@@ -16,7 +16,7 @@ type Tab = 'ingr' | 'steps' | 'nut';
 
 export function Detail() {
   const { id } = useParams();
-  const { recipes, tags, plan, cookedToday, toggleChecked, resetChecked, deleteRecipe, toggleFavorite } = useStore();
+  const { recipes, tags, plan, cookedToday, toggleChecked, resetChecked, deleteRecipe, toggleFavorite, memberName } = useStore();
   const nav = useNavigate();
   const toast = useToast();
   const r = recipes.find((x) => x.id === id);
@@ -64,6 +64,7 @@ export function Detail() {
       <div className="col detail-meta" style={{ gap: 18 }}>
         <div className="row" style={{ gap: 16, fontSize: 14, color: 'var(--color-neutral-700)' }}>
           <span className="row" style={{ gap: 6 }}><Ico icon={Users} size={16} />{r.portions} {r.portions === 1 ? 'portion' : 'portioner'}</span>
+          {memberName(r.created_by) && <span className="row" style={{ gap: 6 }}><Ico icon={UserRound} size={16} />Inlagt av {memberName(r.created_by)}</span>}
         </div>
 
         <div className="row" style={{ justifyContent: 'space-between', gap: 12, padding: '14px 18px', borderRadius: 24, background: 'var(--color-surface)' }}>

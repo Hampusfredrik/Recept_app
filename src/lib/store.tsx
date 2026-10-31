@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 import { today } from './dates';
 import { TONE_ORDER } from './format';
 import { shrinkImage } from './images';
-import type { Household, Ingredient, NewRecipe, PlanEntry, Recipe, Step, Tag, Tone } from './types';
+import type { Household, Ingredient, NewRecipe, PlanEntry, Recipe, Step, Tag, Tone, Member } from './types';
 
 interface Data {
   recipes: Recipe[];
@@ -29,6 +29,11 @@ interface Store extends Data {
   renameHousehold: (name: string) => Promise<void>;
   leaveHousehold: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Personerna i köket. */
+  members: Member[];
+  /** Namnet på en person i köket, eller null. */
+  memberName: (userId: string | null | undefined) => string | null;
+  setMyName: (name: string) => Promise<void>;
   // recept
   saveRecipe: (r: NewRecipe) => Promise<string>;
   deleteRecipe: (id: string) => Promise<void>;
@@ -54,7 +59,7 @@ interface Store extends Data {
 }
 
 export interface RecipeEdit {
-  fields: Partial<Pick<Recipe, 'name' | 'portions' | 'effort' | 'book_title' | 'page'>>;
+  fields: Partial<Pick<Recipe, 'name' | 'portions' | 'effort' | 'book_title' | 'page' | 'created_by'>>;
   ingredients: { amount: number | null; unit: string; name: string }[];
   steps: string[];
   tagIds: string[];
@@ -78,6 +83,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<Data>({ recipes: [], tags: [], plan: [], pantry: [] });
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
   const hid = household?.id ?? null;
 
   // ── auth ──
@@ -113,6 +119,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   useEffect(() => { void loadHousehold(); }, [loadHousehold]);
 
   // ── data ──
+  const myId = session?.user.id;
+  const myEmail = session?.user.email;
   const reload = useCallback(async () => {
     if (!hid) return;
     const [rec, tags, plan, pantry] = await Promise.all([
@@ -148,8 +156,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       checked: checked_items.map((c) => Number(c.ingredient_id)),
     }));
     setData({ recipes, tags: tags.data as Tag[], plan: plan.data as PlanEntry[], pantry: (pantry.data ?? []).map((p) => p.name) });
+    // Personerna i köket. Kolumnen display_name kan saknas om migreringen inte körts.
+    let mem = await supabase.from('household_members').select('user_id,display_name').eq('household_id', hid);
+    if (mem.error) mem = await supabase.from('household_members').select('user_id').eq('household_id', hid) as typeof mem;
+    const list = ((mem.data ?? []) as Member[]).map((x) => ({ user_id: x.user_id, display_name: x.display_name ?? null }));
+    // Eget namn saknas: förifyll med förnamnet ur e-postadressen (kan ändras under Ert kök).
+    const uid = myId;
+    const me = list.find((x) => x.user_id === uid);
+    if (me && !me.display_name && !mem.error && 'display_name' in ((mem.data ?? [])[0] ?? {})) {
+      const guess = (myEmail ?? '').split('@')[0].split(/[._+\-0-9]/)[0];
+      if (guess) {
+        me.display_name = guess.charAt(0).toUpperCase() + guess.slice(1).toLowerCase();
+        await supabase.from('household_members').update({ display_name: me.display_name }).eq('household_id', hid).eq('user_id', uid!);
+      }
+    }
+    setMembers(list);
     setLoaded(true);
-  }, [hid]);
+  }, [hid, myId, myEmail]);
 
   // ── realtime: hämta om allt vid ändring (små datamängder, två personer) ──
   const timer = useRef<number | undefined>(undefined);
@@ -158,7 +181,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setLoaded(false);
     reload();
     const schedule = () => { clearTimeout(timer.current); timer.current = window.setTimeout(reload, 250); };
-    const tables = ['recipes', 'recipe_ingredients', 'recipe_steps', 'tags', 'recipe_tags', 'notes', 'checked_items', 'week_plan', 'pantry_items'];
+    const tables = ['recipes', 'recipe_ingredients', 'recipe_steps', 'tags', 'recipe_tags', 'notes', 'checked_items', 'week_plan', 'pantry_items', 'household_members'];
     const ch = supabase.channel(`hh-${hid}`);
     for (const table of tables) {
       ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table, filter: `household_id=eq.${hid}` }, schedule);
@@ -223,6 +246,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       rotateInvite: async () => {
         const code = must(await supabase.rpc('rotate_invite_code', { p_household: need() })) as string;
         setHousehold((h) => (h ? { ...h, invite_code: code } : h));
+      },
+      setMyName: async (name: string) => {
+        const id = need();
+        const uid = session?.user.id;
+        if (!uid) throw new Error('Inte inloggad');
+        const clean = name.trim().slice(0, 40) || null;
+        setMembers((m) => m.map((x) => (x.user_id === uid ? { ...x, display_name: clean } : x)));
+        const res = await supabase.from('household_members').update({ display_name: clean }).eq('household_id', id).eq('user_id', uid);
+        if (res.error) throw new Error(/display_name/.test(res.error.message) ? 'Namn kräver migreringen 20261105120000_recipe_author.sql i Supabase.' : res.error.message);
       },
       signOut: async () => { await supabase.auth.signOut(); setData({ recipes: [], tags: [], plan: [], pantry: [] }); },
 
@@ -412,6 +444,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setHousehold(h);
   }, [households]);
 
-  const value: Store = { session, authReady, household, households, selectHousehold, householdLoading, loaded, error, reload, ...data, ...actions };
+  const memberName = useCallback((userId: string | null | undefined) =>
+    (userId ? members.find((m) => m.user_id === userId)?.display_name ?? null : null), [members]);
+
+  const value: Store = { session, members, memberName, authReady, household, households, selectHousehold, householdLoading, loaded, error, reload, ...data, ...actions };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
