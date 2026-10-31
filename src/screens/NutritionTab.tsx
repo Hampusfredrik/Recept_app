@@ -3,8 +3,7 @@ import { Search } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { Ico, Sheet, Spinner, useToast } from '../components/ui';
 import { ML_PER_UNIT } from '../data/units';
-import { standardPieceWeight } from '../data/pieceWeights';
-import { computeNutrition, fetchNutrients, fetchUnitWeights, foodList, matchFood, matchMissing, saveUnitWeight, toGrams, weightUnit, type LvFood, type Per100 } from '../lib/nutrition';
+import { computeNutrition, isNegligible, fetchNutrients, fetchUnitWeights, foodList, matchFood, matchMissing, saveUnitWeight, toGrams, weightUnit, type LvFood, type Per100 } from '../lib/nutrition';
 import { amountLabel, fmt } from '../lib/format';
 import { NNR } from '../data/nnr';
 import type { Ingredient, Recipe } from '../lib/types';
@@ -98,7 +97,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
           )}
         </div>
       )}
-      {household && <WeightPrompts items={[...res.noWeight, ...res.assumed, ...res.standard]} householdId={household.id} onSaved={reloadWeights} />}
+      {household && <WeightPrompts items={[...res.noWeight, ...res.assumed].filter((i) => !isNegligible(i))} householdId={household.id} onSaved={reloadWeights} />}
       {res.counted > 0 && (<>
       <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'space-between', padding: '18px 20px', borderRadius: 30, background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)' }}>
         <div className="col">
@@ -285,7 +284,6 @@ function WeightPrompts({ items, householdId, onSaved }: { items: Ingredient[]; h
             <span style={{ fontSize: 14 }}>
               <b>{i.name}</b>: vikt för 1 {unit}
               {volume && <span style={{ color: 'var(--color-neutral-700)' }}> (räknas nu som {fmt(ML_PER_UNIT[i.unit.toLowerCase()] ?? 0)} g, 1 g/ml)</span>}
-              {!volume && standardPieceWeight(i.name) && <span style={{ color: 'var(--color-neutral-700)' }}> (räknas nu som {standardPieceWeight(i.name)!.grams} g, standardvikt)</span>}
             </span>
             <div className="row" style={{ gap: 8 }}>
               <label className="row" style={{ flex: 1, gap: 6, height: 44, padding: '0 16px', borderRadius: 999, background: 'var(--color-bg)', border: '1px solid var(--color-divider)' }}>

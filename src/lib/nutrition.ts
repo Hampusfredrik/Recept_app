@@ -77,12 +77,23 @@ export async function matchMissing(ingredients: Ingredient[], update: (id: numbe
   }));
 }
 
-/** Kryddor, salt och vatten som saknas i databasen räknas inte med (försumbar näring). */
-const NEGLIGIBLE = /^(salt|flingsalt|havssalt|peppar|svartpeppar|vitpeppar|kryddpeppar|cayennepeppar|vatten|kranvatten|kokande vatten|isbitar|lagerblad)$/;
+// Beskrivande ord som tas bort innan namnet jämförs ("kallt vatten", "nymalen svartpeppar").
+const MODIFIERS = new Set(['torkad', 'torkade', 'färsk', 'färska', 'malen', 'mald', 'nymalen', 'grovmalen', 'hel', 'hela', 'efter', 'smak',
+  'ev', 'eventuellt', 'kallt', 'kall', 'ljummet', 'ljummen', 'varmt', 'varm', 'hett', 'kokande', 'kokt', 'lite', 'en', 'nypa', 'till', 'servering']);
+const coreName = (name: string) => name.toLowerCase().replace(/\([^)]*\)/g, ' ').replace(/[,.]/g, ' ')
+  .split(/\s+/).filter((w) => w && !MODIFIERS.has(w)).join(' ');
+
+const WATER = new Set(['vatten', 'kranvatten', 'kokvatten', 'isvatten', 'isbitar', 'is']);
+const SEASONING = new Set(['salt', 'flingsalt', 'havssalt', 'bordssalt', 'peppar', 'svartpeppar', 'vitpeppar', 'kryddpeppar',
+  'cayennepeppar', 'lagerblad', 'salt och peppar', 'salt och svartpeppar']);
+
+/** Vatten räknas aldrig: ingen energi, oavsett vilket livsmedel det kopplats till. */
+export const isWater = (i: Ingredient) => WATER.has(coreName(i.name));
+
+/** Kryddor, salt och vatten: försumbar näring, och appen frågar aldrig efter vikt för dem. */
 export function isNegligible(i: Ingredient): boolean {
-  const u = i.unit.toLowerCase();
-  const name = i.name.toLowerCase().replace(/\([^)]*\)/g, '').replace(/\b(torkad|torkade|färsk|färska|malen|mald|nymalen|grovmalen|hel|hela|efter smak|ev)\b/g, '').replace(/[,.]/g, ' ').replace(/\s+/g, ' ').trim();
-  return ['tsk', 'krm', 'nypa'].includes(u) || NEGLIGIBLE.test(name) || /krydd/.test(name);
+  const core = coreName(i.name);
+  return ['tsk', 'krm', 'nypa'].includes(i.unit.toLowerCase()) || WATER.has(core) || SEASONING.has(core) || /krydd/.test(core);
 }
 
 /** Näringsvärden per livsmedel, plus eventuella fel från Livsmedelsverket per livsmedel. */
@@ -168,7 +179,7 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   for (const i of ingredients) {
     const food = i.lv_food_id != null ? foods.get(i.lv_food_id) : undefined;
     // Utan mängd går det inte att räkna; kryddor m.m. som saknas i databasen är försumbara.
-    if ((i.amount == null && i.grams == null) || (!food && i.lv_food_id == null && isNegligible(i))) { ignored.push(i); continue; }
+    if ((i.amount == null && i.grams == null) || isWater(i) || (!food && i.lv_food_id == null && isNegligible(i))) { ignored.push(i); continue; }
     if (!food) { noFood.push(i); continue; }
     const g = toGrams(i, weights);
     if (g.grams == null) { noWeight.push(i); continue; }
