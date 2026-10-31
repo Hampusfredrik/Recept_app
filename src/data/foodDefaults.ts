@@ -45,6 +45,12 @@ export const FOOD_DEFAULTS: [string[], string][] = [
   [['halloumi'], 'Ost halloumi rå fett 22%'],
   // Fetaost finns inte i databasen; salladsost är närmaste motsvarighet.
   [['fetaost', 'feta', 'salladsost'], 'Salladsost fett 22%'],
+  // Gorgonzola finns inte i databasen; blågrön mögelost är närmaste motsvarighet.
+  [['gorgonzola', 'ädelost', 'blåmögelost', 'blå mögelost', 'blåmögelost'], 'Ädelost blågrön mögelost fett 30%'],
+  [['grönmögelost'], 'Ädelost grönmögelost fett 17%'],
+  [['brie', 'brieost'], 'Vitmögelost brie fett 30%'],
+  [['camembert'], 'Vitmögelost camembert fett ca 22%'],
+  [['chèvre', 'chevre', 'getost', 'chèvreost'], 'Vitmögelost getost chèvre fett 25%'],
   [['färskost'], 'Färskost fett 33%'],
   [['keso', 'cottage cheese'], 'Färskost cottage cheese naturell fett 4%'],
   // Skafferi

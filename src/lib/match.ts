@@ -27,7 +27,8 @@ const PREPARED = new Set(['stekt', 'stekta', 'friterad', 'friterade', 'panerad',
 const KEY_MODIFIERS = new Set(['riven', 'rivna', 'hackad', 'hackade', 'finhackad', 'finhackade', 'grovhackad', 'färsk', 'färska',
   'skivad', 'skivade', 'tärnad', 'tärnade', 'strimlad', 'strimlade', 'stor', 'stora', 'liten', 'små', 'medelstor', 'medelstora',
   'skalad', 'skalade', 'fryst', 'frysta', 'ekologisk', 'ekologiska', 'eko', 'kall', 'kallt', 'rumsvarm', 'rumsvarmt', 'smält',
-  'fast', 'fasta', 'mjölig', 'mjöliga', 'mogen', 'mogna', 'pressad', 'urkärnade', 'naturell']);
+  'fast', 'fasta', 'mjölig', 'mjöliga', 'mogen', 'mogna', 'pressad', 'urkärnade', 'naturell',
+  'smulad', 'smulade', 'finriven', 'finrivna', 'grovriven', 'grovrivna', 'rivet', 'skuren', 'skurna', 'grovt', 'fint']);
 const STOP = new Set(['och', 'eller', 'el', 'med', 'm', 'utan', 'u', 'till', 'av', 'ca', 'gärna', 'kan', 'uteslutas', 'valfritt', 'efter', 'smak', 'för']);
 // Måttord som ibland hamnar i namnet ("1,5 liter vatten").
 const UNIT_WORDS = new Set(['liter', 'l', 'dl', 'deciliter', 'cl', 'ml', 'msk', 'tsk', 'krm', 'matsked', 'matskedar', 'tesked', 'teskedar',
