@@ -178,7 +178,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
         {res.ignored.length > 0 && ` Kryddor, salt och vatten som saknas i databasen räknas inte med.`}
         {res.stockCubes.length > 0 && ` Buljongtärningar räknas bara som salt (${fmt(STOCK_CUBE_SALT_G)} g per tärning).`}
         {res.assumedDensity > 0 && ' Volymmått räknas om med 1 g/ml där livsmedlet saknar egen vikt.'}
-        {res.standard.length > 0 && ' Lök, morot, ägg och citron räknas med standardvikter (100, 80, 58 och 125 g per styck) om ni inte angett egen vikt.'}
+        {res.standard.length > 0 && ' Vikter per styck och per dl kommer från Livsmedelsverket (PM 2024) och Mattilsynet m.fl. (Mål, vekt og porsjonsstørrelser for matvarer, 2015), utom lök, morot, ägg och citron som är era egna värden. Egna vikter går alltid före.'}
       </p>
 
       {swap && <FoodSheet ing={swap} onClose={() => setSwap(null)} weights={weights} />}

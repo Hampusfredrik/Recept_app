@@ -1,6 +1,6 @@
 // Ren beräkning av näringsvärde: inga databasanrop, så att den kan testas direkt.
 import { DEFAULT_DENSITY_G_PER_ML, G_PER_UNIT, ML_PER_UNIT } from '../data/units.ts';
-import { isStockCube, standardPieceWeight, STOCK_CUBE_SALT_G } from '../data/pieceWeights.ts';
+import { isStockCube, standardDlWeight, standardPieceWeight, STOCK_CUBE_SALT_G } from '../data/pieceWeights.ts';
 import type { Ingredient } from './types.ts';
 
 export type Per100 = Partial<Record<'kcal' | 'protein' | 'fat' | 'carbs' | 'fiber' | 'sugar' | 'satfat' | 'salt' | 'vitd' | 'b12' | 'vitc' | 'folate' | 'iron' | 'calcium' | 'iodine' | 'selenium', number>>;
@@ -21,7 +21,9 @@ export const isWater = (i: Ingredient) => WATER.has(coreName(i.name));
 // Kryddor räknas aldrig: försumbar näring i de mängder som används, och de matchas
 // lätt fel (paprikapulver → paprika, chilipulver → chilisås).
 const SPICE = /(pulver|flakes|krydda|kryddor|kryddmix|^curry$|oregano|timjan|mejram|rosmarin|spiskummin|kummin|kanel|kardemumma|gurkmeja|muskot|kryddnejlika|lagerblad|vaniljsocker|vaniljpulver|vaniljstång|saffran|peppar$|^peppar|chiliflakes|cayenne|garam masala|fänkålsfrö|korianderfrö|senapsfrö)/;
-export const isSpice = (i: Ingredient) => SPICE.test(coreName(i.name));
+// Färska örter i kruka eller knippe ger försumbar näring och saknar standardvikt.
+const HERB_BUNCH = /(^|\s)(knippe|knippa|kruka|krukor)(\s|$)/;
+export const isSpice = (i: Ingredient) => SPICE.test(coreName(i.name)) || HERB_BUNCH.test(i.name.toLowerCase()) || /^kruk/.test(i.unit.toLowerCase());
 
 /** Kryddor, salt och vatten: försumbar näring, och appen frågar aldrig efter vikt för dem. */
 export function isNegligible(i: Ingredient): boolean {
@@ -49,6 +51,8 @@ export function toGrams(i: Ingredient, weights: Map<string, number>): { grams: n
   if (ML_PER_UNIT[u]) {
     const perDl = i.lv_food_id != null ? weights.get(`${i.lv_food_id}:dl`) : undefined;
     if (perDl) return { grams: i.amount * ML_PER_UNIT[u] / 100 * perDl, assumed: false };
+    const std = standardDlWeight(i.name);
+    if (std) return { grams: i.amount * ML_PER_UNIT[u] / 100 * std.grams, assumed: false, standard: true };
     return { grams: i.amount * ML_PER_UNIT[u] * DEFAULT_DENSITY_G_PER_ML, assumed: true };
   }
   if (u === 'st') {
