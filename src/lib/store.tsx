@@ -71,18 +71,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── hushåll ──
-  const loadHousehold = useCallback(async () => {
-    if (!session) { setHousehold(null); setHouseholdLoading(false); return; }
+  const loadHousehold = useCallback(async (): Promise<{ h: Household | null; error: string | null }> => {
+    if (!session) { setHousehold(null); setHouseholdLoading(false); return { h: null, error: null }; }
     setHouseholdLoading(true);
     const { data: rows, error: e } = await supabase.from('households').select('id,name,invite_code').order('created_at');
-    if (e) setError(e.message);
+    setError(e ? e.message : null);
     const preferred = localStorage.getItem(HH_KEY);
     const h = rows?.find((x) => x.id === preferred) ?? rows?.[0] ?? null;
     setHousehold(h);
     setHouseholdLoading(false);
+    return { h, error: e?.message ?? null };
   }, [session]);
 
-  useEffect(() => { loadHousehold(); }, [loadHousehold]);
+  useEffect(() => { void loadHousehold(); }, [loadHousehold]);
 
   // ── data ──
   const reload = useCallback(async () => {
@@ -149,12 +150,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       createHousehold: async (name?: string) => {
         const h = must(await supabase.rpc('create_household', { p_name: name ?? 'Vårt kök' })) as Household;
         localStorage.setItem(HH_KEY, h.id);
-        await loadHousehold();
+        const res = await loadHousehold();
+        if (!res.h) throw new Error(`Köket sparades men kunde inte läsas: ${res.error ?? 'inga rader'}`);
       },
       joinHousehold: async (code: string) => {
         const h = must(await supabase.rpc('join_household', { p_code: code })) as Household;
         localStorage.setItem(HH_KEY, h.id);
-        await loadHousehold();
+        const res = await loadHousehold();
+        if (!res.h) throw new Error(`Köket sparades men kunde inte läsas: ${res.error ?? 'inga rader'}`);
       },
       rotateInvite: async () => {
         const code = must(await supabase.rpc('rotate_invite_code', { p_household: need() })) as string;

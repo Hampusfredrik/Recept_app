@@ -28,6 +28,17 @@ function Loading() {
   return <div className="screen" style={{ display: 'grid', placeItems: 'center', minHeight: '100dvh' }}><Spinner size={28} border={4} /></div>;
 }
 
+function LoadError({ message, retry }: { message: string; retry: () => void }) {
+  return (
+    <div className="screen no-tabs col" style={{ gap: 12 }}>
+      <span className="kicker">Något gick fel</span>
+      <h1 className="h1">Kunde inte hämta recepten</h1>
+      <p className="muted" style={{ margin: 0 }}>{message}</p>
+      <button className="btn btn-primary" onClick={retry} style={{ height: 48, alignSelf: 'flex-start', padding: '0 20px' }}>Försök igen</button>
+    </div>
+  );
+}
+
 function Gate() {
   const s = useStore();
   const loc = useLocation();
@@ -46,6 +57,7 @@ function Gate() {
   if (!s.session) return <Login />;
   if (s.householdLoading) return <Loading />;
   if (!s.household) return <Onboarding />;
+  if (!s.loaded && s.error) return <LoadError message={s.error} retry={s.reload} />;
   if (!s.loaded) return <Loading />;
 
   return (

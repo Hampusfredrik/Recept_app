@@ -84,7 +84,7 @@ export function Login() {
 }
 
 export function Onboarding() {
-  const { createHousehold, joinHousehold, signOut } = useStore();
+  const { createHousehold, joinHousehold, signOut, error: loadErr } = useStore();
   const [code, setCode] = useState(localStorage.getItem('receptappen.invite.failed') ?? '');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -110,7 +110,7 @@ export function Onboarding() {
           <button className="btn btn-secondary" disabled={busy || !code.trim()} onClick={() => run(() => joinHousehold(code))} style={{ height: 48, flex: 'none', padding: '0 18px' }}>Gå med</button>
         </div>
       </div>
-      {err && <span className="err">{err}</span>}
+      {(err || loadErr) && <span className="err">{err || loadErr}</span>}
       <button className="btn btn-ghost" onClick={signOut} style={{ alignSelf: 'flex-start', color: 'var(--color-accent-700)' }}>Logga ut</button>
     </div>
   );
