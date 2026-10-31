@@ -90,7 +90,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!hid) return;
     const [rec, tags, plan, pantry] = await Promise.all([
       supabase.from('recipes')
-        .select('*, recipe_ingredients(*), recipe_steps(*), recipe_tags(tag_id), notes(text,updated_at,updated_by), checked_items(ingredient_id)')
+        .select([
+          '*',
+          // Främmande nycklar anges uttryckligen: checked_items kopplar också ihop
+          // recipes och recipe_ingredients, så annars blir inbäddningen tvetydig.
+          'recipe_ingredients!recipe_ingredients_recipe_id_fkey(*)',
+          'recipe_steps!recipe_steps_recipe_id_fkey(*)',
+          'recipe_tags!recipe_tags_recipe_id_fkey(tag_id)',
+          'notes!notes_recipe_id_fkey(text,updated_at,updated_by)',
+          'checked_items!checked_items_recipe_id_fkey(ingredient_id)',
+        ].join(','))
         .eq('household_id', hid).order('created_at', { ascending: false }),
       supabase.from('tags').select('*').eq('household_id', hid).order('created_at'),
       supabase.from('week_plan').select('date,recipe_id').eq('household_id', hid),
@@ -103,7 +112,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       recipe_ingredients: Ingredient[]; recipe_steps: Step[]; recipe_tags: { tag_id: string }[];
       notes: Recipe['note'] | Recipe['note'][]; checked_items: { ingredient_id: number }[];
     };
-    const recipes = (rec.data as Row[]).map(({ recipe_ingredients, recipe_steps, recipe_tags, notes, checked_items, ...r }) => ({
+    const recipes = (rec.data as unknown as Row[]).map(({ recipe_ingredients, recipe_steps, recipe_tags, notes, checked_items, ...r }) => ({
       ...r,
       ingredients: [...recipe_ingredients].sort((a, b) => a.position - b.position).map((i) => ({ ...i, amount: i.amount == null ? null : Number(i.amount), grams: i.grams == null ? null : Number(i.grams) })),
       steps: [...recipe_steps].sort((a, b) => a.position - b.position),
