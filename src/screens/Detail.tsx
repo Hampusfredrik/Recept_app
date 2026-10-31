@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
-import { ArrowUpRight, BookOpen, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, CalendarDays, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Users } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Stepper, TagPill, Thumb, useToast } from '../components/ui';
-import { daysSince, lastLabel, shortDate } from '../lib/dates';
+import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekDates, WEEKDAYS_SHORT } from '../lib/dates';
+import { dayName } from '../lib/logic';
 import { amountLabel, domainOf, EFFORT } from '../lib/format';
 import { guessUse, parseIngredientLine } from '../../supabase/functions/_shared/parse';
 import { NutritionTab } from './NutritionTab';
@@ -14,13 +15,15 @@ type Tab = 'ingr' | 'steps' | 'nut';
 
 export function Detail() {
   const { id } = useParams();
-  const { recipes, tags, cookedToday, toggleChecked, resetChecked, deleteRecipe } = useStore();
+  const { recipes, tags, plan, cookedToday, toggleChecked, resetChecked, deleteRecipe } = useStore();
   const nav = useNavigate();
   const toast = useToast();
   const r = recipes.find((x) => x.id === id);
   const [tab, setTab] = useState<Tab>('ingr');
   const [port, setPort] = useState<number | null>(null);
   const [writeIngr, setWriteIngr] = useState(false);
+  const [pickDay, setPickDay] = useState(false);
+  const back = useBack();
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
   if (!r) return <Navigate to="/recept" replace />;
@@ -28,8 +31,9 @@ export function Detail() {
   const scale = portions / r.portions;
   const days = daysSince(r.last_cooked_on);
   const cooked = days === 0;
-  const back = useBack();
   const recTags = r.tagIds.map((t) => tags.find((x) => x.id === t)).filter((t) => !!t);
+  const weekIso = weekDates().map(iso);
+  const plannedDays = plan.filter((p) => p.recipe_id === r.id && weekIso.includes(p.date)).map((p) => p.date).sort();
   const sinceLabel = lastLabel(days).replace('Lagad ', '').replace(/^./, (c) => c.toUpperCase());
 
   return (
@@ -86,6 +90,20 @@ export function Detail() {
             className="row" style={{ flex: 'none', gap: 6, height: 40, padding: '0 14px', borderRadius: 999, border: 0, cursor: 'pointer', font: '700 13px var(--font-body)',
               background: cooked ? 'var(--color-accent-2-600)' : 'var(--color-bg)', color: cooked ? 'var(--color-bg)' : 'var(--color-accent-2-900)' }}>
             <Ico icon={CircleCheck} size={16} />{cooked ? 'Lagad idag' : 'Lagade idag'}
+          </button>
+        </div>
+
+        <div className="row" style={{ gap: 12, padding: '12px 12px 12px 12px', borderRadius: 24, border: '1.5px solid var(--color-divider)' }}>
+          <span style={{ flex: 'none', width: 40, height: 40, borderRadius: '50%', background: 'var(--color-accent-100)', color: 'var(--color-accent-800)', display: 'grid', placeItems: 'center' }}><Ico icon={CalendarDays} /></span>
+          <span className="col" style={{ flex: 1, minWidth: 0 }}>
+            <span style={{ fontWeight: 700, fontSize: 15 }}>Veckan</span>
+            <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
+              {plannedDays.length ? 'Planerad ' + plannedDays.map((d) => dayName(d).toLowerCase()).join(', ') : 'Inte planerad'}
+            </span>
+          </span>
+          <button onClick={() => setPickDay(true)} className="row"
+            style={{ flex: 'none', gap: 6, height: 40, padding: '0 14px', borderRadius: 999, border: 0, cursor: 'pointer', font: '700 13px var(--font-body)', background: 'var(--color-accent)', color: 'var(--color-bg)' }}>
+            {plannedDays.length ? 'Ändra' : 'Lägg i veckan'}
           </button>
         </div>
 
@@ -153,6 +171,7 @@ export function Detail() {
       </div>
 
       {writeIngr && <WriteIngredients r={r} onClose={() => setWriteIngr(false)} />}
+      {pickDay && <WeekDaySheet r={r} onClose={() => setPickDay(false)} />}
     </div>
   );
 }
@@ -237,6 +256,58 @@ function WriteIngredients({ r, onClose }: { r: Recipe; onClose: () => void }) {
       <textarea className="input" autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder={'400 g kycklingfilé\n1 gul lök\n4 dl kokosmjölk'}
         style={{ borderRadius: 24, minHeight: 160, padding: '12px 16px', fontSize: 16 }} />
       <button className="btn btn-primary btn-block" disabled={busy} onClick={save} style={{ height: 52, fontSize: 16 }}>Spara ingredienser</button>
+    </Sheet>
+  );
+}
+
+/** Välj dag i veckan för receptet. Tryck på en dag där receptet redan ligger för att ta bort det. */
+function WeekDaySheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
+  const { recipes, plan, setPlan } = useStore();
+  const toast = useToast();
+  const days = weekDates();
+  const t = today();
+  const choose = async (date: string, mine: boolean) => {
+    if (mine) {
+      await setPlan(date, null);
+      toast(`Borttaget från ${dayName(date).toLowerCase()}`);
+    } else {
+      await setPlan(date, r.id);
+      toast(`Lagt på ${dayName(date).toLowerCase()}`);
+      onClose();
+    }
+  };
+  return (
+    <Sheet onClose={onClose} style={{ gap: 12 }}>
+      <div className="col" style={{ gap: 2 }}>
+        <h3>Lägg i veckan</h3>
+        <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Vecka {isoWeek(days[0])} · tryck på en dag</span>
+      </div>
+      <div className="col" style={{ gap: 6 }}>
+        {days.map((d, i) => {
+          const date = iso(d);
+          const entry = plan.find((p) => p.date === date);
+          const other = entry && entry.recipe_id !== r.id ? recipes.find((x) => x.id === entry.recipe_id) : undefined;
+          const mine = entry?.recipe_id === r.id;
+          const past = date < t, isToday = date === t;
+          return (
+            <button key={date} disabled={past} onClick={() => choose(date, mine)} className="row hover-surface"
+              style={{ gap: 12, padding: 6, borderRadius: 22, border: 0, background: mine ? 'var(--color-accent-2-100)' : 'transparent', cursor: past ? 'default' : 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--color-text)', opacity: past ? 0.45 : 1 }}>
+              <span className="col" style={{ flex: 'none', width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 16,
+                background: isToday ? 'var(--color-accent)' : 'var(--color-surface)', color: isToday ? 'var(--color-bg)' : 'var(--color-text)' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.06em' }}>{WEEKDAYS_SHORT[i]}</span>
+                <span style={{ fontFamily: 'var(--font-heading)', fontSize: 17, lineHeight: 1.1 }}>{d.getDate()}</span>
+              </span>
+              <span className="col" style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 15, fontWeight: 600 }}>{mine ? 'Det här receptet' : other ? other.name : 'Ledig'}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
+                  {past ? 'Har varit' : mine ? 'Tryck för att ta bort' : other ? 'Tryck för att byta ut' : ''}
+                </span>
+              </span>
+              {mine && <Ico icon={Check} size={18} color="var(--color-accent-2-700)" style={{ marginRight: 8 }} />}
+            </button>
+          );
+        })}
+      </div>
     </Sheet>
   );
 }
