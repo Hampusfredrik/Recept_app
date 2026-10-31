@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 import { BookMarked, CalendarDays, ChefHat, House, Plus, Tag } from 'lucide-react';
 import { Ico } from './ui';
 import { useUi } from './uiState';
@@ -13,7 +13,7 @@ export function TabBar({ desktopOnly = false }: { desktopOnly?: boolean }) {
   );
   return (
     <nav className={'tabbar' + (desktopOnly ? ' desktop-only' : '')} aria-label="Huvudmeny">
-      <span className="brand"><Ico icon={ChefHat} size={22} />Receptappen</span>
+      <Link to="/" className="brand" aria-label="Receptappen, till startsidan"><Ico icon={ChefHat} size={22} />Receptappen</Link>
       {tab('/', House, 'Idag')}
       {tab('/recept', BookMarked, 'Recept')}
       <button className="plus" onClick={() => setSheet({ kind: 'add' })} aria-label="Lägg till recept">
