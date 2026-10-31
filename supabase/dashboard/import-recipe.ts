@@ -32,11 +32,19 @@ const unitOf = (u: string | undefined) => { const k = (u || '').toLowerCase(); r
 
 export interface ParsedIngredient {
   amount: number | null;
+  /** Övre värdet när mängden är ett intervall ("1-2 msk" → amount 1, amount_max 2). */
+  amount_max?: number | null;
   unit: string;
   name: string;
 }
 
 const FRACTIONS: Record<string, number> = { '½': 0.5, '¼': 0.25, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3 };
+
+/** Övre värdet i ett intervall ("2-3" → 3), annars null. */
+export function amountMax(raw: string): number | null {
+  const range = raw.trim().match(/^[\d.,]+\s*[-–]\s*([\d.,]+)$/);
+  return range ? parseAmount(range[1]) : null;
+}
 
 export function parseAmount(raw: string): number | null {
   const s = raw.trim();
@@ -63,7 +71,9 @@ export function parseIngredientLine(line: string): ParsedIngredient {
   const t = line.trim().replace(/\s+/g, ' ').replace(/^(ca\.?|cirka|ungefär)\s+(?=[\d½¼¾⅓⅔])/i, '');
   const m = t.match(INGR_LINE);
   if (!m) return { amount: null, unit: '', name: t };
-  return { amount: parseAmount(m[1]), unit: unitOf(m[2]), name: m[3].trim() };
+  const amount = parseAmount(m[1]);
+  const max = amountMax(m[1]);
+  return { amount, ...(max != null && amount != null && max > amount ? { amount_max: max } : {}), unit: unitOf(m[2]), name: m[3].trim() };
 }
 
 /** Ser raden ut som en ingrediens enligt reglerna i handoffen? */

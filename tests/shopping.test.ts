@@ -58,3 +58,8 @@ test('olja, socker, mjöl, soja och sirap räknas som hemma, men inte mjölk ell
   assert.deepEqual(buy, ['mjölk', 'sockerärtor', 'kokosmjölk']);
   for (const n of ['olivolja', 'rapsolja', 'olja', 'strösocker', 'vetemjöl', 'potatismjöl', 'japansk soja', 'sojasås', 'ljus sirap']) assert.ok(home.includes(n), n);
 });
+
+test('intervall räknas med det större värdet i inköpslistan', () => {
+  const [s] = shoppingList([recipe('A', [{ ...ing(1, 'msk', 'jordnötssmör'), amount_max: 2 }])]);
+  assert.equal(s.amount, '2 msk');
+});

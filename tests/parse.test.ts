@@ -59,3 +59,9 @@ test('lastLabel följer etiketterna i README', () => {
   assert.equal(lastLabel(30), 'Lagad för 4 veckor sedan');
   assert.equal(lastLabel(200), 'Lagad för 7 månader sedan');
 });
+
+test('intervall sparas med övre värde', () => {
+  assert.deepEqual(parseIngredientLine('1-2 msk japansk soja'), { amount: 1, amount_max: 2, unit: 'msk', name: 'japansk soja' });
+  assert.deepEqual(parseIngredientLine('2–3 tsk curry'), { amount: 2, amount_max: 3, unit: 'tsk', name: 'curry' });
+  assert.deepEqual(parseIngredientLine('1,5-2 dl grädde'), { amount: 1.5, amount_max: 2, unit: 'dl', name: 'grädde' });
+});

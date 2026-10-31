@@ -36,5 +36,5 @@ export function sourceLabel(r: Recipe) {
   return r.source_type === 'web' ? (r.domain || domainOf(r.url || '')) : `${r.book_title ?? ''}${r.page ? ` s. ${r.page}` : ''}`;
 }
 
-export const amountLabel = (amount: number | null, unit: string, scale = 1) =>
-  amount == null ? '' : `${fmt(amount * scale)}${unit ? ' ' + unit : ''}`;
+export const amountLabel = (amount: number | null, unit: string, scale = 1, max?: number | null) =>
+  amount == null ? '' : `${fmt(amount * scale)}${max != null && max > amount ? `–${fmt(max * scale)}` : ''}${unit ? ' ' + unit : ''}`;

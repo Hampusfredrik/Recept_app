@@ -88,7 +88,9 @@ export function shoppingList(recipes: Recipe[]): ShoppingItem[] {
       let g = groups.get(key);
       if (!g) { g = { names: [], sums: new Map(), unmeasured: false, recipes: [], staple: true, order: order++ }; groups.set(key, g); }
       g.names.push(shoppingName(i.name));
-      if (i.amount != null && i.amount > 0) add(g.sums, i.amount, i.unit);
+      // Intervall ("1–2 msk"): det större värdet, så att det räcker.
+      const qty = i.amount_max ?? i.amount;
+      if (qty != null && qty > 0) add(g.sums, qty, i.unit);
       else g.unmeasured = true;
       if (!g.recipes.includes(r.name)) g.recipes.push(r.name);
       // En vara räknas som krydda bara om alla rader för den är kryddor.

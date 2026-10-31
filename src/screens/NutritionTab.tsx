@@ -163,7 +163,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
             <button key={i.id} onClick={() => setSwap(i)} className="row"
               style={{ gap: 10, padding: '9px 0', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', font: 'inherit' }}>
               <div className="col" style={{ flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 14 }}>{[amountLabel(i.amount, i.unit), i.name].filter(Boolean).join(' ')}</span>
+                <span style={{ fontSize: 14 }}>{[amountLabel(i.amount, i.unit, 1, i.amount_max), i.name].filter(Boolean).join(' ')}</span>
                 <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{cube
                   ? `Räknas bara som salt: ${fmt(STOCK_CUBE_SALT_G)} g per tärning`
                   : ignored
@@ -224,7 +224,7 @@ function FoodSheet({ ing, onClose, weights }: { ing: Ingredient; onClose: () => 
   return (
     <Sheet onClose={onClose} className="sheet-top" style={{ gap: 12 }}>
       <h3>Byt livsmedel</h3>
-      <span style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: -6 }}>{[amountLabel(ing.amount, ing.unit), ing.name].filter(Boolean).join(' ')}</span>
+      <span style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: -6 }}>{[amountLabel(ing.amount, ing.unit, 1, ing.amount_max), ing.name].filter(Boolean).join(' ')}</span>
       <label className="row" style={{ gap: 10, height: 48, padding: '0 16px', borderRadius: 999, background: 'var(--color-surface)', color: 'var(--color-neutral-700)' }}>
         <Ico icon={Search} />
         <input value={q} type="search" enterKeyHint="search" onChange={(e) => setQ(e.target.value)} placeholder="Sök livsmedel"

@@ -144,12 +144,12 @@ export async function saveUnitWeight(householdId: string, lvFoodId: number, unit
 }
 
 /** Uppskattad energi per portion för granskningsvyn (innan receptet är sparat). */
-export async function estimateKcal(lines: { amount: number | null; unit: string; name: string }[], portions: number): Promise<number | null> {
+export async function estimateKcal(lines: { amount: number | null; amount_max?: number | null; unit: string; name: string }[], portions: number): Promise<number | null> {
   if (!lines.length) return null;
   const foods = await foodList();
   const ings: Ingredient[] = lines.map((l, k) => {
     const m = matchFood(l.name, foods);
-    return { id: k, recipe_id: '', position: k, amount: l.amount, unit: l.unit, name: l.name, grams: null,
+    return { id: k, recipe_id: '', position: k, amount: l.amount, amount_max: l.amount_max ?? null, unit: l.unit, name: l.name, grams: null,
       lv_food_id: m?.food.id ?? null, lv_food_name: m?.food.name ?? null, match_confidence: m ? (m.sure ? 'sure' : 'unsure') : null };
   });
   const ids = [...new Set(ings.map((i) => i.lv_food_id).filter((x): x is number => x != null))];

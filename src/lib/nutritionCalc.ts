@@ -83,6 +83,8 @@ export interface NutResult {
 }
 
 export function computeNutrition(ingredients: Ingredient[], portions: number, foods: Map<number, Per100>, weights: Map<string, number>): NutResult {
+  // Intervall ("1–2 msk") räknas som medelvärdet.
+  ingredients = ingredients.map((x) => (x.amount != null && x.amount_max != null && x.amount_max > x.amount ? { ...x, amount: (x.amount + x.amount_max) / 2 } : x));
   const sum: Per100 = {};
   const noWeight: Ingredient[] = [];
   const noFood: Ingredient[] = [];

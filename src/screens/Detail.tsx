@@ -146,7 +146,7 @@ export function Detail() {
                     <span style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${c ? 'var(--color-accent-2-600)' : 'var(--color-neutral-400)'}`, background: c ? 'var(--color-accent-2-600)' : 'transparent', display: 'grid', placeItems: 'center' }}>
                       <Ico icon={Check} size={12} color="var(--color-bg)" />
                     </span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-accent-700)', textDecoration: c ? 'line-through' : 'none' }}>{amountLabel(i.amount, i.unit, scale)}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-accent-700)', textDecoration: c ? 'line-through' : 'none' }}>{amountLabel(i.amount, i.unit, scale, i.amount_max)}</span>
                     <span style={{ textDecoration: c ? 'line-through' : 'none' }}>{i.name}</span>
                   </button>
                 );
@@ -212,7 +212,7 @@ function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; s
                 <div className="wrap">
                   {used.map((u) => (
                     <span key={u.id} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '4px 11px', borderRadius: 999, background: 'var(--color-surface)', fontSize: 13 }}>
-                      {u.amount != null && <b style={{ color: 'var(--color-accent-700)' }}>{amountLabel(u.amount, u.unit, scale)}</b>}<span>{u.name}</span>
+                      {u.amount != null && <b style={{ color: 'var(--color-accent-700)' }}>{amountLabel(u.amount, u.unit, scale, u.amount_max)}</b>}<span>{u.name}</span>
                     </span>
                   ))}
                 </div>

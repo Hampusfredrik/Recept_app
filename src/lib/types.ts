@@ -6,6 +6,8 @@ export interface Ingredient {
   recipe_id: string;
   position: number;
   amount: number | null;
+  /** Övre värdet när mängden är ett intervall. Saknas om databasen inte har kolumnen. */
+  amount_max?: number | null;
   unit: string;
   name: string;
   grams: number | null;
@@ -76,7 +78,7 @@ export interface NewRecipe {
   book_title?: string | null;
   page?: string | null;
   image_url?: string | null;
-  ingredients: { amount: number | null; unit: string; name: string }[];
+  ingredients: { amount: number | null; amount_max?: number | null; unit: string; name: string }[];
   steps: string[];
   tagIds: string[];
 }

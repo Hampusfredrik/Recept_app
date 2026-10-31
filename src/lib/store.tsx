@@ -36,7 +36,7 @@ interface Store extends Data {
   toggleChecked: (recipeId: string, ingredientId: number) => Promise<void>;
   resetChecked: (recipeId: string) => Promise<void>;
   saveNote: (recipeId: string, text: string) => Promise<void>;
-  addIngredients: (recipeId: string, lines: { amount: number | null; unit: string; name: string }[]) => Promise<void>;
+  addIngredients: (recipeId: string, lines: { amount: number | null; amount_max?: number | null; unit: string; name: string }[]) => Promise<void>;
   editRecipe: (recipeId: string, edit: RecipeEdit) => Promise<void>;
   setRecipeImage: (recipeId: string, file: File | null) => Promise<void>;
   setRecipeImageUrl: (recipeId: string, url: string) => Promise<void>;
@@ -141,7 +141,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
     const recipes = (rec.data as unknown as Row[]).map(({ recipe_ingredients, recipe_steps, recipe_tags, notes, checked_items, ...r }) => ({
       ...r,
-      ingredients: [...recipe_ingredients].sort((a, b) => a.position - b.position).map((i) => ({ ...i, amount: i.amount == null ? null : Number(i.amount), grams: i.grams == null ? null : Number(i.grams) })),
+      ingredients: [...recipe_ingredients].sort((a, b) => a.position - b.position).map((i) => ({ ...i, amount: i.amount == null ? null : Number(i.amount), amount_max: i.amount_max == null ? null : Number(i.amount_max), grams: i.grams == null ? null : Number(i.grams) })),
       steps: [...recipe_steps].sort((a, b) => a.position - b.position),
       tagIds: recipe_tags.map((t) => t.tag_id),
       note: Array.isArray(notes) ? notes[0] ?? null : notes,
@@ -171,6 +171,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     document.addEventListener('visibilitychange', onVisible);
     return () => { clearTimeout(timer.current); supabase.removeChannel(ch); document.removeEventListener('visibilitychange', onVisible); };
   }, [hid, reload]);
+
+  // Kolumnen amount_max (intervall som "1–2 msk") kan saknas om migreringen inte körts:
+  // då sparas det lägre värdet som förut.
+  const insertIngredients = async (rows: Record<string, unknown>[]) => {
+    const res = await supabase.from('recipe_ingredients').insert(rows);
+    if (res.error && /amount_max/.test(res.error.message)) {
+      return supabase.from('recipe_ingredients').insert(rows.map(({ amount_max: _m, ...r }) => r));
+    }
+    return res;
+  };
 
   const must = <T,>(r: { data: T; error: { message: string } | null }): T => {
     if (r.error) throw new Error(r.error.message);
@@ -221,8 +231,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const { ingredients, steps, tagIds, ...rest } = r;
         const rec = must(await supabase.from('recipes').insert({ ...rest, household_id }).select('id').single()) as { id: string };
         if (ingredients.length) {
-          must(await supabase.from('recipe_ingredients').insert(
-            ingredients.map((i, position) => ({ ...i, position, household_id, recipe_id: rec.id }))));
+          must(await insertIngredients(ingredients.map((i, position) => ({ ...i, position, household_id, recipe_id: rec.id }))));
         }
         if (steps.length) {
           must(await supabase.from('recipe_steps').insert(
@@ -265,11 +274,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         patchRecipe(recipeId, (r) => ({ ...r, note: { text, updated_at, updated_by: uid } }));
         must(await supabase.from('notes').upsert({ recipe_id: recipeId, household_id, text, updated_at, updated_by: uid }));
       },
-      addIngredients: async (recipeId: string, lines: { amount: number | null; unit: string; name: string }[]) => {
+      addIngredients: async (recipeId: string, lines: { amount: number | null; amount_max?: number | null; unit: string; name: string }[]) => {
         const household_id = need();
         const r = data.recipes.find((x) => x.id === recipeId);
         const start = r ? r.ingredients.length : 0;
-        must(await supabase.from('recipe_ingredients').insert(lines.map((l, k) => ({ ...l, position: start + k, household_id, recipe_id: recipeId }))));
+        must(await insertIngredients(lines.map((l, k) => ({ ...l, position: start + k, household_id, recipe_id: recipeId }))));
         await reload();
       },
       setRecipeImage: async (recipeId: string, file: File | null) => {
@@ -305,7 +314,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         must(await supabase.from('recipes').update(edit.fields).eq('id', recipeId));
 
         // Ingredienser: oförändrade rader behåller sitt livsmedel, sin vikt och avbockning.
-        const key = (i: { amount: number | null; unit: string; name: string }) => `${i.amount ?? ''}|${i.unit}|${i.name.trim().toLowerCase()}`;
+        const key = (i: { amount: number | null; amount_max?: number | null; unit: string; name: string }) => `${i.amount ?? ''}|${i.amount_max ?? ''}|${i.unit}|${i.name.trim().toLowerCase()}`;
         const remaining = [...r.ingredients];
         const keepIds: number[] = [];
         const plan = edit.ingredients.map((l, position) => {
@@ -316,7 +325,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (remaining.length) must(await supabase.from('recipe_ingredients').delete().in('id', remaining.map((x) => x.id)));
         for (const p of plan) if ('id' in p) must(await supabase.from('recipe_ingredients').update({ position: p.position }).eq('id', p.id!));
         const fresh = plan.filter((p) => 'new' in p).map((p) => p.new!);
-        if (fresh.length) must(await supabase.from('recipe_ingredients').insert(fresh));
+        if (fresh.length) must(await insertIngredients(fresh));
 
         // Steg: oförändrade steg behåller sin koppling till ingredienser.
         const oldSteps = [...r.steps];

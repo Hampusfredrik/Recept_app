@@ -24,7 +24,7 @@ export function EditRecipe() {
   const [tagIds, setTagIds] = useState<string[]>(r?.tagIds ?? []);
   const [book, setBook] = useState(r?.book_title ?? '');
   const [page, setPage] = useState(r?.page ?? '');
-  const [ingr, setIngr] = useState(r ? r.ingredients.map((i) => [amountLabel(i.amount, i.unit), i.name].filter(Boolean).join(' ')).join('\n') : '');
+  const [ingr, setIngr] = useState(r ? r.ingredients.map((i) => [amountLabel(i.amount, i.unit, 1, i.amount_max), i.name].filter(Boolean).join(' ')).join('\n') : '');
   const [steps, setSteps] = useState<string[]>(r ? r.steps.map((s) => s.text) : []);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
