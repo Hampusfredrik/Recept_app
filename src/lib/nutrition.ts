@@ -26,10 +26,18 @@ async function readList(): Promise<LvFood[]> {
 }
 
 /** Felmeddelandet från en Edge Function, inte bara "non-2xx status code". */
-export async function functionError(error: unknown): Promise<Error> {
+export async function functionError(error: unknown, fn?: string): Promise<Error> {
   const ctx = (error as { context?: Response })?.context;
-  if (ctx && typeof ctx.json === 'function') {
-    try { const body = await ctx.json(); if (body?.error) return new Error(String(body.error)); } catch { /* inte JSON */ }
+  if (ctx && typeof ctx.status === 'number') {
+    let body: Record<string, unknown> | null = null;
+    let text = '';
+    try { text = await ctx.clone().text(); body = JSON.parse(text); } catch { /* inte JSON */ }
+    if (body?.error) return new Error(String(body.error));
+    const name = fn ? `Funktionen ${fn}` : 'Funktionen';
+    const server = String(body?.message ?? body?.msg ?? text ?? '').slice(0, 160);
+    if (ctx.status === 404) return new Error(`${name} hittades inte i Supabase. Är den publicerad med exakt det namnet? (HTTP 404${server ? `: ${server}` : ''})`);
+    if (ctx.status === 401) return new Error(`${name} nekade inloggningen. Logga ut och in igen. (HTTP 401${server ? `: ${server}` : ''})`);
+    return new Error(`${name} svarade med ett fel (HTTP ${ctx.status}${server ? `: ${server}` : ''})`);
   }
   return error instanceof Error ? error : new Error(String(error));
 }
@@ -40,7 +48,7 @@ export function foodList(): Promise<LvFood[]> {
       let list = await readList();
       if (list.length < 100) {
         const { data, error } = await supabase.functions.invoke('lv-foods', { body: { action: 'sync', force: true } });
-        if (error) throw await functionError(error);
+        if (error) throw await functionError(error, 'lv-foods');
         list = await readList();
         if (list.length < 100) throw new Error(`Livsmedelslistan från Livsmedelsverket är tom (hämtade ${data?.synced ?? 0} livsmedel).`);
       }
@@ -106,7 +114,7 @@ export async function fetchNutrients(ids: number[]): Promise<{ map: Map<number, 
   const map = new Map<number, Per100>();
   if (!ids.length) return { map, errors: [] };
   const { data, error } = await supabase.functions.invoke('lv-foods', { body: { action: 'nutrients', ids } });
-  if (error) throw await functionError(error);
+  if (error) throw await functionError(error, 'lv-foods');
   for (const f of (data?.foods ?? []) as { id: number; per_100g: Per100 | null }[]) if (f.per_100g) map.set(f.id, f.per_100g);
   return { map, errors: Object.values((data?.errors ?? {}) as Record<string, string>) };
 }

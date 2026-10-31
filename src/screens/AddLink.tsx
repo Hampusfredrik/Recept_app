@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { functionError } from '../lib/nutrition';
 import { useStore } from '../lib/store';
 import { Ico, Spinner, Thumb, TopBar, useToast } from '../components/ui';
 import { KcalEstimate, useSaveFields } from '../components/SaveFields';
@@ -51,7 +52,8 @@ export function AddLink() {
     const { data: res, error } = await supabase.functions.invoke('import-recipe', { body: { url: u } });
     if (error || !res || res.error) {
       setPhase('input');
-      return setErr(res?.error ? `Kunde inte läsa sidan: ${res.error}` : 'Kunde inte läsa sidan. Försök igen.');
+      const why = res?.error ?? (error ? (await functionError(error, 'import-recipe')).message : 'inget svar');
+      return setErr(`Kunde inte läsa sidan: ${why}`);
     }
     setData(res as Imported);
     setName((res as Imported).name);

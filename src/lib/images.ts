@@ -30,7 +30,7 @@ export interface PexelsPhoto { id: number; thumb: string; image: string; photogr
 
 export async function searchImages(query: string): Promise<PexelsPhoto[]> {
   const { data, error } = await supabase.functions.invoke('image-search', { body: { query } });
-  if (error) throw await functionError(error);
+  if (error) throw await functionError(error, 'image-search');
   return (data?.photos ?? []) as PexelsPhoto[];
 }
 
