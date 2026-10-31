@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
-import { ArrowUpRight, BookOpen, CalendarDays, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, CalendarDays, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Users } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
 import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
@@ -45,6 +45,10 @@ export function Detail() {
       <button onClick={back} aria-label="Tillbaka" className="detail-back"
         style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', left: 16, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--color-text)', zIndex: 3 }}>
         <Ico icon={ChevronLeft} size={20} />
+      </button>
+      <button onClick={() => nav(`/recept/${r.id}/redigera`)} aria-label="Redigera recept" className="detail-edit"
+        style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', right: 16, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--color-text)', zIndex: 3 }}>
+        <Ico icon={Pencil} size={18} />
       </button>
       <div className="detail-title" style={{ padding: '22px 20px 0' }}><h1 style={{ margin: 0, fontSize: 31, textWrap: 'pretty' }}>{r.name}</h1></div>
 

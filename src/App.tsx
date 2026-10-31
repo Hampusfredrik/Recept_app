@@ -12,6 +12,7 @@ import { Week } from './screens/Week';
 import { Tags } from './screens/Tags';
 import { Pantry } from './screens/Pantry';
 import { Detail } from './screens/Detail';
+import { EditRecipe } from './screens/EditRecipe';
 import { AddLink } from './screens/AddLink';
 import { AddBook } from './screens/AddBook';
 import { Scan, hasFreshScanDraft } from './screens/Scan';
@@ -75,6 +76,7 @@ function Gate() {
         <Route path="/" element={<Home />} />
         <Route path="/recept" element={<Library />} />
         <Route path="/recept/:id" element={<Detail />} />
+        <Route path="/recept/:id/redigera" element={<EditRecipe />} />
         <Route path="/veckan" element={<Week />} />
         <Route path="/taggar" element={<Tags />} />
         <Route path="/laga" element={<Pantry />} />

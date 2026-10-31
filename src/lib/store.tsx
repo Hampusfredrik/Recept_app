@@ -36,6 +36,7 @@ interface Store extends Data {
   resetChecked: (recipeId: string) => Promise<void>;
   saveNote: (recipeId: string, text: string) => Promise<void>;
   addIngredients: (recipeId: string, lines: { amount: number | null; unit: string; name: string }[]) => Promise<void>;
+  editRecipe: (recipeId: string, edit: RecipeEdit) => Promise<void>;
   updateIngredient: (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams'>>) => Promise<void>;
   // taggar
   addTag: (name: string) => Promise<Tag>;
@@ -46,6 +47,13 @@ interface Store extends Data {
   // skafferi
   addPantry: (name: string) => Promise<void>;
   removePantry: (name: string) => Promise<void>;
+}
+
+export interface RecipeEdit {
+  fields: Partial<Pick<Recipe, 'name' | 'portions' | 'effort' | 'book_title' | 'page'>>;
+  ingredients: { amount: number | null; unit: string; name: string }[];
+  steps: string[];
+  tagIds: string[];
 }
 
 const Ctx = createContext<Store | null>(null);
@@ -258,6 +266,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const r = data.recipes.find((x) => x.id === recipeId);
         const start = r ? r.ingredients.length : 0;
         must(await supabase.from('recipe_ingredients').insert(lines.map((l, k) => ({ ...l, position: start + k, household_id, recipe_id: recipeId }))));
+        await reload();
+      },
+      editRecipe: async (recipeId: string, edit: RecipeEdit) => {
+        const household_id = need();
+        const r = data.recipes.find((x) => x.id === recipeId);
+        if (!r) throw new Error('Receptet finns inte');
+        must(await supabase.from('recipes').update(edit.fields).eq('id', recipeId));
+
+        // Ingredienser: oförändrade rader behåller sitt livsmedel, sin vikt och avbockning.
+        const key = (i: { amount: number | null; unit: string; name: string }) => `${i.amount ?? ''}|${i.unit}|${i.name.trim().toLowerCase()}`;
+        const remaining = [...r.ingredients];
+        const keepIds: number[] = [];
+        const plan = edit.ingredients.map((l, position) => {
+          const k = remaining.findIndex((x) => key(x) === key(l));
+          if (k >= 0) { const [old] = remaining.splice(k, 1); keepIds.push(old.id); return { id: old.id, position }; }
+          return { new: { ...l, position, household_id, recipe_id: recipeId } };
+        });
+        if (remaining.length) must(await supabase.from('recipe_ingredients').delete().in('id', remaining.map((x) => x.id)));
+        for (const p of plan) if ('id' in p) must(await supabase.from('recipe_ingredients').update({ position: p.position }).eq('id', p.id!));
+        const fresh = plan.filter((p) => 'new' in p).map((p) => p.new!);
+        if (fresh.length) must(await supabase.from('recipe_ingredients').insert(fresh));
+
+        // Steg: oförändrade steg behåller sin koppling till ingredienser.
+        const oldSteps = [...r.steps];
+        const stepRows = edit.steps.map((text, position) => {
+          const k = oldSteps.findIndex((x) => x.text === text);
+          const ids = k >= 0 ? oldSteps.splice(k, 1)[0].ingredient_ids : null;
+          return { text, position, household_id, recipe_id: recipeId, ingredient_ids: ids?.filter((id) => keepIds.includes(Number(id))) ?? null };
+        });
+        must(await supabase.from('recipe_steps').delete().eq('recipe_id', recipeId));
+        if (stepRows.length) must(await supabase.from('recipe_steps').insert(stepRows));
+
+        // Taggar
+        const add = edit.tagIds.filter((t) => !r.tagIds.includes(t));
+        const del = r.tagIds.filter((t) => !edit.tagIds.includes(t));
+        if (del.length) must(await supabase.from('recipe_tags').delete().eq('recipe_id', recipeId).in('tag_id', del));
+        if (add.length) must(await supabase.from('recipe_tags').insert(add.map((tag_id) => ({ tag_id, household_id, recipe_id: recipeId }))));
         await reload();
       },
       updateIngredient: async (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams'>>) => {

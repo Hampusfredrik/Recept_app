@@ -143,6 +143,7 @@ a:hover { color: var(--color-accent-600); }
   .detail-hero { height: 360px !important; margin: 0 var(--side); }
   .detail-hero > .thumb { border-radius: 34px !important; }
   .detail-back { top: 48px !important; left: calc(var(--side) + 16px) !important; }
+  .detail-edit { top: 48px !important; right: calc(var(--side) + 16px) !important; }
   .detail-title { padding: 26px var(--side) 0 !important; }
   .detail-title h1 { font-size: 40px !important; }
   .detail-body {
