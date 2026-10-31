@@ -166,9 +166,15 @@ const END = /^(dela|dela detta|gilla|kommentarer?|lämna en kommentar|skriv en k
 export interface HtmlRecipe { portions: number | null; ingredients: ParsedIngredient[]; steps: string[] }
 
 const sentence = (t: string) => /[.!?]$/.test(t);
+// Rader på webbsidor kan vara längre än i en kokbok ("1 msk buljongpulver, alternativt
+// 1 grönsaksbuljongtärning"), så gränsen är högre här än för Live Text.
+const AMOUNT_START = new RegExp(`^(ca\\.?\\s+|cirka\\s+)?${AMOUNT_RE}\\s*(${UNIT_RE})?\\.?\\s+\\S`, 'i');
+const webIngredient = (t: string) => !/^\d+[.)]\s/.test(t) && t.length <= 100 && !sentence(t) && AMOUNT_START.test(t);
+// Vanliga delrubriker i ingredienslistor.
+const SUBHEADS = /^(servering|till servering|att servera med|tillbehör|garnering|garnityr|topping|toppning|sås|dressing|fyllning|deg|glasyr|marinad|till ytan|till pensling)\s*:?$/i;
 /** Kort rad utan mängd som inleder en del av listan: "Servering", "Brynt salviasmör:". */
 const isSubhead = (t: string, next: string | undefined) =>
-  t.length < 40 && (/:$/.test(t) || (/^[A-ZÅÄÖ]/.test(t) && t.split(' ').length <= 4 && !!next && looksLikeIngredient(next)));
+  t.length < 40 && (SUBHEADS.test(t) || /:$/.test(t) || (/^[A-ZÅÄÖ]/.test(t) && t.split(' ').length <= 4 && !!next && webIngredient(next)));
 
 /** Läser ingredienser från rad `from` tills listan tar slut. */
 function ingredientBlock(rows: string[], from: number): { lines: string[]; end: number } {
@@ -177,8 +183,8 @@ function ingredientBlock(rows: string[], from: number): { lines: string[]; end: 
   for (; k < rows.length; k++) {
     const t = rows[k];
     if (STEP_HEAD.test(t) || END.test(t) || INGR_HEAD.test(t.replace(/:$/, ''))) break;
-    if (looksLikeIngredient(t)) { lines.push(t); continue; }
-    if (t.length > 50 || sentence(t) || /^\d+[.)]\s/.test(t)) break;
+    if (webIngredient(t)) { lines.push(t); continue; }
+    if (t.length > 90 || sentence(t) || /^\d+[.)]\s/.test(t)) break;
     if (isSubhead(t, rows[k + 1])) continue;
     lines.push(t);
   }
@@ -208,9 +214,9 @@ export function recipeFromHtml(html: string): HtmlRecipe {
   if (!ingr.length) {
     let bestStart = -1, bestLen = 0;
     for (let k = 0; k < rows.length;) {
-      if (!looksLikeIngredient(rows[k])) { k++; continue; }
+      if (!webIngredient(rows[k])) { k++; continue; }
       let n = 0;
-      while (k + n < rows.length && looksLikeIngredient(rows[k + n])) n++;
+      while (k + n < rows.length && webIngredient(rows[k + n])) n++;
       if (n > bestLen) { bestLen = n; bestStart = k; }
       k += n;
     }

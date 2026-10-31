@@ -58,3 +58,14 @@ test('lista direkt efter titeln, delrubriker utan kolon', () => {
   assert.deepEqual(r.ingredients.map((i) => i.name), ['tomater', 'pasta', 'grädde', 'salt och peppar', 'olja, till stekning', 'fetaost', 'basilika']);
   assert.deepEqual(r.steps, ['Koka pastan.', 'Blanda allt och gratinera.']);
 });
+
+// Långa ingrediensrader och delrubriken "Servering" följd av rader utan mängd. Påhittad text.
+test('långa rader bryter inte listan, "Servering" är en delrubrik', () => {
+  const r = recipeFromHtml(`<div class="entry-content"><h1>Gryta</h1><p>1 gul lök<br>2 msk tomatpuré<br>
+    1 msk buljongpulver, alternativt 1 grönsaksbuljongtärning<br>1 förpackning kokta bönor à 400 g, sköljda och avrunna<br>
+    Salt och peppar<br>Servering<br>Valfritt ris, t ex basmatiris eller havreris<br>Ev. Koriander</p>
+    <h1>Såhär gör du</h1><p>1. Stek löken.</p><p>2. Koka allt i 10 minuter.</p></div>`);
+  assert.deepEqual(r.ingredients.map((i) => i.name), ['gul lök', 'tomatpuré', 'buljongpulver, alternativt 1 grönsaksbuljongtärning',
+    'kokta bönor à 400 g, sköljda och avrunna', 'Salt och peppar', 'Valfritt ris, t ex basmatiris eller havreris', 'Ev. Koriander']);
+  assert.equal(r.steps.length, 2);
+});
