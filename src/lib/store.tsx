@@ -37,7 +37,7 @@ interface Store extends Data {
   saveNote: (recipeId: string, text: string) => Promise<void>;
   addIngredients: (recipeId: string, lines: { amount: number | null; unit: string; name: string }[]) => Promise<void>;
   editRecipe: (recipeId: string, edit: RecipeEdit) => Promise<void>;
-  updateIngredient: (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams'>>) => Promise<void>;
+  updateIngredient: (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams' | 'lv_manual'>>) => Promise<void>;
   // taggar
   addTag: (name: string) => Promise<Tag>;
   cycleTagTone: (id: string) => Promise<void>;
@@ -305,9 +305,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (add.length) must(await supabase.from('recipe_tags').insert(add.map((tag_id) => ({ tag_id, household_id, recipe_id: recipeId }))));
         await reload();
       },
-      updateIngredient: async (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams'>>) => {
+      updateIngredient: async (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams' | 'lv_manual'>>) => {
         setData((d) => ({ ...d, recipes: d.recipes.map((r) => ({ ...r, ingredients: r.ingredients.map((i) => (i.id === id ? { ...i, ...patch } : i)) })) }));
-        must(await supabase.from('recipe_ingredients').update(patch).eq('id', id));
+        const res = await supabase.from('recipe_ingredients').update(patch).eq('id', id);
+        // Kolumnen lv_manual finns först när SQL-filen för manuella val har körts.
+        if (res.error && 'lv_manual' in patch && /lv_manual/.test(res.error.message)) {
+          const { lv_manual: _m, ...rest } = patch;
+          must(await supabase.from('recipe_ingredients').update(rest).eq('id', id));
+          throw new Error('Valet sparades, men kan skrivas över automatiskt tills SQL-filen för manuella val har körts i Supabase.');
+        }
+        must(res);
       },
 
       addTag: async (name: string) => {

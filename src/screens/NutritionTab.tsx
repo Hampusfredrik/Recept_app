@@ -204,31 +204,36 @@ function FoodSheet({ ing, onClose, weights }: { ing: Ingredient; onClose: () => 
     return m ? [m.food] : [];
   }, [list, q]);
 
-  const choose = async (f: LvFood) => {
-    await updateIngredient(ing.id, { lv_food_id: f.id, lv_food_name: f.name, match_confidence: 'sure' });
-    onClose();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const run = async (patch: Parameters<typeof updateIngredient>[1], done: string) => {
+    setBusy(true);
+    try { await updateIngredient(ing.id, patch); toast(done); onClose(); }
+    catch (e) { toast(e instanceof Error ? e.message : 'Kunde inte spara'); setBusy(false); if (patch.lv_food_id != null) onClose(); }
   };
-  const saveGrams = async () => {
+  const choose = (f: LvFood) => run({ lv_food_id: f.id, lv_food_name: f.name, match_confidence: 'sure', lv_manual: true }, `Kopplad till ${f.name}`);
+  const saveGrams = () => {
     const g = parseFloat(grams.replace(',', '.'));
-    await updateIngredient(ing.id, { grams: Number.isFinite(g) && g > 0 ? g : null });
-    onClose();
+    return run({ grams: Number.isFinite(g) && g > 0 ? g : null }, 'Vikten är sparad');
   };
   const est = toGrams({ ...ing, grams: null }, weights).grams;
 
   return (
-    <Sheet onClose={onClose} style={{ gap: 12 }}>
+    <Sheet onClose={onClose} className="sheet-top" style={{ gap: 12 }}>
       <h3>Byt livsmedel</h3>
       <span style={{ fontSize: 13, color: 'var(--color-neutral-700)', marginTop: -6 }}>{[amountLabel(ing.amount, ing.unit), ing.name].filter(Boolean).join(' ')}</span>
       <label className="row" style={{ gap: 10, height: 48, padding: '0 16px', borderRadius: 999, background: 'var(--color-surface)', color: 'var(--color-neutral-700)' }}>
         <Ico icon={Search} />
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sök livsmedel"
+        <input value={q} type="search" enterKeyHint="search" onChange={(e) => setQ(e.target.value)} placeholder="Sök livsmedel"
           style={{ flex: 1, minWidth: 0, border: 0, background: 'transparent', fontSize: 16, color: 'var(--color-text)', outline: 'none' }} />
       </label>
       <div className="col" style={{ maxHeight: 260, overflowY: 'auto', margin: '0 -8px' }}>
         {!list && <div className="row" style={{ gap: 8, padding: 8 }}><Spinner /> Laddar livsmedel…</div>}
         {list && hits.length === 0 && <span className="muted" style={{ padding: 8, fontSize: 14 }}>Inga träffar.</span>}
         {hits.map((f) => (
-          <button key={f.id} className="hover-surface" onClick={() => choose(f)}
+          <button key={f.id} className="hover-surface" disabled={busy}
+            // Hindrar att trycket bara stänger tangentbordet (och flyttar arket) på iPhone.
+            onPointerDown={(e) => e.preventDefault()} onClick={() => choose(f)}
             style={{ textAlign: 'left', padding: '10px 8px', border: 0, borderRadius: 16, background: f.id === ing.lv_food_id ? 'var(--color-accent-2-100)' : 'transparent', cursor: 'pointer', font: '15px var(--font-body)', color: 'var(--color-text)' }}>
             {f.name}
           </button>

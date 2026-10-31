@@ -63,7 +63,7 @@ export async function matchMissing(ingredients: Ingredient[], update: (id: numbe
     return p.unit ? { i: { ...i, unit: p.unit, name: p.name }, patch: { unit: p.unit, name: p.name } as Partial<Ingredient> } : { i, patch: {} };
   });
   const stale = (i: Ingredient) => {
-    if (i.lv_food_id == null || i.lv_food_name == null) return false;
+    if (i.lv_food_id == null || i.lv_food_name == null || i.lv_manual) return false;
     if (!matchFood(i.name, [{ id: i.lv_food_id, name: i.lv_food_name }])) return true;
     // Osäkra träffar prövas igen: en bättre kan finnas med nuvarande regler.
     if (i.match_confidence === 'unsure') return true;

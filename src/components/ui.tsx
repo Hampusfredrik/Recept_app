@@ -110,7 +110,7 @@ export function Stepper({ label, value, onChange }: { label: string; value: numb
   );
 }
 
-export function Sheet({ onClose, children, style }: { onClose: () => void; children: ReactNode; style?: CSSProperties }) {
+export function Sheet({ onClose, children, style, className }: { onClose: () => void; children: ReactNode; style?: CSSProperties; className?: string }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -119,7 +119,7 @@ export function Sheet({ onClose, children, style }: { onClose: () => void; child
   return (
     <>
       <div className="backdrop" onClick={onClose} />
-      <div className="sheet" role="dialog" aria-modal="true" style={style}>{children}</div>
+      <div className={'sheet' + (className ? ' ' + className : '')} role="dialog" aria-modal="true" style={style}>{children}</div>
     </>
   );
 }

@@ -73,6 +73,11 @@ a:hover { color: var(--color-accent-600); }
 .tabbar .brand, .tabbar .plus-label { display: none; }
 .tabbar.desktop-only { display: none; }
 
+/* Ark med sökfält ligger överst på mobilen, så att tangentbordet inte täcker listan. */
+@media (max-width: 899px) {
+  .sheet.sheet-top { top: max(10px, env(safe-area-inset-top)); bottom: auto; max-height: calc(100dvh - 20px); animation: none; }
+}
+
 /* ══════════════════ Dator: sidomeny och bredare innehåll ══════════════════ */
 @media (min-width: 900px) {
   :root {

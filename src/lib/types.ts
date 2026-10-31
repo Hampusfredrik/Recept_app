@@ -12,6 +12,8 @@ export interface Ingredient {
   lv_food_id: number | null;
   lv_food_name: string | null;
   match_confidence: 'sure' | 'unsure' | null;
+  /** Livsmedlet är valt av användaren och matchas aldrig om automatiskt. */
+  lv_manual?: boolean;
 }
 
 export interface Step {
