@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { useStore } from '../lib/store';
@@ -17,26 +17,63 @@ const PASTE_STEPS = ['Öppna Kamera och rikta den mot receptet.', 'Tryck på tex
 
 type Phase = 'paste' | 'camera' | 'reading' | 'sort';
 
+// ── Utkast ──
+// En app på iPhones hemskärm stängs ofta när man växlar till Kameran för Live Text.
+// Utkastet sparas därför på telefonen och läses tillbaka när appen startar igen.
+const DRAFT_KEY = 'receptappen.scanDraft';
+interface Draft {
+  raw: string; clips: number; phase: 'paste' | 'sort'; name: string; book: string; page: string;
+  pageFound: boolean; portions: number; lines: RawLine[]; savedAt: number;
+}
+function loadDraft(maxMinutes = 12 * 60): Draft | null {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as Draft | null;
+    return d && Date.now() - d.savedAt < maxMinutes * 60_000 ? d : null;
+  } catch { return null; }
+}
+export const hasFreshScanDraft = (minutes: number) => !!loadDraft(minutes);
+const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignoreras */ } };
+
+const STATUS: Record<string, string> = {
+  'loading tesseract core': 'Laddar textläsaren',
+  'initializing tesseract': 'Startar textläsaren',
+  'loading language traineddata': 'Laddar svenska språket',
+  'initializing api': 'Förbereder',
+  'recognizing text': 'Läser texten',
+};
+
 export function Scan() {
   const nav = useNavigate();
   const back = useBack();
   const toast = useToast();
   const { saveRecipe } = useStore();
-  const [phase, setPhase] = useState<Phase>('paste');
-  const [raw, setRaw] = useState('');
-  const [clips, setClips] = useState(0);
-  const [name, setName] = useState('');
-  const [book, setBook] = useState('');
-  const [page, setPage] = useState('');
-  const [pageFound, setPageFound] = useState(false);
-  const [portions, setPortions] = useState(4);
-  const [lines, setLines] = useState<RawLine[]>([]);
+  const [draft] = useState(() => loadDraft());
+  const [phase, setPhase] = useState<Phase>(draft?.phase ?? 'paste');
+  const [raw, setRaw] = useState(draft?.raw ?? '');
+  const [clips, setClips] = useState(draft?.clips ?? 0);
+  const [name, setName] = useState(draft?.name ?? '');
+  const [book, setBook] = useState(draft?.book ?? '');
+  const [page, setPage] = useState(draft?.page ?? '');
+  const [pageFound, setPageFound] = useState(draft?.pageFound ?? false);
+  const [portions, setPortions] = useState(draft?.portions ?? 4);
+  const [lines, setLines] = useState<RawLine[]>(draft?.lines ?? []);
+  const [progress, setProgress] = useState<{ status: string; pct: number } | null>(null);
   const [bookErr, setBookErr] = useState(false);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const areaRef = useRef<HTMLTextAreaElement>(null);
   const { effort, tagIds, fields, check } = useSaveFields();
+
+  // Spara utkastet vid varje ändring.
+  useEffect(() => {
+    try {
+      if (!raw.trim() && !lines.length) { clearDraft(); return; }
+      const d: Draft = { raw, clips, phase: phase === 'sort' ? 'sort' : 'paste', name, book, page, pageFound, portions, lines, savedAt: Date.now() };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
+    } catch { /* utan lagring fungerar sidan ändå */ }
+  }, [raw, clips, phase, name, book, page, pageFound, portions, lines]);
+  const close = () => { clearDraft(); back(); };
 
   const append = (t: string) => { setRaw((r) => (r.trim() ? r.trim() + '\n' : '') + t.trim()); setClips((c) => c + 1); };
 
@@ -80,21 +117,31 @@ export function Scan() {
     setPhase('sort');
   };
 
-  const onPhoto = async (file: File | undefined) => {
-    if (!file) return;
-    setPhase('reading'); setErr('');
+  const readImage = async (img: File | HTMLCanvasElement) => {
+    setPhase('reading'); setErr(''); setProgress({ status: 'Laddar textläsaren', pct: 0 });
     try {
       const { createWorker } = await import('tesseract.js');
-      const worker = await createWorker('swe');
-      const { data } = await worker.recognize(file);
+      // Filerna ligger i appen (public/tesseract), inte på en extern server.
+      const base = new URL(`${import.meta.env.BASE_URL}tesseract/`, window.location.href).href;
+      const worker = await createWorker('swe', 1, {
+        workerPath: `${base}worker.min.js`,
+        corePath: base,
+        langPath: `${base}lang`,
+        gzip: false,
+        logger: (m: { status: string; progress: number }) => setProgress({ status: STATUS[m.status] ?? 'Arbetar', pct: Math.round((m.progress ?? 0) * 100) }),
+      });
+      const { data } = await worker.recognize(img);
       await worker.terminate();
+      if (!data.text.trim()) throw new Error('Ingen text hittades i bilden. Försök med bättre ljus och håll sidan plant.');
       setRaw(data.text);
       sort(data.text);
     } catch (e) {
       setErr('Kunde inte läsa texten: ' + (e instanceof Error ? e.message : String(e)));
       setPhase('paste');
     }
+    setProgress(null);
   };
+  const onPhoto = (file: File | undefined) => { if (file) void readImage(file); };
 
   const save = async () => {
     if (!book.trim()) return setBookErr(true);
@@ -106,6 +153,7 @@ export function Scan() {
         ingredients: lines.filter((l) => l.kind === 'ingr').map((l) => parseIngredientLine(l.text)),
         steps: lines.filter((l) => l.kind === 'step').map((l) => l.text), tagIds,
       });
+      clearDraft();
       nav(`/recept/${id}`, { replace: true });
       toast('Receptet är sparat');
     } catch (e) {
@@ -116,38 +164,18 @@ export function Scan() {
 
   const nI = lines.filter((l) => l.kind === 'ingr').length;
   const nS = lines.filter((l) => l.kind === 'step').length;
-  const fileInput = <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => onPhoto(e.target.files?.[0])} />;
+  const fileInput = <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ''; }} />;
 
   if (phase === 'camera') {
-    const corner = (pos: React.CSSProperties, r: string) => (
-      <div style={{ position: 'absolute', width: 38, height: 38, borderColor: 'var(--color-accent-300)', borderStyle: 'solid', borderWidth: 0, borderRadius: r, ...pos }} />
-    );
-    return (
-      <div className="col" style={{ position: 'fixed', inset: 0, left: 'var(--edge)', right: 'var(--edge-r, var(--edge))', background: 'var(--color-neutral-900)', color: 'var(--color-neutral-100)', padding: 'var(--top-pad) 20px 40px', zIndex: 6 }}>
-        {fileInput}
-        <TopBar dark onClose={() => setPhase('paste')} title="Fota kokbokssida" />
-        <div style={{ position: 'relative', flex: 1, margin: '0 0 18px', borderRadius: 34, overflow: 'hidden', background: 'repeating-linear-gradient(135deg,var(--color-neutral-800) 0 10px,var(--color-neutral-900) 10px 20px)', display: 'grid', placeItems: 'center' }}>
-          {corner({ top: 22, left: 22, borderTopWidth: 4, borderLeftWidth: 4 }, '18px 0 0 0')}
-          {corner({ top: 22, right: 22, borderTopWidth: 4, borderRightWidth: 4 }, '0 18px 0 0')}
-          {corner({ bottom: 22, left: 22, borderBottomWidth: 4, borderLeftWidth: 4 }, '0 0 0 18px')}
-          {corner({ bottom: 22, right: 22, borderBottomWidth: 4, borderRightWidth: 4 }, '0 0 18px 0')}
-          <span style={{ position: 'absolute', bottom: 72, left: '50%', transform: 'translateX(-50%)', padding: '7px 14px', borderRadius: 999, background: 'var(--color-neutral-900)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>Håll sidan plant och i bra ljus</span>
-        </div>
-        <div className="row" style={{ justifyContent: 'center' }}>
-          <button onClick={() => fileRef.current?.click()} aria-label="Ta bild" style={{ width: 78, height: 78, borderRadius: '50%', border: '4px solid var(--color-neutral-100)', background: 'transparent', padding: 5, cursor: 'pointer' }}>
-            <span style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', background: 'var(--color-neutral-100)' }} />
-          </button>
-        </div>
-      </div>
-    );
+    return <CameraView fileInput={fileInput} onPickFile={() => fileRef.current?.click()} onClose={() => setPhase('paste')} onCapture={(c) => void readImage(c)} />;
   }
 
   if (phase === 'reading') {
     return (
       <div className="col" style={{ minHeight: '100dvh', alignItems: 'flex-start', justifyContent: 'center', gap: 12, padding: '0 28px' }}>
         <Spinner size={28} border={4} />
-        <h2 style={{ margin: 0, fontSize: 28 }}>Läser texten…</h2>
-        <p style={{ margin: 0, color: 'var(--color-neutral-700)' }}>Texten tolkas i telefonen. Första gången laddas den svenska språkmodellen ner.</p>
+        <h2 style={{ margin: 0, fontSize: 28 }}>{progress?.status ?? 'Läser texten'}…{progress && progress.pct > 0 ? ` ${progress.pct} %` : ''}</h2>
+        <p style={{ margin: 0, color: 'var(--color-neutral-700)' }}>Texten tolkas i telefonen. Första gången laddas den svenska språkmodellen ner, vilket kan ta en stund.</p>
       </div>
     );
   }
@@ -205,7 +233,7 @@ export function Scan() {
 
   return (
     <div className="screen no-tabs narrow" style={{ paddingBottom: 60 }}>
-      <TopBar onClose={back} title="Från kokbok" />
+      <TopBar onClose={close} title="Från kokbok" />
       <h1 style={{ margin: '0 0 16px', fontSize: 32 }}>Kopiera texten med kameran</h1>
       <div className="col" style={{ gap: 10, marginBottom: 20 }}>
         {PASTE_STEPS.map((t, i) => (
@@ -233,6 +261,77 @@ export function Scan() {
       <button className="btn btn-primary btn-block" onClick={() => sort(raw)} disabled={!raw.trim()} style={{ height: 54, marginTop: 22, fontSize: 17 }}>Sortera texten</button>
       <button onClick={() => setPhase('camera')} className="row" style={{ justifyContent: 'center', gap: 8, width: '100%', height: 44, marginTop: 8, border: 0, background: 'transparent', cursor: 'pointer', font: '600 14px var(--font-body)', color: 'var(--color-accent-700)' }}>
         <Ico icon={Camera} size={16} />Fota i appen istället (sämre på svår text)
+      </button>
+    </div>
+  );
+}
+
+/** Kamerasökare inne i appen, så att appen inte lämnas (och stängs) när man fotar. */
+function CameraView({ fileInput, onPickFile, onClose, onCapture }: {
+  fileInput: React.ReactNode; onPickFile: () => void; onClose: () => void; onCapture: (c: HTMLCanvasElement) => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const [ready, setReady] = useState(false);
+  const [camErr, setCamErr] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new Error('Kameran går inte att använda i den här webbläsaren.');
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 2560 }, height: { ideal: 1440 } }, audio: false,
+        });
+        if (!alive) { stream.getTracks().forEach((t) => t.stop()); return; }
+        streamRef.current = stream;
+        const v = videoRef.current;
+        if (v) { v.srcObject = stream; await v.play().catch(() => {}); }
+        setReady(true);
+      } catch (e) {
+        const name = (e as { name?: string })?.name;
+        setCamErr(name === 'NotAllowedError'
+          ? 'Appen fick inte använda kameran. Tillåt kameran i inställningarna, eller välj en bild.'
+          : e instanceof Error ? e.message : 'Kameran kunde inte startas.');
+      }
+    })();
+    return () => { alive = false; streamRef.current?.getTracks().forEach((t) => t.stop()); };
+  }, []);
+
+  const snap = () => {
+    const v = videoRef.current;
+    if (!v || !v.videoWidth) return;
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d')!.drawImage(v, 0, 0);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    onCapture(c);
+  };
+
+  const corner = (pos: React.CSSProperties, r: string) => (
+    <div style={{ position: 'absolute', width: 38, height: 38, borderColor: 'var(--color-accent-300)', borderStyle: 'solid', borderWidth: 0, borderRadius: r, ...pos }} />
+  );
+  return (
+    <div className="col" style={{ position: 'fixed', inset: 0, left: 'var(--edge)', right: 'var(--edge-r, var(--edge))', background: 'var(--color-neutral-900)', color: 'var(--color-neutral-100)', padding: 'var(--top-pad) 20px 30px', zIndex: 6 }}>
+      {fileInput}
+      <TopBar dark onClose={onClose} title="Fota kokbokssida" />
+      <div style={{ position: 'relative', flex: 1, margin: '0 0 18px', borderRadius: 34, overflow: 'hidden', background: 'repeating-linear-gradient(135deg,var(--color-neutral-800) 0 10px,var(--color-neutral-900) 10px 20px)', display: 'grid', placeItems: 'center' }}>
+        <video ref={videoRef} playsInline muted autoPlay style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: ready ? 'block' : 'none' }} />
+        {!ready && !camErr && <Spinner />}
+        {camErr && <span style={{ position: 'relative', padding: '0 28px', textAlign: 'center', fontSize: 14 }}>{camErr}</span>}
+        {corner({ top: 22, left: 22, borderTopWidth: 4, borderLeftWidth: 4 }, '18px 0 0 0')}
+        {corner({ top: 22, right: 22, borderTopWidth: 4, borderRightWidth: 4 }, '0 18px 0 0')}
+        {corner({ bottom: 22, left: 22, borderBottomWidth: 4, borderLeftWidth: 4 }, '0 0 0 18px')}
+        {corner({ bottom: 22, right: 22, borderBottomWidth: 4, borderRightWidth: 4 }, '0 0 18px 0')}
+        {ready && <span style={{ position: 'absolute', bottom: 72, left: '50%', transform: 'translateX(-50%)', padding: '7px 14px', borderRadius: 999, background: 'var(--color-neutral-900)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>Håll sidan plant och i bra ljus</span>}
+      </div>
+      <div className="row" style={{ justifyContent: 'center', position: 'relative' }}>
+        <button onClick={snap} disabled={!ready} aria-label="Ta bild" style={{ width: 78, height: 78, borderRadius: '50%', border: '4px solid var(--color-neutral-100)', background: 'transparent', padding: 5, cursor: 'pointer', opacity: ready ? 1 : 0.4 }}>
+          <span style={{ display: 'block', width: '100%', height: '100%', borderRadius: '50%', background: 'var(--color-neutral-100)' }} />
+        </button>
+      </div>
+      <button onClick={onPickFile} style={{ marginTop: 10, alignSelf: 'center', border: 0, background: 'transparent', color: 'var(--color-accent-300)', font: '600 14px var(--font-body)', cursor: 'pointer', padding: 8 }}>
+        Välj bild istället
       </button>
     </div>
   );

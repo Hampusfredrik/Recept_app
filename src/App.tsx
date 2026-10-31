@@ -1,5 +1,5 @@
 import { HashRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { StoreProvider, useStore } from './lib/store';
 import { configured } from './lib/supabase';
 import { ToastProvider, Spinner } from './components/ui';
@@ -14,7 +14,7 @@ import { Pantry } from './screens/Pantry';
 import { Detail } from './screens/Detail';
 import { AddLink } from './screens/AddLink';
 import { AddBook } from './screens/AddBook';
-import { Scan } from './screens/Scan';
+import { Scan, hasFreshScanDraft } from './screens/Scan';
 
 const INVITE_KEY = 'receptappen.invite';
 
@@ -51,6 +51,15 @@ function Gate() {
     localStorage.removeItem(INVITE_KEY);
     s.joinHousehold(code).then(() => nav('/')).catch(() => localStorage.setItem(INVITE_KEY + '.failed', code));
   }, [s.session, s.householdLoading]);
+
+  // Stängde iPhone appen mitt i en kokbokssida (t.ex. vid byte till Kameran)?
+  // Fortsätt där man var, om utkastet är färskt.
+  const resumed = useRef(false);
+  useEffect(() => {
+    if (resumed.current || !s.loaded) return;
+    resumed.current = true;
+    if (loc.pathname === '/' && hasFreshScanDraft(30)) nav('/ny/kokbok', { replace: true });
+  }, [s.loaded]); // körs en gång när datan är laddad
 
   if (loc.pathname.startsWith('/join/')) return <Routes><Route path="/join/:code" element={<JoinRoute />} /></Routes>;
   if (!s.authReady) return <Loading />;

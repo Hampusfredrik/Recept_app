@@ -4,8 +4,8 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "node scripts/copy-tesseract.mjs && vite",
+    "build": "node scripts/copy-tesseract.mjs && tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
@@ -20,9 +20,11 @@
     "tesseract.js": "7.0.0"
   },
   "devDependencies": {
+    "@tesseract.js-data/swe": "1.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "6.1.2",
+    "tesseract.js-core": "7.0.0",
     "typescript": "5.9.3",
     "vite": "8.3.5",
     "vite-plugin-pwa": "2.0.0"

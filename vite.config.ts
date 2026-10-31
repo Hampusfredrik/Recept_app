@@ -29,6 +29,13 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: 'index.html',
+        // Textläsningens stora filer förladdas inte, utan sparas första gången de används.
+        globIgnores: ['**/tesseract/**'],
+        runtimeCaching: [{
+          urlPattern: ({ url }) => url.pathname.includes('/tesseract/'),
+          handler: 'CacheFirst',
+          options: { cacheName: 'tesseract', expiration: { maxEntries: 10 } },
+        }],
         // Supabase-anrop ska aldrig cachas av service workern.
         navigateFallbackDenylist: [/^\/auth/, /^\/rest/, /^\/functions/],
       },
