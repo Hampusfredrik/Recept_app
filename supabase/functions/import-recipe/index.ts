@@ -3,7 +3,7 @@
 // Kräver inloggad användare (verify_jwt = true), så den kan inte användas som öppen proxy.
 
 import { corsHeaders, json } from '../_shared/cors.ts';
-import { parseIngredientLine, parseYield } from '../_shared/parse.ts';
+import { parseIngredientLine, parseYield, recipeFromHtml } from '../_shared/parse.ts';
 
 const MAX_BYTES = 3_000_000;
 const TIMEOUT_MS = 10_000;
@@ -100,17 +100,23 @@ Deno.serve(async (req) => {
       redirect: 'follow',
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; Receptappen/1.0; +https://github.com/Hampusfredrik/Recept_app)',
+        // Vanlig webbläsare: en del sidor nekar okända program.
+        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'sv-SE,sv;q=0.9,en;q=0.5',
       },
     });
-    if (!res.ok) return json({ error: `Sidan svarade ${res.status}` }, 502);
+    if (!res.ok) {
+      const why = res.status === 403 || res.status === 401 ? 'sidan nekar appen att hämta den'
+        : res.status === 404 ? 'sidan finns inte' : res.status === 429 ? 'sidan begränsar antalet hämtningar, försök igen om en stund' : 'sidan svarade inte som väntat';
+      return json({ error: `${why} (HTTP ${res.status})` }, 502);
+    }
     const buf = await res.arrayBuffer();
     if (buf.byteLength > MAX_BYTES) return json({ error: 'Sidan är för stor' }, 502);
     html = new TextDecoder('utf-8').decode(buf);
   } catch (e) {
-    return json({ error: 'Kunde inte hämta sidan', detail: String(e) }, 502);
+    const timeout = e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    return json({ error: timeout ? 'sidan svarade inte inom 10 sekunder' : 'sidan gick inte att nå', detail: String(e) }, 502);
   }
 
   let recipe: Json | null = null;
@@ -139,8 +145,25 @@ Deno.serve(async (req) => {
     });
   }
 
-  // Reserv: Open Graph.
   const title = meta(html, 'og:title') ?? clean(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]);
+
+  // Reserv 1: receptet står som vanlig text på sidan (vanligt på bloggar).
+  const plain = recipeFromHtml(html);
+  if (plain.ingredients.length) {
+    const h1 = clean(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1]);
+    return json({
+      found: 'html',
+      url: target.toString(),
+      domain,
+      name: h1 || title || '',
+      image: resolve(meta(html, 'og:image')),
+      portions: plain.portions,
+      ingredients: plain.ingredients,
+      steps: plain.steps,
+    });
+  }
+
+  // Reserv 2: Open Graph.
   return json({
     found: 'opengraph',
     url: target.toString(),

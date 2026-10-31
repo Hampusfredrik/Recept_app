@@ -41,7 +41,7 @@ const INGR_LINE = new RegExp(`^${AMOUNT_RE}\\s*(${UNIT_RE})?\\.?\\s+(.+)$`, 'i')
 
 /** "400 g torskfilé" → { amount: 400, unit: 'g', name: 'torskfilé' } */
 export function parseIngredientLine(line: string): ParsedIngredient {
-  const t = line.trim().replace(/\s+/g, ' ');
+  const t = line.trim().replace(/\s+/g, ' ').replace(/^(ca\.?|cirka|ungefär)\s+(?=[\d½¼¾⅓⅔])/i, '');
   const m = t.match(INGR_LINE);
   if (!m) return { amount: null, unit: '', name: t };
   return { amount: parseAmount(m[1]), unit: unitOf(m[2]), name: m[3].trim() };
@@ -51,6 +51,7 @@ export function parseIngredientLine(line: string): ParsedIngredient {
 export function looksLikeIngredient(line: string): boolean {
   // "1. Skär …" och "2) Hacka …" är stegnummer, inte mängder.
   if (/^\d+[.)]\s/.test(line)) return false;
+  line = line.replace(/^(ca\.?|cirka|ungefär)\s+(?=[\d½¼¾⅓⅔])/i, '');
   return line.length < 48 && new RegExp(`^${AMOUNT_RE}\\s*(${UNIT_RE})?\\s+\\S`, 'i').test(line);
 }
 
@@ -106,4 +107,109 @@ export function parseYield(y: unknown): number | null {
   if (typeof v !== 'string') return null;
   const m = v.match(/\d+/);
   return m ? parseInt(m[0], 10) : null;
+}
+
+// ── Recept i vanlig HTML (bloggar utan schema.org/Recipe) ──
+
+const ENTITIES: Record<string, string> = { quot: '"', apos: "'", nbsp: ' ', lt: '<', gt: '>', amp: '&', ndash: '–', mdash: '—', frac12: '½', frac14: '¼', frac34: '¾', hellip: '…' };
+function decodeHtml(s: string): string {
+  return s
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
+    .replace(/&([a-z0-9]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] ?? m);
+}
+
+/** Sidans huvudtext som rader: ett stycke, en listpunkt eller en rubrik per rad. */
+export function htmlLines(html: string): string[] {
+  let h = html.replace(/<!--[\s\S]*?-->/g, ' ')
+    .replace(/<(script|style|noscript|svg|nav|header|footer|aside|form|iframe)\b[\s\S]*?<\/\1>/gi, ' ');
+  // Bara inläggets text om sidan har en sådan del (WordPress m.fl.).
+  const entry = h.search(/<(div|section)[^>]+class=["'][^"']*\b(entry-content|post-content|article-content|recipe-content)\b/i);
+  if (entry >= 0) h = h.slice(entry);
+  else {
+    const art = h.search(/<article\b/i);
+    if (art >= 0) h = h.slice(art);
+  }
+  return decodeHtml(h
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/?(p|div|li|ul|ol|h[1-6]|tr|table|section|article|blockquote|figure|figcaption)\b[^>]*>/gi, '\n')
+    .replace(/<[^>]+>/g, ' '))
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').replace(/^[•·\-–*]\s*/, '').trim())
+    .filter(Boolean);
+}
+
+const INGR_HEAD = /^(ingredienser|ingrediens|du behöver|det här behöver du|detta behöver du|till \d+ portioner)\b.{0,30}$/i;
+const STEP_HEAD = /^(gör så här|gör såhär|så här gör du|såhär gör du|så gör du|gör så|tillagning|instruktioner|instruktion|tillvägagångssätt)\s*:?$/i;
+// Här slutar receptet på en bloggsida.
+const END = /^(dela|dela detta|gilla|kommentarer?|lämna en kommentar|skriv en kommentar|relaterade|relaterat|du kanske också gillar|publicerat|publicerad|taggar|kategorier|läs också|smaklig måltid!?|smaklig spis!?)\b/i;
+
+export interface HtmlRecipe { portions: number | null; ingredients: ParsedIngredient[]; steps: string[] }
+
+const sentence = (t: string) => /[.!?]$/.test(t);
+/** Kort rad utan mängd som inleder en del av listan: "Servering", "Brynt salviasmör:". */
+const isSubhead = (t: string, next: string | undefined) =>
+  t.length < 40 && (/:$/.test(t) || (/^[A-ZÅÄÖ]/.test(t) && t.split(' ').length <= 4 && !!next && looksLikeIngredient(next)));
+
+/** Läser ingredienser från rad `from` tills listan tar slut. */
+function ingredientBlock(rows: string[], from: number): { lines: string[]; end: number } {
+  const lines: string[] = [];
+  let k = from;
+  for (; k < rows.length; k++) {
+    const t = rows[k];
+    if (STEP_HEAD.test(t) || END.test(t) || INGR_HEAD.test(t.replace(/:$/, ''))) break;
+    if (looksLikeIngredient(t)) { lines.push(t); continue; }
+    if (t.length > 50 || sentence(t) || /^\d+[.)]\s/.test(t)) break;
+    if (isSubhead(t, rows[k + 1])) continue;
+    lines.push(t);
+  }
+  return { lines, end: k };
+}
+
+/** Hittar ingredienser och steg i en bloggtext. Tomma listor om inget hittas. */
+export function recipeFromHtml(html: string): HtmlRecipe {
+  const rows = htmlLines(html);
+  const ingr: string[] = [];
+  const steps: string[] = [];
+  let portions: number | null = null;
+
+  for (const t of rows) {
+    const port = t.match(/^(?:till\s+)?(\d+)\s*(portioner|portion|personer|pers)\b/i) ?? t.match(/^(?:portioner|antal portioner)\s*:?\s*(\d+)/i);
+    if (port && t.length < 40) { portions = parseInt(port[1], 10); break; }
+  }
+
+  // Ingredienser under en rubrik ("Ingredienser", "Du behöver"), annars den längsta
+  // följden av rader med mängd (minst tre) och det som hör till den listan.
+  for (let k = 0; k < rows.length; k++) {
+    if (!INGR_HEAD.test(rows[k].replace(/:$/, ''))) continue;
+    const b = ingredientBlock(rows, k + 1);
+    ingr.push(...b.lines.filter((l) => !/^(till\s+)?\d+\s*(portioner|portion|personer|pers)\b/i.test(l)));
+    k = b.end - 1;
+  }
+  if (!ingr.length) {
+    let bestStart = -1, bestLen = 0;
+    for (let k = 0; k < rows.length;) {
+      if (!looksLikeIngredient(rows[k])) { k++; continue; }
+      let n = 0;
+      while (k + n < rows.length && looksLikeIngredient(rows[k + n])) n++;
+      if (n > bestLen) { bestLen = n; bestStart = k; }
+      k += n;
+    }
+    if (bestLen >= 3) ingr.push(...ingredientBlock(rows, bestStart).lines);
+  }
+
+  // Steg under en rubrik ("Gör så här"); delrubriker som "Risotto" hoppas över.
+  const head = rows.findIndex((t) => STEP_HEAD.test(t));
+  if (head >= 0) {
+    for (const t of rows.slice(head + 1)) {
+      if (END.test(t) || INGR_HEAD.test(t.replace(/:$/, ''))) break;
+      if (!/^\d+[.)]\s/.test(t) && !sentence(t) && t.length < 40) continue;
+      steps.push(t.replace(/^\d+[.)]\s*/, ''));
+      if (steps.length >= 40) break;
+    }
+  }
+  // Inga steg under en rubrik: numrerade rader ("1. Skär …").
+  if (!steps.length) for (const t of rows) if (/^\d+[.)]\s+\S/.test(t) && t.length > 15) steps.push(t.replace(/^\d+[.)]\s*/, ''));
+
+  return { portions, ingredients: ingr.map(parseIngredientLine), steps };
 }

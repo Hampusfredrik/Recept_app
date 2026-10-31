@@ -10,7 +10,7 @@ import { domainOf } from '../lib/format';
 import type { ParsedIngredient } from '../../supabase/functions/_shared/parse';
 
 interface Imported {
-  found: 'recipe' | 'opengraph';
+  found: 'recipe' | 'html' | 'opengraph';
   url: string;
   domain: string;
   name: string;
@@ -123,6 +123,7 @@ export function AddLink() {
           <div className="field"><label>Namn</label><input className="input big" value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="col" style={{ gap: 8, padding: '14px 16px', borderRadius: 24, background: data.found === 'recipe' ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', color: data.found === 'recipe' ? 'var(--color-accent-2-900)' : 'var(--color-accent-900)' }}>
             {data.found === 'opengraph' && <span style={{ fontSize: 14 }}>Sidan saknar receptdata. Bara titel och bild kunde läsas.</span>}
+            {data.found === 'html' && <span style={{ fontSize: 14 }}>Sidan saknar receptdata, så receptet lästes ur texten. Kontrollera ingredienser och steg efter att det sparats.</span>}
             {[['Ingredienser', `${data.ingredients.length} st`], ['Steg', `${data.steps.length} st`], ['Portioner', data.portions ? String(data.portions) : '–']].map(([label, val]) => (
               <div key={label} className="row" style={{ gap: 10, fontSize: 14 }}>
                 <span style={{ flex: 'none', width: 22, height: 22, borderRadius: '50%', background: 'var(--color-accent-2-600)', display: 'grid', placeItems: 'center' }}><Ico icon={Check} size={12} color="var(--color-bg)" /></span>
