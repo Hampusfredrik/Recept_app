@@ -88,27 +88,50 @@ const CODES: Record<string, string[]> = {
   selenium: ['SE'],
 };
 
+// Reserv om koden saknas: matcha på näringsämnets namn (svenska eller engelska).
+// Mönstren är avsiktligt breda eftersom de exakta namnen inte har kunnat provköras.
+const NAMES: Record<string, RegExp> = {
+  protein: /^protein/i,
+  fat: /^(fett|fat)\b(?!.*syr)/i,
+  carbs: /^(kolhydrat|carbohydrate)/i,
+  fiber: /^(fiber|fibrer|fibre)/i,
+  sugar: /^(socker|sugar)/i,
+  satfat: /(mättade|saturated)/i,
+  salt: /^salt/i,
+  vitd: /^vitamin d\b/i,
+  b12: /^vitamin b12/i,
+  vitc: /^vitamin c\b/i,
+  folate: /^(folat|folate)/i,
+  iron: /^(järn|iron)/i,
+  calcium: /^(kalcium|calcium)/i,
+  iodine: /^(jod|iodine)/i,
+  selenium: /^(selen|selenium)/i,
+};
+
 function mapNutrients(rows: Json[]) {
   const out: Record<string, number> = {};
-  const byCode = new Map<string, Json[]>();
-  for (const r of rows) {
-    const code = String(pick(r, 'euroFIRkod', 'eurofirkod') ?? '').toUpperCase();
-    if (!code) continue;
-    byCode.set(code, [...(byCode.get(code) ?? []), r]);
-  }
+  const codesOf = (r: Json) => [pick(r, 'forkortning', 'förkortning'), pick(r, 'euroFIRkod', 'eurofirkod')]
+    .filter((x) => x != null).map((x) => String(x).toUpperCase().trim());
+  const unitOf = (r: Json) => String(pick(r, 'enhet', 'unit') ?? '');
+  const nameOf = (r: Json) => String(pick(r, 'namn', 'name') ?? '').trim();
   const num = (r: Json) => {
     const v = pick(r, 'varde', 'värde', 'value');
-    const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(',', '.'));
+    const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/\s/g, '').replace(',', '.'));
     return Number.isFinite(n) ? n : null;
   };
+
+  // Energi: ENERC finns ofta både i kcal och kJ.
+  const energy = rows.filter((r) => codesOf(r).includes('ENERC') || /^energi|^energy/i.test(nameOf(r)));
+  const kcalRow = energy.find((r) => /kcal/i.test(unitOf(r)) || /kcal/i.test(nameOf(r)));
+  const kjRow = energy.find((r) => /kj/i.test(unitOf(r)) || /\bkj\b/i.test(nameOf(r)));
+  if (kcalRow && num(kcalRow) != null) out.kcal = num(kcalRow)!;
+  else if (kjRow && num(kjRow) != null) out.kcal = num(kjRow)! / 4.184;
+
   for (const [key, codes] of Object.entries(CODES)) {
-    for (const c of codes) {
-      let cand = byCode.get(c);
-      if (!cand?.length) continue;
-      if (key === 'kcal') cand = cand.filter((r) => /kcal/i.test(String(pick(r, 'enhet', 'unit') ?? '')));
-      const v = cand.length ? num(cand[0]) : null;
-      if (v != null) { out[key] = v; break; }
-    }
+    if (key === 'kcal') continue;
+    let hit = codes.map((c) => rows.find((r) => codesOf(r).includes(c))).find((r) => r && num(r) != null);
+    if (!hit && NAMES[key]) hit = rows.find((r) => NAMES[key].test(nameOf(r)) && num(r) != null);
+    if (hit) out[key] = num(hit)!;
   }
   return out;
 }
@@ -118,7 +141,19 @@ async function nutrients(ids: number[]) {
   if (!clean.length) return { foods: [] };
   const { data: have, error } = await admin.from('lv_foods').select('id,name,per_100g').in('id', clean);
   if (error) throw error;
-  const missing = clean.filter((id) => !have?.find((h) => h.id === id && h.per_100g));
+  // Värden som cachats med en äldre tolkning tolkas om från de sparade råraderna.
+  for (const h of have ?? []) {
+    const p = h.per_100g as Json | null;
+    if (p && p.kcal == null && Array.isArray(p.raw) && p.raw.length) {
+      const per_100g = { ...mapNutrients(p.raw as Json[]), raw: p.raw };
+      h.per_100g = per_100g;
+      await admin.from('lv_foods').update({ per_100g }).eq('id', h.id);
+    }
+  }
+  const missing = clean.filter((id) => {
+    const p = have?.find((h) => h.id === id)?.per_100g as Json | null | undefined;
+    return !p || (p.kcal == null && !(Array.isArray(p.raw) && p.raw.length));
+  });
   const fetched = await Promise.all(missing.map(async (id) => {
     try {
       const rows = arrayIn(await getJson(`${API}/livsmedel/${id}/naringsvarden?sprak=1`));

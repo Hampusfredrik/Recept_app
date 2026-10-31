@@ -67,8 +67,20 @@ export function NutritionTab({ r }: { r: Recipe }) {
     macro('Fiber', n.fiber, 0, 'var(--color-accent-2-500)', 30),
   ];
 
+  const missingNut = res.counted === 0 || n.kcal == null;
   return (
     <div className="col" style={{ gap: 16 }}>
+      {missingNut && (
+        <div className="col" style={{ gap: 6, padding: 18, borderRadius: 28, background: 'var(--color-accent-100)', color: 'var(--color-accent-900)' }}>
+          <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>Näringsvärdet kunde inte räknas ut</span>
+          <span style={{ fontSize: 14 }}>
+            {res.counted === 0
+              ? `${res.noFood.length} ingredienser saknar värden från Livsmedelsverket och ${res.noWeight.length} saknar vikt.`
+              : 'Livsmedelsverkets svar innehöll inget energivärde.'}
+            {' '}Tryck på en ingrediens nedan för att byta livsmedel eller ange vikt.
+          </span>
+        </div>
+      )}
       <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'space-between', padding: '18px 20px', borderRadius: 30, background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)' }}>
         <div className="col">
           <span style={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>Per portion</span>
