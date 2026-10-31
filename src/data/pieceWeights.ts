@@ -18,3 +18,9 @@ export function standardPieceWeight(name: string): { label: string; grams: numbe
   const hit = PIECE_WEIGHTS.find((p) => p.names.includes(core));
   return hit ? { label: hit.label, grams: hit.grams } : null;
 }
+
+// Buljongtärningar räknas bara som salt. 4,5 g salt per tärning är användarens
+// angivna värde, inte uppmätt av Livsmedelsverket.
+export const STOCK_CUBE_SALT_G = 4.5;
+export const isStockCube = (name: string, unit: string) =>
+  /buljongtärning/.test(name.toLowerCase()) && ['', 'st'].includes(unit.toLowerCase().trim());

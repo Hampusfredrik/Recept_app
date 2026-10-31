@@ -8,3 +8,11 @@ test('standardvikter träffar lök, morot och ägg men inte vitlök m.fl.', () =
   for (const n of ['ägg', 'ägg, kokta']) assert.equal(standardPieceWeight(n)?.grams, 58, n);
   for (const n of ['vitlök', 'vitlöksklyftor', 'purjolök', 'salladslök', 'schalottenlök', 'äggula', 'äggvita', 'morotskaka']) assert.equal(standardPieceWeight(n), null, n);
 });
+
+import { isStockCube } from '../src/data/pieceWeights.ts';
+test('buljongtärningar känns igen när de anges i styck', () => {
+  assert.ok(isStockCube('grönsaksbuljongtärningar', ''));
+  assert.ok(isStockCube('Hönsbuljongtärning', 'st'));
+  assert.ok(!isStockCube('grönsaksbuljong', 'dl'));
+  assert.ok(!isStockCube('buljongtärning', 'msk'));
+});

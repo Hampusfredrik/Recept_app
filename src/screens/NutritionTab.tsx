@@ -3,6 +3,7 @@ import { Search } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { Ico, Sheet, Spinner, useToast } from '../components/ui';
 import { ML_PER_UNIT } from '../data/units';
+import { STOCK_CUBE_SALT_G } from '../data/pieceWeights';
 import { computeNutrition, isNegligible, fetchNutrients, fetchUnitWeights, foodList, matchFood, matchMissing, saveUnitWeight, toGrams, weightUnit, type LvFood, type Per100 } from '../lib/nutrition';
 import { amountLabel, fmt } from '../lib/format';
 import { NNR } from '../data/nnr';
@@ -149,16 +150,19 @@ export function NutritionTab({ r }: { r: Recipe }) {
           const sure = i.match_confidence === 'sure' && i.lv_food_id != null;
           const noWeight = res.noWeight.some((x) => x.id === i.id);
           const ignored = res.ignored.some((x) => x.id === i.id);
+          const cube = res.stockCubes.some((x) => x.id === i.id);
           return (
             <button key={i.id} onClick={() => setSwap(i)} className="row"
               style={{ gap: 10, padding: '9px 0', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', font: 'inherit' }}>
               <div className="col" style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontSize: 14 }}>{[amountLabel(i.amount, i.unit), i.name].filter(Boolean).join(' ')}</span>
-                <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{ignored
+                <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{cube
+                  ? `Räknas bara som salt: ${fmt(STOCK_CUBE_SALT_G)} g per tärning`
+                  : ignored
                   ? (i.amount == null ? 'Räknas inte (ingen mängd)' : 'Räknas inte (krydda, salt eller vatten)')
                   : <>→ {i.lv_food_name ?? 'Ingen träff'}{noWeight ? ' · vikt saknas' : ''}</>}</span>
               </div>
-              {!ignored && <span className="tag" style={{ flex: 'none', fontWeight: 600, background: sure ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', color: sure ? 'var(--color-accent-2-800)' : 'var(--color-accent-800)' }}>{sure ? 'Säker' : 'Osäker'}</span>}
+              {!ignored && !cube && <span className="tag" style={{ flex: 'none', fontWeight: 600, background: sure ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', color: sure ? 'var(--color-accent-2-800)' : 'var(--color-accent-800)' }}>{sure ? 'Säker' : 'Osäker'}</span>}
             </button>
           );
         })}
@@ -167,6 +171,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
         Källa: Livsmedelsverkets livsmedelsdatabas. Värdena är uppskattningar baserade på råvarorna.
         {res.noWeight.length + res.noFood.length > 0 && ` ${res.noWeight.length + res.noFood.length} av ${r.ingredients.length} ingredienser räknas inte med (saknar livsmedel eller vikt).`}
         {res.ignored.length > 0 && ` Kryddor, salt och vatten som saknas i databasen räknas inte med.`}
+        {res.stockCubes.length > 0 && ` Buljongtärningar räknas bara som salt (${fmt(STOCK_CUBE_SALT_G)} g per tärning).`}
         {res.assumedDensity > 0 && ' Volymmått räknas om med 1 g/ml där livsmedlet saknar egen vikt.'}
         {res.standard.length > 0 && ' Lök, morot och ägg räknas med standardvikter (100, 80 och 58 g per styck) om ni inte angett egen vikt.'}
       </p>

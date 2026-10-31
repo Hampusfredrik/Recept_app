@@ -3,7 +3,7 @@ import { DEFAULT_DENSITY_G_PER_ML, G_PER_UNIT, ML_PER_UNIT } from '../data/units
 import type { Ingredient } from './types';
 import { matchFood } from './match';
 import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
-import { standardPieceWeight } from '../data/pieceWeights';
+import { isStockCube, standardPieceWeight, STOCK_CUBE_SALT_G } from '../data/pieceWeights';
 
 export type { LvFood } from './match';
 import type { LvFood } from './match';
@@ -166,6 +166,7 @@ export interface NutResult {
   assumed: Ingredient[];
   standard: Ingredient[];
   ignored: Ingredient[];
+  stockCubes: Ingredient[];
 }
 
 export function computeNutrition(ingredients: Ingredient[], portions: number, foods: Map<number, Per100>, weights: Map<string, number>): NutResult {
@@ -176,7 +177,14 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   const assumed: Ingredient[] = [];
   const standard: Ingredient[] = [];
   const ignored: Ingredient[] = [];
+  const stockCubes: Ingredient[] = [];
   for (const i of ingredients) {
+    // Buljongtärningar: bara salt, inget annat.
+    if (i.amount != null && isStockCube(i.name, i.unit)) {
+      sum.salt = (sum.salt ?? 0) + i.amount * STOCK_CUBE_SALT_G;
+      stockCubes.push(i);
+      continue;
+    }
     const food = i.lv_food_id != null ? foods.get(i.lv_food_id) : undefined;
     // Utan mängd går det inte att räkna; kryddor m.m. som saknas i databasen är försumbara.
     if ((i.amount == null && i.grams == null) || isWater(i) || (!food && i.lv_food_id == null && isNegligible(i))) { ignored.push(i); continue; }
@@ -194,7 +202,7 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   }
   const p = Math.max(1, portions);
   const perPortion: Per100 = Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, v / p]));
-  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed, standard, ignored };
+  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed, standard, ignored, stockCubes };
 }
 
 /** Uppskattad energi per portion för granskningsvyn (innan receptet är sparat). */
