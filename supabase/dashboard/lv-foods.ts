@@ -46,13 +46,23 @@ const pick = (o: Json, ...keys: string[]) => {
   return undefined;
 };
 
-function arrayIn(data: unknown): Json[] {
-  if (Array.isArray(data)) return data as Json[];
-  if (data && typeof data === 'object') {
-    for (const v of Object.values(data as Json)) if (Array.isArray(v)) return v as Json[];
+/** Hittar listan med poster i ett svar, oavsett om den ligger överst eller under en nyckel. */
+function findArray(data: unknown, prefer: string[], looksRight: (o: Json) => boolean, depth = 0): Json[] {
+  const ok = (a: unknown): a is Json[] => Array.isArray(a) && a.some((x) => x && typeof x === 'object' && looksRight(x as Json));
+  if (ok(data)) return data;
+  if (!data || typeof data !== 'object' || depth > 2) return [];
+  const obj = data as Json;
+  for (const k of Object.keys(obj)) if (prefer.includes(k.toLowerCase()) && ok(obj[k])) return obj[k] as Json[];
+  for (const v of Object.values(obj)) if (ok(v)) return v;
+  for (const v of Object.values(obj)) {
+    const inner = findArray(v, prefer, looksRight, depth + 1);
+    if (inner.length) return inner;
   }
   return [];
 }
+const isFood = (o: Json) => pick(o, 'nummer', 'id') != null && pick(o, 'namn', 'name') != null;
+const isNutrient = (o: Json) => pick(o, 'varde', 'värde', 'value') != null;
+const sample = (d: unknown) => JSON.stringify(d).slice(0, 300);
 
 async function getJson(url: string): Promise<unknown> {
   const res = await fetch(url, {
@@ -73,8 +83,12 @@ async function sync(force: boolean) {
   let total = 0;
   const now = new Date().toISOString();
   for (let guard = 0; guard < 40; guard++) {
-    const page = arrayIn(await getJson(`${API}/livsmedel?offset=${offset}&limit=${limit}&sprak=1`));
-    if (!page.length) break;
+    const data = await getJson(`${API}/livsmedel?offset=${offset}&limit=${limit}&sprak=1`);
+    const page = findArray(data, ['livsmedel'], isFood);
+    if (!page.length) {
+      if (offset === 0) throw new Error(`Hittade inga livsmedel i svaret från Livsmedelsverket: ${sample(data)}`);
+      break;
+    }
     const rows = page
       .map((f) => ({ id: Number(pick(f, 'nummer', 'id')), name: String(pick(f, 'namn', 'name') ?? '').trim(), fetched_at: now }))
       .filter((r) => Number.isFinite(r.id) && r.name);
@@ -86,6 +100,7 @@ async function sync(force: boolean) {
     if (page.length < limit) break;
     offset += limit;
   }
+  if (!total) throw new Error('Livsmedelsverkets lista gav inga livsmedel med nummer och namn.');
   return { synced: total, cached: false };
 }
 
@@ -185,8 +200,8 @@ async function nutrients(ids: number[]) {
         // Om språkparametern inte stöds: försök utan den.
         data = await getJson(`${API}/livsmedel/${id}/naringsvarden`);
       }
-      const rows = arrayIn(data);
-      if (!rows.length) throw new Error(`Tomt svar för livsmedel ${id}: ${JSON.stringify(data).slice(0, 200)}`);
+      const rows = findArray(data, ['naringsvarden', 'näringsvärden'], isNutrient);
+      if (!rows.length) throw new Error(`Inga näringsvärden i svaret för livsmedel ${id}: ${sample(data)}`);
       return { id, per_100g: { ...mapNutrients(rows), raw: rows } };
     } catch (e) {
       console.error(e);

@@ -19,14 +19,24 @@ async function readList(): Promise<LvFood[]> {
   return out;
 }
 
+/** Felmeddelandet från en Edge Function, inte bara "non-2xx status code". */
+export async function functionError(error: unknown): Promise<Error> {
+  const ctx = (error as { context?: Response })?.context;
+  if (ctx && typeof ctx.json === 'function') {
+    try { const body = await ctx.json(); if (body?.error) return new Error(String(body.error)); } catch { /* inte JSON */ }
+  }
+  return error instanceof Error ? error : new Error(String(error));
+}
+
 export function foodList(): Promise<LvFood[]> {
   if (!listPromise) {
     listPromise = (async () => {
       let list = await readList();
       if (list.length < 100) {
-        const { error } = await supabase.functions.invoke('lv-foods', { body: { action: 'sync' } });
-        if (error) throw error;
+        const { data, error } = await supabase.functions.invoke('lv-foods', { body: { action: 'sync', force: true } });
+        if (error) throw await functionError(error);
         list = await readList();
+        if (list.length < 100) throw new Error(`Livsmedelslistan från Livsmedelsverket är tom (hämtade ${data?.synced ?? 0} livsmedel).`);
       }
       return list;
     })().catch((e) => { listPromise = null; throw e; });
@@ -62,14 +72,14 @@ export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; 
 
 /** Matchar ingredienser som saknar livsmedel och sparar resultatet. */
 export async function matchMissing(ingredients: Ingredient[], update: (id: number, p: Partial<Ingredient>) => Promise<void>) {
-  const todo = ingredients.filter((i) => i.lv_food_id == null && i.match_confidence == null);
+  // Ingredienser utan livsmedel matchas om varje gång: listan kan ha fyllts på sedan sist.
+  const todo = ingredients.filter((i) => i.lv_food_id == null);
   if (!todo.length) return;
   const foods = await foodList();
   await Promise.all(todo.map((i) => {
     const m = matchFood(i.name, foods);
-    return update(i.id, m
-      ? { lv_food_id: m.food.id, lv_food_name: m.food.name, match_confidence: m.sure ? 'sure' : 'unsure' }
-      : { match_confidence: 'unsure' });
+    if (m) return update(i.id, { lv_food_id: m.food.id, lv_food_name: m.food.name, match_confidence: m.sure ? 'sure' : 'unsure' });
+    return i.match_confidence == null ? update(i.id, { match_confidence: 'unsure' }) : Promise.resolve();
   }));
 }
 
@@ -78,7 +88,7 @@ export async function fetchNutrients(ids: number[]): Promise<{ map: Map<number, 
   const map = new Map<number, Per100>();
   if (!ids.length) return { map, errors: [] };
   const { data, error } = await supabase.functions.invoke('lv-foods', { body: { action: 'nutrients', ids } });
-  if (error) throw error;
+  if (error) throw await functionError(error);
   for (const f of (data?.foods ?? []) as { id: number; per_100g: Per100 | null }[]) if (f.per_100g) map.set(f.id, f.per_100g);
   return { map, errors: Object.values((data?.errors ?? {}) as Record<string, string>) };
 }
