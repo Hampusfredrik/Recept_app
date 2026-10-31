@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
-import { ArrowUpRight, BookOpen, CalendarDays, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Users } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { EffortIcons, Ico, Sheet, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
+import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
 import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
 import { dayName } from '../lib/logic';
 import { amountLabel, domainOf, EFFORT } from '../lib/format';
@@ -41,6 +41,7 @@ export function Detail() {
     <div className="detail" style={{ paddingBottom: 60, position: 'relative' }}>
       <div className="detail-hero" style={{ position: 'relative', height: 330 }}>
         <Thumb id={r.id} image={r.image_url} radius="0 0 34px 34px" stripeW={10} style={{ position: 'absolute', inset: 0 }} />
+        <ImageButton r={r} />
       </div>
       <button onClick={back} aria-label="Tillbaka" className="detail-back"
         style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', left: 16, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--color-text)', zIndex: 3 }}>
@@ -323,5 +324,37 @@ function WeekDaySheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
         })}
       </div>
     </Sheet>
+  );
+}
+
+/** Lägg till eller byt bild på receptet (bibliotek eller kamera). */
+function ImageButton({ r }: { r: Recipe }) {
+  const { setRecipeImage } = useStore();
+  const toast = useToast();
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const onFile = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    try { await setRecipeImage(r.id, file); toast('Bilden är sparad'); }
+    catch (e) { toast(e instanceof Error ? e.message : 'Kunde inte spara bilden'); }
+    setBusy(false);
+  };
+  const remove = async () => {
+    if (!confirm('Ta bort bilden?')) return;
+    setBusy(true);
+    try { await setRecipeImage(r.id, null); toast('Bilden är borttagen'); } catch { toast('Kunde inte ta bort bilden'); }
+    setBusy(false);
+  };
+  const pill = { height: 40, padding: '0 14px', borderRadius: 999, border: 0, background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', font: '700 13px var(--font-body)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 6 } as const;
+  return (
+    <div className="row" style={{ position: 'absolute', right: 16, bottom: 16, gap: 8, zIndex: 2 }}>
+      <input ref={ref} type="file" accept="image/*" hidden onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
+      {r.image_url && !busy && <button onClick={remove} style={pill}>Ta bort</button>}
+      <button onClick={() => ref.current?.click()} disabled={busy} style={pill}>
+        {busy ? <Spinner size={16} border={2} /> : <Ico icon={Camera} size={16} />}
+        {busy ? 'Sparar…' : r.image_url ? 'Byt bild' : 'Lägg till bild'}
+      </button>
+    </div>
   );
 }

@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { today } from './dates';
 import { TONE_ORDER } from './format';
+import { shrinkImage } from './images';
 import type { Household, Ingredient, NewRecipe, PlanEntry, Recipe, Step, Tag, Tone } from './types';
 
 interface Data {
@@ -37,6 +38,7 @@ interface Store extends Data {
   saveNote: (recipeId: string, text: string) => Promise<void>;
   addIngredients: (recipeId: string, lines: { amount: number | null; unit: string; name: string }[]) => Promise<void>;
   editRecipe: (recipeId: string, edit: RecipeEdit) => Promise<void>;
+  setRecipeImage: (recipeId: string, file: File | null) => Promise<void>;
   updateIngredient: (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams' | 'lv_manual'>>) => Promise<void>;
   // taggar
   addTag: (name: string) => Promise<Tag>;
@@ -267,6 +269,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const start = r ? r.ingredients.length : 0;
         must(await supabase.from('recipe_ingredients').insert(lines.map((l, k) => ({ ...l, position: start + k, household_id, recipe_id: recipeId }))));
         await reload();
+      },
+      setRecipeImage: async (recipeId: string, file: File | null) => {
+        const household_id = need();
+        const r = data.recipes.find((x) => x.id === recipeId);
+        // Gammal uppladdad bild tas bort (inte bilder från webbsidor).
+        const marker = '/storage/v1/object/public/recipe-images/';
+        const oldPath = r?.image_url?.includes(marker) ? r.image_url.split(marker)[1].split('?')[0] : null;
+        let image_url: string | null = null;
+        if (file) {
+          const blob = await shrinkImage(file);
+          const path = `${household_id}/${recipeId}-${Date.now()}.jpg`;
+          const up = await supabase.storage.from('recipe-images').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+          if (up.error) throw new Error(up.error.message);
+          image_url = supabase.storage.from('recipe-images').getPublicUrl(path).data.publicUrl;
+        }
+        patchRecipe(recipeId, (x) => ({ ...x, image_url }));
+        must(await supabase.from('recipes').update({ image_url }).eq('id', recipeId));
+        if (oldPath) await supabase.storage.from('recipe-images').remove([oldPath]);
       },
       editRecipe: async (recipeId: string, edit: RecipeEdit) => {
         const household_id = need();
