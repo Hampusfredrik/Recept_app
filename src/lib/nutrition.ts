@@ -73,13 +73,14 @@ export async function matchMissing(ingredients: Ingredient[], update: (id: numbe
   }));
 }
 
-export async function fetchNutrients(ids: number[]): Promise<Map<number, Per100>> {
+/** Näringsvärden per livsmedel, plus eventuella fel från Livsmedelsverket per livsmedel. */
+export async function fetchNutrients(ids: number[]): Promise<{ map: Map<number, Per100>; errors: string[] }> {
   const map = new Map<number, Per100>();
-  if (!ids.length) return map;
+  if (!ids.length) return { map, errors: [] };
   const { data, error } = await supabase.functions.invoke('lv-foods', { body: { action: 'nutrients', ids } });
   if (error) throw error;
   for (const f of (data?.foods ?? []) as { id: number; per_100g: Per100 | null }[]) if (f.per_100g) map.set(f.id, f.per_100g);
-  return map;
+  return { map, errors: Object.values((data?.errors ?? {}) as Record<string, string>) };
 }
 
 export async function fetchUnitWeights(ids: number[]) {
@@ -148,6 +149,6 @@ export async function estimateKcal(lines: { amount: number | null; unit: string;
   });
   const ids = [...new Set(ings.map((i) => i.lv_food_id).filter((x): x is number => x != null))];
   const [f, w] = await Promise.all([fetchNutrients(ids), fetchUnitWeights(ids)]);
-  const res = computeNutrition(ings, portions, f, w);
+  const res = computeNutrition(ings, portions, f.map, w);
   return res.counted ? Math.round(res.perPortion.kcal ?? 0) : null;
 }

@@ -37,7 +37,10 @@ function arrayIn(data: unknown): Json[] {
 }
 
 async function getJson(url: string): Promise<unknown> {
-  const res = await fetch(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(20_000) });
+  const res = await fetch(url, {
+    headers: { Accept: 'application/json', 'User-Agent': 'Receptappen/1.0 (+https://github.com/Hampusfredrik/Recept_app)' },
+    signal: AbortSignal.timeout(20_000),
+  });
   if (!res.ok) throw new Error(`Livsmedelsverket svarade ${res.status} för ${url}`);
   return res.json();
 }
@@ -154,12 +157,22 @@ async function nutrients(ids: number[]) {
     const p = have?.find((h) => h.id === id)?.per_100g as Json | null | undefined;
     return !p || (p.kcal == null && !(Array.isArray(p.raw) && p.raw.length));
   });
+  const errors: Record<number, string> = {};
   const fetched = await Promise.all(missing.map(async (id) => {
     try {
-      const rows = arrayIn(await getJson(`${API}/livsmedel/${id}/naringsvarden?sprak=1`));
+      let data: unknown;
+      try {
+        data = await getJson(`${API}/livsmedel/${id}/naringsvarden?sprak=1`);
+      } catch {
+        // Om språkparametern inte stöds: försök utan den.
+        data = await getJson(`${API}/livsmedel/${id}/naringsvarden`);
+      }
+      const rows = arrayIn(data);
+      if (!rows.length) throw new Error(`Tomt svar för livsmedel ${id}: ${JSON.stringify(data).slice(0, 200)}`);
       return { id, per_100g: { ...mapNutrients(rows), raw: rows } };
     } catch (e) {
       console.error(e);
+      errors[id] = e instanceof Error ? e.message : String(e);
       return null;
     }
   }));
@@ -171,7 +184,7 @@ async function nutrients(ids: number[]) {
   }
   const { data: all } = await admin.from('lv_foods').select('id,name,per_100g').in('id', clean);
   // Skicka inte tillbaka råraderna till klienten.
-  return { foods: (all ?? []).map((f) => ({ id: f.id, name: f.name, per_100g: f.per_100g ? { ...f.per_100g, raw: undefined } : null })) };
+  return { errors, foods: (all ?? []).map((f) => ({ id: f.id, name: f.name, per_100g: f.per_100g ? { ...f.per_100g, raw: undefined } : null })) };
 }
 
 Deno.serve(async (req) => {

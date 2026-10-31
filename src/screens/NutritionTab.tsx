@@ -12,6 +12,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
   const [foods, setFoods] = useState<Map<number, Per100> | null>(null);
   const [weights, setWeights] = useState<Map<string, number>>(new Map());
   const [err, setErr] = useState('');
+  const [lvErrors, setLvErrors] = useState<string[]>([]);
   const [swap, setSwap] = useState<Ingredient | null>(null);
 
   const idsKey = r.ingredients.map((i) => `${i.id}:${i.lv_food_id ?? ''}:${i.match_confidence ?? ''}`).join(',');
@@ -25,7 +26,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
         await matchMissing(r.ingredients, updateIngredient);
         const ids = [...new Set(r.ingredients.map((i) => i.lv_food_id).filter((x): x is number => x != null))];
         const [f, w] = await Promise.all([fetchNutrients(ids), fetchUnitWeights(ids)]);
-        if (alive) { setFoods(f); setWeights(w); }
+        if (alive) { setFoods(f.map); setLvErrors(f.errors); setWeights(w); }
       } catch (e) {
         if (alive) setErr(e instanceof Error ? e.message : String(e));
       }
@@ -68,6 +69,8 @@ export function NutritionTab({ r }: { r: Recipe }) {
   ];
 
   const missingNut = res.counted === 0 || n.kcal == null;
+  const unmatched = r.ingredients.filter((i) => i.lv_food_id == null).length;
+  const noValues = res.noFood.length - unmatched;
   return (
     <div className="col" style={{ gap: 16 }}>
       {missingNut && (
@@ -75,12 +78,20 @@ export function NutritionTab({ r }: { r: Recipe }) {
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>Näringsvärdet kunde inte räknas ut</span>
           <span style={{ fontSize: 14 }}>
             {res.counted === 0
-              ? `${res.noFood.length} ingredienser saknar värden från Livsmedelsverket och ${res.noWeight.length} saknar vikt.`
+              ? [
+                  unmatched ? `${unmatched} ingredienser hittades inte i Livsmedelsverkets lista.` : '',
+                  noValues ? `${noValues} fick inga näringsvärden från Livsmedelsverket.` : '',
+                  res.noWeight.length ? `${res.noWeight.length} saknar vikt.` : '',
+                ].filter(Boolean).join(' ')
               : 'Livsmedelsverkets svar innehöll inget energivärde.'}
             {' '}Tryck på en ingrediens nedan för att byta livsmedel eller ange vikt.
           </span>
+          {lvErrors.length > 0 && (
+            <span style={{ fontSize: 12, fontFamily: 'ui-monospace, Menlo, monospace', wordBreak: 'break-word', opacity: 0.85 }}>Fel från Livsmedelsverket: {lvErrors[0]}</span>
+          )}
         </div>
       )}
+      {res.counted > 0 && (<>
       <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'space-between', padding: '18px 20px', borderRadius: 30, background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)' }}>
         <div className="col">
           <span style={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>Per portion</span>
@@ -122,6 +133,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
           ))}
         </div>
       </div>
+      </>)}
 
       <div className="col" style={{ gap: 2 }}>
         <h4 style={{ margin: '8px 0 2px', fontSize: 19 }}>Matchat mot Livsmedelsverket</h4>
