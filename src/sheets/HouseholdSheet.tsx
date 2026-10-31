@@ -4,11 +4,32 @@ import { Sheet, useToast } from '../components/ui';
 
 // Inbjudan och utloggning. Inte ritat i designen; följer arkens formspråk.
 export function HouseholdSheet({ onClose }: { onClose: () => void }) {
-  const { household, households, selectHousehold, session, rotateInvite, renameHousehold, signOut } = useStore();
+  const { household, households, selectHousehold, session, rotateInvite, renameHousehold, joinHousehold, leaveHousehold, signOut } = useStore();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(household?.name ?? '');
+  const [code, setCode] = useState('');
+  const [joinErr, setJoinErr] = useState('');
   if (!household) return null;
+  const join = async () => {
+    if (!code.trim()) return;
+    setBusy(true); setJoinErr('');
+    try {
+      await joinHousehold(code);
+      toast('Du har gått med i köket');
+      onClose();
+    } catch (e) {
+      setJoinErr(e instanceof Error && /okänd/i.test(e.message) ? 'Koden finns inte. Kontrollera den och försök igen.' : 'Kunde inte gå med i köket.');
+    }
+    setBusy(false);
+  };
+  const leave = async () => {
+    if (!confirm(
+      `Lämna ”${household.name}”?\n\nDu slutar se kökets recept, vecka och anteckningar. Andra medlemmar påverkas inte. Är du ensam i köket går det inte att komma tillbaka till det.`,
+    )) return;
+    setBusy(true);
+    try { await leaveHousehold(); toast('Du har lämnat köket'); onClose(); } catch { toast('Kunde inte lämna köket'); setBusy(false); }
+  };
   const dirty = name.trim() !== household.name;
   const saveName = async () => {
     if (!dirty) return;
@@ -62,10 +83,20 @@ export function HouseholdSheet({ onClose }: { onClose: () => void }) {
           })}
         </div>
       )}
+      <div className="field">
+        <label>Gå med i ett annat kök</label>
+        <div className="row" style={{ gap: 8 }}>
+          <input className="input big" value={code} onChange={(e) => { setCode(e.target.value.toUpperCase()); setJoinErr(''); }} onKeyDown={(e) => e.key === 'Enter' && join()}
+            placeholder="Inbjudningskod" autoCapitalize="characters" style={{ letterSpacing: '.08em' }} />
+          <button className="btn btn-secondary" disabled={busy || !code.trim()} onClick={join} style={{ flex: 'none', height: 48, padding: '0 18px' }}>Gå med</button>
+        </div>
+        {joinErr && <span className="err" style={{ display: 'block', marginTop: 6 }}>{joinErr}</span>}
+      </div>
       <div className="row" style={{ justifyContent: 'space-between', gap: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Inloggad som {session?.user.email}</span>
         <button className="btn btn-ghost" onClick={async () => { onClose(); await signOut(); }} style={{ color: 'var(--color-accent-700)', flex: 'none' }}>Logga ut</button>
       </div>
+      <button className="btn btn-ghost" disabled={busy} onClick={leave} style={{ alignSelf: 'flex-start', color: 'var(--color-neutral-700)', marginTop: -10 }}>Lämna köket</button>
     </Sheet>
   );
 }

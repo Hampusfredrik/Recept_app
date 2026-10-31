@@ -26,6 +26,7 @@ interface Store extends Data {
   joinHousehold: (code: string) => Promise<void>;
   rotateInvite: () => Promise<void>;
   renameHousehold: (name: string) => Promise<void>;
+  leaveHousehold: () => Promise<void>;
   signOut: () => Promise<void>;
   // recept
   saveRecipe: (r: NewRecipe) => Promise<string>;
@@ -187,6 +188,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const clean = name.trim().slice(0, 60) || 'Vårt kök';
         setHousehold((h) => (h ? { ...h, name: clean } : h));
         must(await supabase.from('households').update({ name: clean }).eq('id', id));
+      },
+      leaveHousehold: async () => {
+        const id = need();
+        const uid = session?.user.id;
+        if (!uid) throw new Error('Inte inloggad');
+        must(await supabase.from('household_members').delete().eq('household_id', id).eq('user_id', uid));
+        localStorage.removeItem(HH_KEY);
+        setData({ recipes: [], tags: [], plan: [], pantry: [] });
+        await loadHousehold();
       },
       rotateInvite: async () => {
         const code = must(await supabase.rpc('rotate_invite_code', { p_household: need() })) as string;
