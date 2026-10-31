@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { DEFAULT_DENSITY_G_PER_ML, G_PER_UNIT, ML_PER_UNIT } from '../data/units';
 import type { Ingredient } from './types';
-import { defaultPrep, matchFood, words } from './match';
+import { matchFood } from './match';
 import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
 import { isStockCube, standardPieceWeight, STOCK_CUBE_SALT_G } from '../data/pieceWeights';
 
@@ -62,15 +62,10 @@ export async function matchMissing(ingredients: Ingredient[], update: (id: numbe
     const p = parseIngredientLine(`${i.amount} ${i.name}`);
     return p.unit ? { i: { ...i, unit: p.unit, name: p.name }, patch: { unit: p.unit, name: p.name } as Partial<Ingredient> } : { i, patch: {} };
   });
-  const stale = (i: Ingredient) => {
-    if (i.lv_food_id == null || i.lv_food_name == null || i.lv_manual) return false;
-    if (!matchFood(i.name, [{ id: i.lv_food_id, name: i.lv_food_name }])) return true;
-    // Osäkra träffar prövas igen: en bättre kan finnas med nuvarande regler.
-    if (i.match_confidence === 'unsure') return true;
-    // Kopplad till fel tillagning, t.ex. rå potatis när potatis ska räknas som kokt.
-    const prep = defaultPrep(i.name);
-    return !!prep && !words(i.lv_food_name).includes(prep);
-  };
+  // Bara osäkra automatiska träffar prövas igen. Säkra träffar, och livsmedel som
+  // användaren valt själv (alltid säkra), lämnas orörda.
+  const stale = (i: Ingredient) => i.lv_food_id != null && !i.lv_manual && i.match_confidence === 'unsure';
+
   // Buljongtärningar räknas bara som salt och behöver inget livsmedel.
   const todo = fixed.filter(({ i, patch }) => !isStockCube(i.name, i.unit) && (i.lv_food_id == null || stale(i) || Object.keys(patch).length));
   if (!todo.length) return;

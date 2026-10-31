@@ -308,11 +308,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateIngredient: async (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams' | 'lv_manual'>>) => {
         setData((d) => ({ ...d, recipes: d.recipes.map((r) => ({ ...r, ingredients: r.ingredients.map((i) => (i.id === id ? { ...i, ...patch } : i)) })) }));
         const res = await supabase.from('recipe_ingredients').update(patch).eq('id', id);
-        // Kolumnen lv_manual finns först när SQL-filen för manuella val har körts.
+        // Kolumnen lv_manual är valfri: saknas den sparas valet utan markeringen.
         if (res.error && 'lv_manual' in patch && /lv_manual/.test(res.error.message)) {
           const { lv_manual: _m, ...rest } = patch;
           must(await supabase.from('recipe_ingredients').update(rest).eq('id', id));
-          throw new Error('Valet sparades, men kan skrivas över automatiskt tills SQL-filen för manuella val har körts i Supabase.');
+          return;
         }
         must(res);
       },
