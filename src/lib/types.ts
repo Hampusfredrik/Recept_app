@@ -52,6 +52,8 @@ export interface Recipe {
   tagIds: string[];
   note: { text: string; updated_at: string; updated_by: string | null } | null;
   checked: number[];
+  /** Saknas om databasen inte har kolumnen ännu. */
+  is_favorite?: boolean;
 }
 
 export interface Household {

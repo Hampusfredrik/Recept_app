@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
-import { ArrowUpRight, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Search, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, Heart, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Search, Sparkles, Users } from 'lucide-react';
 import { creditOf, searchImages, withCredit, type PexelsPhoto } from '../lib/images';
 import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
@@ -16,7 +16,7 @@ type Tab = 'ingr' | 'steps' | 'nut';
 
 export function Detail() {
   const { id } = useParams();
-  const { recipes, tags, plan, cookedToday, toggleChecked, resetChecked, deleteRecipe } = useStore();
+  const { recipes, tags, plan, cookedToday, toggleChecked, resetChecked, deleteRecipe, toggleFavorite } = useStore();
   const nav = useNavigate();
   const toast = useToast();
   const r = recipes.find((x) => x.id === id);
@@ -48,6 +48,11 @@ export function Detail() {
       <button onClick={back} aria-label="Tillbaka" className="detail-back"
         style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', left: 16, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--color-text)', zIndex: 3 }}>
         <Ico icon={ChevronLeft} size={20} />
+      </button>
+      <button onClick={() => toggleFavorite(r.id).then(() => toast(r.is_favorite ? 'Borttagen från favoriter' : 'Sparad som favorit'), (e) => toast(e instanceof Error ? e.message : String(e)))}
+        aria-label={r.is_favorite ? 'Ta bort från favoriter' : 'Markera som favorit'} aria-pressed={!!r.is_favorite} className="detail-fav"
+        style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', right: 70, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: r.is_favorite ? 'var(--color-accent)' : 'var(--color-text)', zIndex: 3 }}>
+        <Heart size={18} strokeWidth={2.75} fill={r.is_favorite ? 'currentColor' : 'none'} aria-hidden style={{ display: 'block' }} />
       </button>
       <button onClick={() => nav(`/recept/${r.id}/redigera`)} aria-label="Redigera recept" className="detail-edit"
         style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', right: 16, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--color-text)', zIndex: 3 }}>

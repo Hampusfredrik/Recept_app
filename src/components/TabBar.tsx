@@ -7,7 +7,7 @@ import { useUi } from './uiState';
 export function TabBar({ desktopOnly = false }: { desktopOnly?: boolean }) {
   const { setSheet } = useUi();
   const tab = (to: string, icon: typeof House, label: string) => (
-    <NavLink to={to} end className={({ isActive }) => 'tab' + (isActive ? ' on' : '')}>
+    <NavLink to={to} end={to === '/'} className={({ isActive }) => 'tab' + (isActive ? ' on' : '')}>
       <Ico icon={icon} size={20} /><span>{label}</span>
     </NavLink>
   );

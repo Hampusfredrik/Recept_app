@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutGrid, List, Search, SlidersHorizontal, X } from 'lucide-react';
+import { Heart, LayoutGrid, List, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { useUi } from '../components/uiState';
 import { EffortIcons, EffortPicker, Ico, Sheet, TagPill, Thumb } from '../components/ui';
-import { emptyFilter, filterCount, filterRecipes, toggle, type LibFilter } from '../lib/logic';
+import { emptyFilter, FAV_CHIP, filterCount, filterRecipes, toggle, type LibFilter } from '../lib/logic';
 import { EFFORT, sourceLabel } from '../lib/format';
 
 export function Library() {
@@ -49,7 +49,7 @@ export function Library() {
       </div>
 
       <div className="hscroll" style={{ marginBottom: 20 }}>
-        {[{ id: null as string | null, name: 'Alla' }, ...tags].map((c) => (
+        {[{ id: null as string | null, name: 'Alla' }, ...(recipes.some((r) => r.is_favorite) || f.chip === FAV_CHIP ? [{ id: FAV_CHIP, name: '♥ Favoriter' }] : []), ...tags].map((c) => (
           <button key={c.id ?? 'alla'} className={'chip' + (f.chip === c.id ? ' on' : '')} onClick={() => set({ chip: c.id })} style={{ padding: '0 16px' }}>{c.name}</button>
         ))}
       </div>
@@ -66,7 +66,10 @@ export function Library() {
         <div className="lib-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {items.map((r) => (
             <div key={r.id} onClick={() => nav(`/recept/${r.id}`)} className="col" style={{ borderRadius: 26, background: 'var(--color-surface)', overflow: 'hidden', cursor: 'pointer' }}>
-              <Thumb id={r.id} image={r.image_url} radius={0} stripeW={8} style={{ height: 118 }} />
+              <div style={{ position: 'relative' }}>
+                <Thumb id={r.id} image={r.image_url} radius={0} stripeW={8} style={{ height: 118 }} />
+                {r.is_favorite && <FavBadge style={{ position: 'absolute', top: 8, right: 8 }} />}
+              </div>
               <div className="col" style={{ gap: 7, padding: '11px 13px 14px' }}>
                 <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.15, textWrap: 'pretty' }}>{r.name}</div>
                 <EffortIcons n={r.effort} size={14} gap={2} />
@@ -83,7 +86,9 @@ export function Library() {
             <div key={r.id} className="list-row" onClick={() => nav(`/recept/${r.id}`)}>
               <Thumb id={r.id} image={r.image_url} size={62} radius={20} />
               <div className="col" style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.15 }}>{r.name}</div>
+                <div style={{ fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.15 }}>
+                  {r.is_favorite && <Heart size={13} strokeWidth={2.75} fill="currentColor" color="var(--color-accent)" aria-label="Favorit" style={{ display: 'inline', marginRight: 5, verticalAlign: '-1px' }} />}{r.name}
+                </div>
                 <div style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{sourceLabel(r)}</div>
                 <div className="row" style={{ gap: 4, flexWrap: 'wrap' }}>
                   {r.tagIds.map(tagById).filter((t) => !!t).map((t) => <TagPill key={t.id} tag={t} />)}
@@ -132,5 +137,13 @@ export function Library() {
         </Sheet>
       )}
     </div>
+  );
+}
+
+function FavBadge({ style }: { style?: CSSProperties }) {
+  return (
+    <span aria-label="Favorit" style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--color-bg)', color: 'var(--color-accent)', display: 'grid', placeItems: 'center', ...style }}>
+      <Heart size={15} strokeWidth={2.75} fill="currentColor" aria-hidden style={{ display: 'block' }} />
+    </span>
   );
 }

@@ -1,4 +1,4 @@
-import { Shuffle } from 'lucide-react';
+import { Heart, Shuffle } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { useUi } from '../components/uiState';
 import { EffortIcons, Ico, Sheet, Thumb } from '../components/ui';
@@ -9,7 +9,8 @@ export function PickSheet({ date, onClose }: { date: string; onClose: () => void
   const { recipes, setPlan } = useStore();
   const { setSheet } = useUi();
   const d = fromIso(date);
-  const list = [...recipes].sort(byLongestAgo);
+  // Favoriter först, sedan det som lagades för längst sedan.
+  const list = [...recipes].sort((a, b) => Number(!!b.is_favorite) - Number(!!a.is_favorite) || byLongestAgo(a, b));
   return (
     <Sheet onClose={onClose} style={{ gap: 12, maxHeight: 'min(620px, calc(100dvh - 40px))', paddingBottom: 18, overflow: 'hidden' }}>
       <div className="row" style={{ justifyContent: 'space-between', gap: 10 }}>
@@ -19,7 +20,7 @@ export function PickSheet({ date, onClose }: { date: string; onClose: () => void
           <Ico icon={Shuffle} size={15} />Slumpa
         </button>
       </div>
-      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: -6 }}>Sorterat på längst sedan du lagade dem</span>
+      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: -6 }}>Favoriter först, sedan längst sedan ni lagade dem</span>
       <div className="col" style={{ overflowY: 'auto', margin: '0 -8px' }}>
         {list.length === 0 && <span className="muted" style={{ padding: 8 }}>Inga recept än.</span>}
         {list.map((r) => (
@@ -27,7 +28,9 @@ export function PickSheet({ date, onClose }: { date: string; onClose: () => void
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 8, border: 0, borderRadius: 22, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--color-text)' }}>
             <Thumb id={r.id} image={r.image_url} size={48} radius={16} stripeW={5} />
             <span className="col" style={{ flex: 1, minWidth: 0, gap: 2 }}>
-              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 15, lineHeight: 1.15 }}>{r.name}</span>
+              <span style={{ fontFamily: 'var(--font-heading)', fontSize: 15, lineHeight: 1.15 }}>
+                {r.is_favorite && <Heart size={12} strokeWidth={2.75} fill="currentColor" color="var(--color-accent)" aria-label="Favorit" style={{ display: 'inline', marginRight: 5, verticalAlign: '-1px' }} />}{r.name}
+              </span>
               <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{lastLabel(daysSince(r.last_cooked_on))}</span>
             </span>
             <EffortIcons n={r.effort} size={11} />

@@ -55,13 +55,16 @@ export function pantrySuggestions(recipes: Recipe[], pantry: string[], max = 8) 
 
 // ── Receptlistan ──
 export interface LibFilter { q: string; chip: string | null; eff: number[]; src: 'alla' | 'web' | 'book'; tagSel: string[]; sort: 'new' | 'low' | 'high' }
+/** Filterchipet "Favoriter" i receptlistan (inte en tagg). */
+export const FAV_CHIP = '__fav';
 export const emptyFilter: LibFilter = { q: '', chip: null, eff: [], src: 'alla', tagSel: [], sort: 'new' };
 
 export function filterRecipes(recipes: Recipe[], tags: Tag[], f: LibFilter) {
   const ql = f.q.trim().toLowerCase();
   const tagName = (id: string) => tags.find((t) => t.id === id)?.name ?? '';
   const list = recipes.filter((r) => {
-    if (f.chip && !r.tagIds.includes(f.chip)) return false;
+    if (f.chip === FAV_CHIP) { if (!r.is_favorite) return false; }
+    else if (f.chip && !r.tagIds.includes(f.chip)) return false;
     if (f.eff.length && !f.eff.includes(r.effort)) return false;
     if (f.src !== 'alla' && r.source_type !== f.src) return false;
     if (f.tagSel.length && !f.tagSel.every((t) => r.tagIds.includes(t))) return false;

@@ -46,6 +46,7 @@ interface Store extends Data {
   cycleTagTone: (id: string) => Promise<void>;
   deleteTag: (id: string) => Promise<void>;
   // vecka
+  toggleFavorite: (recipeId: string) => Promise<void>;
   setPlan: (date: string, recipeId: string | null) => Promise<void>;
   // skafferi
   addPantry: (name: string) => Promise<void>;
@@ -363,6 +364,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteTag: async (id: string) => {
         setData((d) => ({ ...d, tags: d.tags.filter((x) => x.id !== id), recipes: d.recipes.map((r) => ({ ...r, tagIds: r.tagIds.filter((t) => t !== id) })) }));
         must(await supabase.from('tags').delete().eq('id', id));
+      },
+
+      toggleFavorite: async (recipeId: string) => {
+        const on = !data.recipes.find((r) => r.id === recipeId)?.is_favorite;
+        patchRecipe(recipeId, (r) => ({ ...r, is_favorite: on }));
+        const res = await supabase.from('recipes').update({ is_favorite: on }).eq('id', recipeId);
+        if (res.error) {
+          patchRecipe(recipeId, (r) => ({ ...r, is_favorite: !on }));
+          throw new Error(/is_favorite/.test(res.error.message) ? 'Favoriter kräver migreringen 20261103120000_favorites_and_shopping.sql i Supabase.' : res.error.message);
+        }
       },
 
       setPlan: async (date: string, recipeId: string | null) => {

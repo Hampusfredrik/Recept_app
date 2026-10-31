@@ -17,6 +17,8 @@ const SEASONING = new Set(['salt', 'flingsalt', 'havssalt', 'bordssalt', 'peppar
 
 /** Vatten räknas aldrig: ingen energi, oavsett vilket livsmedel det kopplats till. */
 export const isWater = (i: Ingredient) => WATER.has(coreName(i.name));
+/** Salt och peppar. */
+export const isSeasoning = (i: Pick<Ingredient, 'name'>) => SEASONING.has(coreName(i.name));
 
 // Kryddor räknas aldrig: försumbar näring i de mängder som används, och de matchas
 // lätt fel (paprikapulver → paprika, chilipulver → chilisås).
