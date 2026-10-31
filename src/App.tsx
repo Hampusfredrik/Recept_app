@@ -61,7 +61,7 @@ function Gate() {
   if (!s.loaded) return <Loading />;
 
   return (
-    <>
+    <div className="shell">
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/recept" element={<Library />} />
@@ -74,8 +74,8 @@ function Gate() {
         <Route path="/ny/kokbok" element={<Scan />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      {['/', '/recept', '/veckan', '/taggar'].includes(loc.pathname) && <TabBar />}
-    </>
+      <TabBar desktopOnly={!['/', '/recept', '/veckan', '/taggar'].includes(loc.pathname)} />
+    </div>
   );
 }
 

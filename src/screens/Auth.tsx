@@ -8,7 +8,7 @@ import { Ico, Spinner } from '../components/ui';
 
 export function NotConfigured() {
   return (
-    <div className="screen no-tabs col" style={{ gap: 12 }}>
+    <div className="screen no-tabs narrow col" style={{ gap: 12 }}>
       <span className="kicker">Receptappen</span>
       <h1 className="h1">Saknar Supabase</h1>
       <p className="muted" style={{ margin: 0 }}>Sätt <code>VITE_SUPABASE_URL</code> och <code>VITE_SUPABASE_ANON_KEY</code> (se README) och bygg om appen.</p>
@@ -51,7 +51,7 @@ export function Login() {
   const pill = { gap: 10, height: 54, padding: '0 18px', borderRadius: 999, background: 'var(--color-surface)' } as const;
 
   return (
-    <div className="screen no-tabs col" style={{ gap: 18 }}>
+    <div className="screen no-tabs narrow col" style={{ gap: 18 }}>
       <span style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--color-accent)', display: 'grid', placeItems: 'center', color: 'var(--color-bg)' }}>
         <Ico icon={ChefHat} size={30} />
       </span>
@@ -97,7 +97,7 @@ export function Onboarding() {
   };
 
   return (
-    <div className="screen no-tabs col" style={{ gap: 18 }}>
+    <div className="screen no-tabs narrow col" style={{ gap: 18 }}>
       <div className="col" style={{ gap: 2 }}>
         <span className="kicker">Välkommen</span>
         <h1 className="h1">Ert kök</h1>

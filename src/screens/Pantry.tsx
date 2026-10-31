@@ -20,7 +20,7 @@ export function Pantry() {
   const suggest = pantrySuggestions(recipes, pantry);
 
   return (
-    <div className="screen no-tabs" style={{ paddingBottom: 60 }}>
+    <div className="screen no-tabs narrow" style={{ paddingBottom: 60 }}>
       <TopBar icon="back" onClose={back} />
       <h1 style={{ margin: '0 0 6px', fontSize: 34 }}>Vad kan jag laga?</h1>
       <p style={{ margin: '0 0 18px', color: 'var(--color-neutral-700)', fontSize: 14 }}>Lägg till det du har hemma. Recepten där minst fattas hamnar först.</p>

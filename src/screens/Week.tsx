@@ -28,7 +28,7 @@ export function Week() {
     : 'Inget planerat än.';
 
   return (
-    <div className="screen">
+    <div className="screen narrow">
       <span className="kicker">Vecka {isoWeek(first)} · {range}</span>
       <h1 className="h1" style={{ margin: '2px 0 6px' }}>Veckan</h1>
       <p style={{ margin: '0 0 14px', color: 'var(--color-neutral-700)', fontSize: 14 }}>{summary}</p>

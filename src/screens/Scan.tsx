@@ -104,7 +104,7 @@ export function Scan() {
       <div style={{ position: 'absolute', width: 38, height: 38, borderColor: 'var(--color-accent-300)', borderStyle: 'solid', borderWidth: 0, borderRadius: r, ...pos }} />
     );
     return (
-      <div className="col" style={{ position: 'fixed', inset: 0, left: 'var(--edge)', right: 'var(--edge)', background: 'var(--color-neutral-900)', color: 'var(--color-neutral-100)', padding: 'var(--top-pad) 20px 40px', zIndex: 6 }}>
+      <div className="col" style={{ position: 'fixed', inset: 0, left: 'var(--edge)', right: 'var(--edge-r, var(--edge))', background: 'var(--color-neutral-900)', color: 'var(--color-neutral-100)', padding: 'var(--top-pad) 20px 40px', zIndex: 6 }}>
         {fileInput}
         <TopBar dark onClose={() => setPhase('paste')} title="Fota kokbokssida" />
         <div style={{ position: 'relative', flex: 1, margin: '0 0 18px', borderRadius: 34, overflow: 'hidden', background: 'repeating-linear-gradient(135deg,var(--color-neutral-800) 0 10px,var(--color-neutral-900) 10px 20px)', display: 'grid', placeItems: 'center' }}>
@@ -135,7 +135,7 @@ export function Scan() {
 
   if (phase === 'sort') {
     return (
-      <div className="screen no-tabs">
+      <div className="screen no-tabs narrow">
         <TopBar icon="back" onClose={() => setPhase('paste')} title="Från kokbok" />
         <div className="col" style={{ gap: 18 }}>
           <div className="col" style={{ gap: 4 }}>
@@ -185,7 +185,7 @@ export function Scan() {
   }
 
   return (
-    <div className="screen no-tabs" style={{ paddingBottom: 60 }}>
+    <div className="screen no-tabs narrow" style={{ paddingBottom: 60 }}>
       <TopBar onClose={back} title="Från kokbok" />
       <h1 style={{ margin: '0 0 16px', fontSize: 32 }}>Kopiera texten med kameran</h1>
       <div className="col" style={{ gap: 10, marginBottom: 20 }}>

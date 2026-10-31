@@ -39,7 +39,7 @@ export function AddBook() {
   };
 
   return (
-    <div className="screen no-tabs">
+    <div className="screen no-tabs narrow">
       <TopBar onClose={back} title="Från kokbok" />
       <h1 style={{ margin: '0 0 20px', fontSize: 34 }}>Ett recept ur bokhyllan</h1>
       <div className="col" style={{ gap: 16 }}>

@@ -76,7 +76,7 @@ export function AddLink() {
   };
 
   return (
-    <div className="screen no-tabs">
+    <div className="screen no-tabs narrow">
       <TopBar onClose={back} title="Från webben" />
 
       {phase === 'input' && (

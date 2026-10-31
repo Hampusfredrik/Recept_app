@@ -38,17 +38,18 @@ export function Detail() {
   const sinceLabel = lastLabel(days).replace('Lagad ', '').replace(/^./, (c) => c.toUpperCase());
 
   return (
-    <div style={{ paddingBottom: 60, position: 'relative' }}>
-      <div style={{ position: 'relative', height: 330 }}>
+    <div className="detail" style={{ paddingBottom: 60, position: 'relative' }}>
+      <div className="detail-hero" style={{ position: 'relative', height: 330 }}>
         <Thumb id={r.id} image={r.image_url} radius="0 0 34px 34px" stripeW={10} style={{ position: 'absolute', inset: 0 }} />
       </div>
-      <button onClick={back} aria-label="Tillbaka"
+      <button onClick={back} aria-label="Tillbaka" className="detail-back"
         style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', left: 16, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--color-text)', zIndex: 3 }}>
         <Ico icon={ChevronLeft} size={20} />
       </button>
-      <div style={{ padding: '22px 20px 0' }}><h1 style={{ margin: 0, fontSize: 31, textWrap: 'pretty' }}>{r.name}</h1></div>
+      <div className="detail-title" style={{ padding: '22px 20px 0' }}><h1 style={{ margin: 0, fontSize: 31, textWrap: 'pretty' }}>{r.name}</h1></div>
 
-      <div className="col" style={{ gap: 18, padding: '16px 20px 0' }}>
+      <div className="detail-body" style={{ padding: '16px 20px 0' }}>
+      <div className="col detail-meta" style={{ gap: 18 }}>
         <div className="row" style={{ gap: 16, fontSize: 14, color: 'var(--color-neutral-700)' }}>
           <span className="row" style={{ gap: 6 }}><Ico icon={Users} size={16} />{r.portions} {r.portions === 1 ? 'portion' : 'portioner'}</span>
         </div>
@@ -112,6 +113,9 @@ export function Detail() {
           <div className="wrap">{recTags.map((t) => <TagPill key={t.id} tag={t} style={{ fontSize: 13, padding: '5px 12px', fontWeight: 600 }} />)}</div>
         )}
 
+      </div>
+
+      <div className="col detail-main" style={{ gap: 18 }}>
         <div className="seg2" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginTop: 4 }}>
           {([['ingr', 'Ingredienser'], ['steps', 'Gör så här'], ['nut', 'Näring']] as const).map(([k, label]) => (
             <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{label}</button>
@@ -164,11 +168,12 @@ export function Detail() {
 
       <Notes r={r} />
 
-      <div style={{ padding: '28px 20px 0' }}>
+      <div className="detail-del" style={{ paddingTop: 28 }}>
         <button className="btn btn-ghost" style={{ color: 'var(--color-neutral-700)' }}
           onClick={async () => { if (confirm(`Ta bort ”${r.name}”? Det går inte att ångra.`)) { await deleteRecipe(r.id); nav('/recept', { replace: true }); } }}>
           Ta bort receptet
         </button>
+      </div>
       </div>
 
       {writeIngr && <WriteIngredients r={r} onClose={() => setWriteIngr(false)} />}
@@ -229,7 +234,7 @@ function Notes({ r }: { r: Recipe }) {
   };
 
   return (
-    <div className="col" style={{ gap: 8, padding: '28px 20px 0' }}>
+    <div className="col detail-notes" style={{ gap: 8, paddingTop: 28 }}>
       <div className="row" style={{ gap: 8 }}><Ico icon={NotebookPen} color="var(--color-accent-700)" /><h4 style={{ margin: 0, fontSize: 19 }}>Mina anteckningar</h4></div>
       <textarea className="input" value={text} onChange={(e) => onChange(e.target.value)}
         onFocus={() => { focused.current = true; }} onBlur={() => { focused.current = false; }}

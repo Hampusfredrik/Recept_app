@@ -67,3 +67,94 @@ a:hover { color: var(--color-accent-600); }
 .toast { position: fixed; left: 50%; top: max(60px, calc(env(safe-area-inset-top) + 12px)); transform: translateX(-50%); z-index: 20; display: flex; align-items: center; gap: 8px;
   padding: 10px 18px; border-radius: 999px; background: var(--color-neutral-900); color: var(--color-bg); font-weight: 600; font-size: 14px;
   box-shadow: var(--shadow-lg); white-space: nowrap; animation: rtoast .2s ease-out; }
+
+/* ── Receptsidan: spalterna ligger under varandra på mobil ── */
+.detail-main { margin-top: 18px; }
+.tabbar .brand, .tabbar .plus-label { display: none; }
+.tabbar.desktop-only { display: none; }
+
+/* ══════════════════ Dator: sidomeny och bredare innehåll ══════════════════ */
+@media (min-width: 900px) {
+  :root {
+    --sidebar: 248px;
+    --top-pad: 44px;
+    --side: 40px;
+    /* Fasta lager (ark, kamera) centreras i innehållsytan till höger om menyn. */
+    --edge: calc(var(--sidebar) + max(0px, (100vw - var(--sidebar) - 1080px) / 2));
+    --edge-r: max(0px, (100vw - var(--sidebar) - 1080px) / 2);
+  }
+  #root { max-width: none; }
+  .shell { margin-left: var(--sidebar); }
+  .screen { max-width: 1080px; margin: 0 auto; padding-bottom: 60px; }
+  .screen.no-tabs { padding-bottom: 60px; }
+  .screen.narrow { max-width: 720px; }
+
+  /* Sidomeny */
+  .tabbar, .tabbar.desktop-only {
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 4px;
+    left: 16px; right: auto; top: 16px; bottom: 16px; width: calc(var(--sidebar) - 32px); height: auto;
+    border-radius: 32px; padding: 24px 14px;
+  }
+  .tabbar .brand {
+    display: flex; align-items: center; gap: 10px; padding: 0 10px 22px; color: var(--color-bg);
+    font-family: var(--font-heading); font-size: 20px;
+  }
+  .tabbar .brand svg { color: var(--color-accent-300); }
+  .tabbar .tab {
+    flex: none; height: 46px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px;
+    border-radius: 999px; font-size: 15px;
+  }
+  .tabbar .tab:hover { background: color-mix(in srgb, var(--color-bg) 8%, transparent); color: var(--color-neutral-200); }
+  .tabbar .tab.on { background: color-mix(in srgb, var(--color-bg) 10%, transparent); }
+  .tabbar .plus {
+    order: 10; width: auto; height: 50px; border-radius: 999px; margin-top: auto; gap: 8px;
+    display: flex; align-items: center; justify-content: center; font: 700 15px var(--font-body);
+  }
+  .tabbar .plus-label { display: inline; }
+
+  /* Ark blir centrerade dialogrutor */
+  .sheet {
+    left: calc(var(--sidebar) + (100vw - var(--sidebar)) / 2 - 270px);
+    right: auto; width: 540px; top: 50%; bottom: auto; transform: translateY(-50%);
+    max-height: calc(100dvh - 80px); animation: none;
+  }
+  .toast { left: calc(var(--sidebar) + (100vw - var(--sidebar)) / 2); }
+
+  /* Idag: två spalter */
+  .screen.home {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr) !important;
+    grid-template-areas: "head head" "today today" "hero trio" "hero tiles";
+    column-gap: 32px; row-gap: 26px !important; align-items: start;
+  }
+  .home-head { grid-area: head; }
+  .home-today { grid-area: today; margin-top: 0 !important; }
+  .home-hero { grid-area: hero; }
+  .home-trio { grid-area: trio; }
+  .home-tiles { grid-area: tiles; }
+
+  /* Recept: fler kolumner */
+  .lib-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)) !important; gap: 16px !important; }
+  .lib-list { display: grid !important; grid-template-columns: 1fr 1fr; column-gap: 32px; }
+  .lib-list .list-row { margin: 0; }
+
+  /* Receptsidan: bild och rubrik överst, uppgifter till vänster, innehåll till höger */
+  .detail { max-width: 1080px; margin: 0 auto; padding-top: 32px; }
+  .detail-hero { height: 360px !important; margin: 0 var(--side); }
+  .detail-hero > .thumb { border-radius: 34px !important; }
+  .detail-back { top: 48px !important; left: calc(var(--side) + 16px) !important; }
+  .detail-title { padding: 26px var(--side) 0 !important; }
+  .detail-title h1 { font-size: 40px !important; }
+  .detail-body {
+    display: grid; grid-template-columns: 340px minmax(0, 1fr); column-gap: 40px; align-items: start;
+    grid-template-areas: "meta main" "notes main" "del main"; grid-template-rows: auto auto 1fr;
+    padding: 20px var(--side) 0 !important;
+  }
+  .detail-meta { grid-area: meta; }
+  .detail-main { grid-area: main; margin-top: 0; }
+  .detail-notes { grid-area: notes; }
+  .detail-del { grid-area: del; }
+}
+
+@media (min-width: 1300px) {
+  .lib-list { grid-template-columns: 1fr 1fr 1fr; }
+}

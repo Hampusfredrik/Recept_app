@@ -21,7 +21,7 @@ export function Library() {
     background: on ? 'var(--color-bg)' : 'transparent', color: on ? 'var(--color-text)' : 'var(--color-neutral-600)' } as const);
 
   return (
-    <div className="screen">
+    <div className="screen wide">
       <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
         <div className="col" style={{ gap: 2 }}>
           <span className="kicker">{recipes.length} sparade</span>
@@ -63,7 +63,7 @@ export function Library() {
       )}
 
       {view === 'grid' && items.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="lib-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           {items.map((r) => (
             <div key={r.id} onClick={() => nav(`/recept/${r.id}`)} className="col" style={{ borderRadius: 26, background: 'var(--color-surface)', overflow: 'hidden', cursor: 'pointer' }}>
               <Thumb id={r.id} image={r.image_url} radius={0} stripeW={8} style={{ height: 118 }} />
@@ -78,7 +78,7 @@ export function Library() {
       )}
 
       {view === 'list' && items.length > 0 && (
-        <div className="col" style={{ gap: 4 }}>
+        <div className="col lib-list" style={{ gap: 4 }}>
           {items.map((r) => (
             <div key={r.id} className="list-row" onClick={() => nav(`/recept/${r.id}`)}>
               <Thumb id={r.id} image={r.image_url} size={62} radius={20} />
