@@ -9,7 +9,7 @@ import { daysSince, lastLabel, today, todayKicker } from '../lib/dates';
 import { EFFORT } from '../lib/format';
 
 export function Home() {
-  const { recipes, plan, setPlan } = useStore();
+  const { recipes, plan, setPlan, household } = useStore();
   const { setSheet } = useUi();
   const nav = useNavigate();
   const toast = useToast();
@@ -39,11 +39,12 @@ export function Home() {
   return (
     <div className="screen" style={{ display: 'grid', alignContent: 'start', gridTemplateColumns: 'minmax(0,1fr)', gap: 26 }}>
       <div className="col" style={{ gap: 2 }}>
-        <div className="row" style={{ justifyContent: 'space-between', gap: 12 }}>
-          <span className="kicker">{todayKicker()}</span>
-          <button className="circle-btn" onClick={() => setSheet({ kind: 'household' })} aria-label="Ert kök"
-            style={{ width: 36, height: 36, margin: '-8px 0' }}><Ico icon={Users} size={16} /></button>
-        </div>
+        <button onClick={() => setSheet({ kind: 'household' })} aria-label={`Ert kök: ${household?.name ?? ''}`} className="row"
+          style={{ alignSelf: 'flex-start', maxWidth: '100%', gap: 8, height: 36, padding: '0 14px 0 6px', margin: '-12px 0 12px', borderRadius: 999, border: 0, background: 'var(--color-surface)', cursor: 'pointer', font: '700 14px var(--font-body)', color: 'var(--color-text)' }}>
+          <span style={{ flex: 'none', width: 26, height: 26, borderRadius: '50%', background: 'var(--color-accent)', color: 'var(--color-bg)', display: 'grid', placeItems: 'center' }}><Ico icon={Users} size={14} /></span>
+          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{household?.name ?? 'Ert kök'}</span>
+        </button>
+        <span className="kicker">{todayKicker()}</span>
         <h1 className="h1">Vad blir det idag?</h1>
       </div>
 

@@ -4,10 +4,18 @@ import { Sheet, useToast } from '../components/ui';
 
 // Inbjudan och utloggning. Inte ritat i designen; följer arkens formspråk.
 export function HouseholdSheet({ onClose }: { onClose: () => void }) {
-  const { household, session, rotateInvite, signOut } = useStore();
+  const { household, session, rotateInvite, renameHousehold, signOut } = useStore();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [name, setName] = useState(household?.name ?? '');
   if (!household) return null;
+  const dirty = name.trim() !== household.name;
+  const saveName = async () => {
+    if (!dirty) return;
+    setBusy(true);
+    try { await renameHousehold(name); toast('Köket har bytt namn'); } catch { toast('Kunde inte spara namnet'); }
+    setBusy(false);
+  };
   const link = `${window.location.origin}${import.meta.env.BASE_URL}#/join/${household.invite_code}`;
 
   const share = async () => {
@@ -20,8 +28,15 @@ export function HouseholdSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet onClose={onClose}>
-      <h3>{household.name}</h3>
-      <p style={{ margin: '-8px 0 0', fontSize: 14, color: 'var(--color-neutral-700)' }}>Bjud in den du lagar mat med. Ni ser samma recept, vecka och anteckningar direkt.</p>
+      <h3>Ert kök</h3>
+      <div className="field" style={{ marginTop: -6 }}>
+        <label>Namn på köket</label>
+        <div className="row" style={{ gap: 8 }}>
+          <input className="input big" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && saveName()} placeholder="t.ex. Hemma hos oss" />
+          {dirty && <button className="btn btn-primary" disabled={busy} onClick={saveName} style={{ flex: 'none', height: 48, padding: '0 18px' }}>Spara</button>}
+        </div>
+      </div>
+      <p style={{ margin: 0, fontSize: 14, color: 'var(--color-neutral-700)' }}>Bjud in den du lagar mat med. Ni ser samma recept, vecka och anteckningar direkt.</p>
       <div className="col" style={{ gap: 4, padding: '14px 18px', borderRadius: 24, background: 'var(--color-surface)' }}>
         <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--color-neutral-700)', fontWeight: 600 }}>Inbjudningskod</span>
         <span style={{ fontFamily: 'var(--font-heading)', fontSize: 28, letterSpacing: '.08em' }}>{household.invite_code}</span>

@@ -23,6 +23,7 @@ interface Store extends Data {
   createHousehold: (name?: string) => Promise<void>;
   joinHousehold: (code: string) => Promise<void>;
   rotateInvite: () => Promise<void>;
+  renameHousehold: (name: string) => Promise<void>;
   signOut: () => Promise<void>;
   // recept
   saveRecipe: (r: NewRecipe) => Promise<string>;
@@ -167,6 +168,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(HH_KEY, h.id);
         const res = await loadHousehold();
         if (!res.h) throw new Error(`Köket sparades men kunde inte läsas: ${res.error ?? 'inga rader'}`);
+      },
+      renameHousehold: async (name: string) => {
+        const id = need();
+        const clean = name.trim().slice(0, 60) || 'Vårt kök';
+        setHousehold((h) => (h ? { ...h, name: clean } : h));
+        must(await supabase.from('households').update({ name: clean }).eq('id', id));
       },
       rotateInvite: async () => {
         const code = must(await supabase.rpc('rotate_invite_code', { p_household: need() })) as string;

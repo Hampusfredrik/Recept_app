@@ -86,6 +86,7 @@ export function Login() {
 export function Onboarding() {
   const { createHousehold, joinHousehold, signOut, error: loadErr } = useStore();
   const [code, setCode] = useState(localStorage.getItem('receptappen.invite.failed') ?? '');
+  const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -102,7 +103,10 @@ export function Onboarding() {
         <h1 className="h1">Ert kök</h1>
       </div>
       <p className="muted" style={{ margin: 0 }}>Recepten delas i ett kök. Skapa ett nytt, eller gå med i ditt sällskaps kök med deras kod.</p>
-      <button className="btn btn-primary btn-block" disabled={busy} onClick={() => run(() => createHousehold())} style={{ height: 54, fontSize: 17 }}>Skapa ett kök</button>
+      <div className="field"><label>Namn på köket</label>
+        <input className="input big" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="t.ex. Hemma hos oss" />
+      </div>
+      <button className="btn btn-primary btn-block" disabled={busy} onClick={() => run(() => createHousehold(name.trim() || undefined))} style={{ height: 54, fontSize: 17, marginTop: -4 }}>Skapa ett kök</button>
       <div className="col" style={{ gap: 8, marginTop: 10 }}>
         <span className="label">Har du en kod?</span>
         <div className="row" style={{ gap: 8 }}>
