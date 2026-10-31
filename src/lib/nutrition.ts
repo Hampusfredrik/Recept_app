@@ -65,11 +65,14 @@ export async function matchMissing(ingredients: Ingredient[], update: (id: numbe
   const stale = (i: Ingredient) => {
     if (i.lv_food_id == null || i.lv_food_name == null) return false;
     if (!matchFood(i.name, [{ id: i.lv_food_id, name: i.lv_food_name }])) return true;
+    // Osäkra träffar prövas igen: en bättre kan finnas med nuvarande regler.
+    if (i.match_confidence === 'unsure') return true;
     // Kopplad till fel tillagning, t.ex. rå potatis när potatis ska räknas som kokt.
     const prep = defaultPrep(i.name);
     return !!prep && !words(i.lv_food_name).includes(prep);
   };
-  const todo = fixed.filter(({ i, patch }) => i.lv_food_id == null || stale(i) || Object.keys(patch).length);
+  // Buljongtärningar räknas bara som salt och behöver inget livsmedel.
+  const todo = fixed.filter(({ i, patch }) => !isStockCube(i.name, i.unit) && (i.lv_food_id == null || stale(i) || Object.keys(patch).length));
   if (!todo.length) return;
   const foods = await foodList();
   await Promise.all(todo.map(({ i, patch }) => {
@@ -174,6 +177,8 @@ export interface NutResult {
   standard: Ingredient[];
   ignored: Ingredient[];
   stockCubes: Ingredient[];
+  /** Salt per portion och ingrediens, störst först. */
+  saltBy: { name: string; grams: number }[];
 }
 
 export function computeNutrition(ingredients: Ingredient[], portions: number, foods: Map<number, Per100>, weights: Map<string, number>): NutResult {
@@ -185,10 +190,12 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   const standard: Ingredient[] = [];
   const ignored: Ingredient[] = [];
   const stockCubes: Ingredient[] = [];
+  const saltRaw: { name: string; grams: number }[] = [];
   for (const i of ingredients) {
     // Buljongtärningar: bara salt, inget annat.
     if (i.amount != null && isStockCube(i.name, i.unit)) {
       sum.salt = (sum.salt ?? 0) + i.amount * STOCK_CUBE_SALT_G;
+      saltRaw.push({ name: i.name, grams: i.amount * STOCK_CUBE_SALT_G });
       stockCubes.push(i);
       continue;
     }
@@ -206,10 +213,12 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
       const key = k as keyof Per100;
       sum[key] = (sum[key] ?? 0) + g.grams / 100 * v;
     }
+    if (food.salt) saltRaw.push({ name: i.name, grams: g.grams / 100 * food.salt });
   }
   const p = Math.max(1, portions);
   const perPortion: Per100 = Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, v / p]));
-  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed, standard, ignored, stockCubes };
+  const saltBy = saltRaw.map((x) => ({ name: x.name, grams: x.grams / p })).filter((x) => x.grams >= 0.05).sort((a, b) => b.grams - a.grams);
+  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed, standard, ignored, stockCubes, saltBy };
 }
 
 /** Uppskattad energi per portion för granskningsvyn (innan receptet är sparat). */

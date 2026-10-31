@@ -49,3 +49,9 @@ test('vanliga basvaror', () => {
   assert.equal(m('krossade tomater'), 'Krossade tomater konserv');
   assert.equal(m('torskfilé'), 'Torsk filé rå');
 });
+
+test('namn som börjar med ett beskrivande ord', () => {
+  const list = ['Gula ärtor kokta m. salt', 'Gula ärtor torkade', 'Ärtor morot stuvade', 'Gröna ärtor frysta'].map((name, id) => ({ id, name }));
+  assert.equal(matchFood('torkade gula ärter', list)?.food.name, 'Gula ärtor torkade');
+  assert.equal(matchFood('gröna ärter', list)?.food.name, 'Gröna ärtor frysta');
+});

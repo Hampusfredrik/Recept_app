@@ -140,6 +140,11 @@ export function NutritionTab({ r }: { r: Recipe }) {
             </div>
           ))}
         </div>
+        {res.saltBy.length > 0 && (
+          <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 8 }}>
+            Saltet per portion kommer från: {res.saltBy.map((x) => `${x.name} ${fmt(x.grams)} g`).join(' · ')}
+          </span>
+        )}
       </div>
       </>)}
 

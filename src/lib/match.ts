@@ -83,9 +83,12 @@ export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; 
     if (!fw.length) continue;
     // Livsmedlets huvudord måste finnas bland ingrediensens kärnord. Huvudordet är
     // första ordet, eller ordet efter djurslaget för kött.
-    const heads = ANIMALS.has(fw[0]) && fw[1] ? [fw[0], fw[1]] : [fw[0]];
+    // Inleds namnet med ett beskrivande ord ("Gula ärtor torkade") är huvudordet nästa ord.
+    const first = fw.find((w) => !DESCRIPTORS.has(w)) ?? fw[0];
+    const at = fw.indexOf(first);
+    const heads = ANIMALS.has(first) && fw[at + 1] ? [first, fw[at + 1]] : [first];
     if (!ingCore.some((w) => heads.some((h) => covers(w, h)))) continue;
-    const exactHead = ingCore.some((w) => stem(w) === stem(fw[0]));
+    const exactHead = ingCore.some((w) => stem(w) === stem(first));
 
     const fCore = fw.filter((w) => !DESCRIPTORS.has(w));
     const fDesc = fw.filter((w) => DESCRIPTORS.has(w));
