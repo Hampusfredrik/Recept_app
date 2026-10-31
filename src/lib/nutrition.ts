@@ -1,7 +1,7 @@
 import { supabase } from './supabase';
 import { DEFAULT_DENSITY_G_PER_ML, G_PER_UNIT, ML_PER_UNIT } from '../data/units';
 import type { Ingredient } from './types';
-import { matchFood } from './match';
+import { defaultPrep, matchFood, words } from './match';
 import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
 import { isStockCube, standardPieceWeight, STOCK_CUBE_SALT_G } from '../data/pieceWeights';
 
@@ -62,14 +62,21 @@ export async function matchMissing(ingredients: Ingredient[], update: (id: numbe
     const p = parseIngredientLine(`${i.amount} ${i.name}`);
     return p.unit ? { i: { ...i, unit: p.unit, name: p.name }, patch: { unit: p.unit, name: p.name } as Partial<Ingredient> } : { i, patch: {} };
   });
-  const stale = (i: Ingredient) => i.lv_food_id != null && i.lv_food_name != null
-    && !matchFood(i.name, [{ id: i.lv_food_id, name: i.lv_food_name }]);
+  const stale = (i: Ingredient) => {
+    if (i.lv_food_id == null || i.lv_food_name == null) return false;
+    if (!matchFood(i.name, [{ id: i.lv_food_id, name: i.lv_food_name }])) return true;
+    // Kopplad till fel tillagning, t.ex. rå potatis när potatis ska räknas som kokt.
+    const prep = defaultPrep(i.name);
+    return !!prep && !words(i.lv_food_name).includes(prep);
+  };
   const todo = fixed.filter(({ i, patch }) => i.lv_food_id == null || stale(i) || Object.keys(patch).length);
   if (!todo.length) return;
   const foods = await foodList();
   await Promise.all(todo.map(({ i, patch }) => {
     if (i.lv_food_id != null && !stale(i)) return update(i.id, patch);
     const m = matchFood(i.name, foods);
+    // Samma livsmedel som redan är kopplat (t.ex. ingen kokt potatis i databasen): skriv inte igen.
+    if (m && m.food.id === i.lv_food_id) return Object.keys(patch).length ? update(i.id, patch) : Promise.resolve();
     if (m) return update(i.id, { ...patch, lv_food_id: m.food.id, lv_food_name: m.food.name, match_confidence: m.sure ? 'sure' : 'unsure' });
     // Redan markerad utan träff och inget att rätta: skriv inte igen.
     if (i.lv_food_id == null && i.match_confidence != null && !Object.keys(patch).length) return Promise.resolve();

@@ -8,7 +8,7 @@ const names = [
   'Gula ärtor kokta m. salt', 'Ärtor gula torkade', 'Vattenkastanj rå', 'Vatten kranvatten', 'Saltsill rå', 'Salt',
   'Lök gul', 'Lök röd', 'Vitlök', 'Purjolök', 'Agar torkad', 'Grönsakssufflé', 'Buljongtärning grönsak',
   'Gris sidfläsk el. stekfläsk rimmat stekt', 'Kyckling bröstfilé rå', 'Torsk filé rå', 'Morot rå', 'Mjölk standard 3% fett',
-  'Filmjölk', 'Grädde vispgrädde 40%', 'Vispgrädde', 'Ägg', 'Äggula', 'Potatis rå', 'Krossade tomater konserv', 'Tomat',
+  'Filmjölk', 'Grädde vispgrädde 40%', 'Vispgrädde', 'Ägg', 'Äggula', 'Potatis rå', 'Potatis kokt', 'Potatis stekt', 'Potatismos', 'Krossade tomater konserv', 'Tomat',
 ];
 const foods = names.map((name, id) => ({ id, name }));
 const m = (s: string) => matchFood(s, foods)?.food.name ?? null;
@@ -42,7 +42,10 @@ test('vanliga basvaror', () => {
   assert.equal(m('mjölk'), 'Mjölk standard 3% fett');
   assert.equal(m('vispgrädde'), 'Vispgrädde');
   assert.equal(m('ägg'), 'Ägg');
-  assert.equal(m('potatis'), 'Potatis rå');
+  assert.equal(m('potatis'), 'Potatis kokt');
+  assert.equal(m('fast potatis'), 'Potatis kokt');
+  assert.equal(m('stekt potatis'), 'Potatis stekt');
+  assert.equal(m('potatismos'), 'Potatismos');
   assert.equal(m('krossade tomater'), 'Krossade tomater konserv');
   assert.equal(m('torskfilé'), 'Torsk filé rå');
 });

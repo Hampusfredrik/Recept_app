@@ -13,7 +13,7 @@ const DESCRIPTORS = new Set([
   'stekt', 'stekta', 'hackad', 'hackade', 'finhackad', 'riven', 'rivna', 'skivad', 'skivade', 'skalad', 'skalade',
   'hel', 'hela', 'konserverad', 'konserverade', 'tillagad', 'rökt', 'rimmat', 'rimmad', 'osaltad', 'saltad',
   'gul', 'gula', 'röd', 'röda', 'grön', 'gröna', 'vit', 'vita', 'svart', 'svarta', 'stor', 'stora', 'liten', 'små',
-  'medelstor', 'medelstora', 'fint', 'grovt', 'malen', 'mald', 'malda', 'tärnad', 'tärnade',
+  'medelstor', 'medelstora', 'fint', 'grovt', 'malen', 'mald', 'malda', 'tärnad', 'tärnade', 'fast', 'fasta', 'mjölig', 'mjöliga',
 ]);
 const STOP = new Set(['och', 'eller', 'el', 'med', 'm', 'utan', 'u', 'till', 'av', 'ca', 'gärna', 'kan', 'uteslutas', 'valfritt', 'efter', 'smak', 'för']);
 // Måttord som ibland hamnar i namnet ("1,5 liter vatten").
@@ -59,8 +59,21 @@ function covers(ing: string, food: string): boolean {
   return a.length >= 4 && b.endsWith(a);
 }
 
+// Tillagning som antas när receptet inte anger någon (användarens val).
+const DEFAULT_PREP: Record<string, string> = { potatis: 'kokt', potatisar: 'kokt' };
+const PREP_WORDS = new Set(['rå', 'kokt', 'kokta', 'stekt', 'stekta', 'ugnsbakad', 'ugnsbakade', 'friterad', 'pressad', 'mos', 'råstekt']);
+
+/** Tillagningen som ska antas för ingrediensen, t.ex. "kokt" för potatis. */
+export function defaultPrep(ingredient: string): string | null {
+  const w = words(ingredient);
+  if (w.some((x) => PREP_WORDS.has(x))) return null;
+  const core = w.filter((x) => !DESCRIPTORS.has(x) && !STOP.has(x) && !UNIT_WORDS.has(x));
+  return core.length === 1 ? DEFAULT_PREP[core[0]] ?? null : null;
+}
+
 export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; sure: boolean } | null {
-  const ing = words(ingredient).filter((w) => !STOP.has(w) && !UNIT_WORDS.has(w));
+  const prep = defaultPrep(ingredient);
+  const ing = [...words(ingredient), ...(prep ? [prep] : [])].filter((w) => !STOP.has(w) && !UNIT_WORDS.has(w));
   const ingCore = ing.filter((w) => !DESCRIPTORS.has(w));
   if (!ingCore.length) return null;
 
