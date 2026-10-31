@@ -51,7 +51,7 @@ export function Scan() {
   const [phase, setPhase] = useState<Phase>(draft?.phase ?? 'paste');
   const [raw, setRaw] = useState(draft?.raw ?? '');
   const [clips, setClips] = useState(draft?.clips ?? 0);
-  const [name, setName] = useState(draft?.name ?? '');
+  const [name, setName] = useState(draft?.name === 'Namnlöst recept' ? '' : draft?.name ?? '');
   const [book, setBook] = useState(draft?.book ?? '');
   const [page, setPage] = useState(draft?.page ?? '');
   const [pageFound, setPageFound] = useState(draft?.pageFound ?? false);
@@ -109,7 +109,7 @@ export function Scan() {
   const sort = (text: string) => {
     if (!text.trim()) return;
     const p = parseRaw(text);
-    setName(p.name || 'Namnlöst recept');
+    setName(p.name);
     setLines(p.lines);
     setPage(p.page);
     setPageFound(!!p.page);
@@ -190,7 +190,7 @@ export function Scan() {
             <h1 style={{ margin: 0, fontSize: 30 }}>Sortera texten</h1>
             <p style={{ margin: '2px 0 0', fontSize: 14, color: 'var(--color-neutral-700)', textWrap: 'pretty' }}>Vi har gissat vad som är ingredienser och steg. Tryck på en rad för att ändra.</p>
           </div>
-          <div className="field"><label>Namn</label><input className="input big" value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="field"><label>Namn</label><input className="input big" value={name} onChange={(e) => setName(e.target.value)} placeholder="Skriv receptets namn" /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 96px', gap: 10 }}>
             <div className="field"><label>Bok</label>
               <input className="input big" value={book} onChange={(e) => { setBook(e.target.value); setBookErr(false); }} placeholder="Bokens titel" style={{ borderColor: bookErr ? 'var(--color-accent)' : 'var(--color-divider)' }} />
