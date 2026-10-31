@@ -13,7 +13,7 @@ export interface ShoppingItem {
   /** Minst ett recept anger ingen mängd ("efter smak", "till servering"). */
   someUnmeasured: boolean;
   recipes: string[];
-  /** Kryddor, salt och peppar: brukar finnas hemma. */
+  /** Kryddor, salt, peppar och basvaror (olja, socker, mjöl, soja, sirap): brukar finnas hemma. */
   staple: boolean;
 }
 
@@ -21,6 +21,11 @@ export interface ShoppingItem {
 const SKIP = new Set(['stor', 'stora', 'liten', 'litet', 'små', 'medelstor', 'medelstora', 'hackad', 'hackade', 'finhackad', 'finhackade',
   'skivad', 'skivade', 'tärnad', 'tärnade', 'riven', 'rivet', 'rivna', 'finriven', 'pressad', 'pressade', 'strimlad', 'strimlade',
   'färsk', 'färska', 'färskt', 'ca', 'cirka', 'ev', 'eventuellt', 'gärna', 'och', 'till', 'servering', 'efter', 'smak', 'av']);
+
+// Basvaror som brukar finnas hemma (användarens val): all olja, socker, mjöl, soja och sirap.
+// Ordet ska sluta så, så att t.ex. "mjölk" och "sockerärtor" inte räknas.
+const BASICS = /^(.*olja|.*socker|.*mjöl|soja|sojasås|.*sirap)$/;
+export const isBasic = (name: string) => words(shoppingName(name)).some((w) => BASICS.test(w));
 
 /** Namnet som det skrivs på listan: utan parenteser och utan det som står efter ett kommatecken. */
 export function shoppingName(name: string): string {
@@ -89,7 +94,7 @@ export function shoppingList(recipes: Recipe[]): ShoppingItem[] {
       // En vara räknas som krydda bara om alla rader för den är kryddor.
       // Färska örter i knippe eller kruka köps, även om de inte räknas i näringsvärdet.
       const herb = /knipp|kruk/i.test(`${i.unit} ${i.name}`);
-      g.staple = g.staple && !herb && (isSpice(i) || isSeasoning(i));
+      g.staple = g.staple && !herb && (isSpice(i) || isSeasoning(i) || isBasic(i.name));
     }
   }
   return [...groups.entries()].sort((a, b) => a[1].order - b[1].order).map(([key, g]) => ({

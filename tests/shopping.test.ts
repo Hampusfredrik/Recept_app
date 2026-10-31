@@ -46,3 +46,15 @@ test('örter i knippe köps och knippet blir enheten', () => {
   assert.equal(d.amount, '1 knippe');
   assert.equal(d.staple, false);
 });
+
+test('olja, socker, mjöl, soja och sirap räknas som hemma, men inte mjölk eller sockerärtor', () => {
+  const list = shoppingList([recipe('A', [
+    ing(2, 'msk', 'olivolja'), ing(1, 'msk', 'rapsolja'), ing(null, '', 'olja, till stekning'), ing(1, 'dl', 'strösocker'),
+    ing(3, 'dl', 'vetemjöl'), ing(1, 'msk', 'potatismjöl'), ing(2, 'msk', 'japansk soja'), ing(1, 'msk', 'sojasås'), ing(1, 'dl', 'ljus sirap'),
+    ing(5, 'dl', 'mjölk'), ing(200, 'g', 'sockerärtor'), ing(4, 'dl', 'kokosmjölk'),
+  ])]);
+  const home = list.filter((x) => x.staple).map((x) => x.name);
+  const buy = list.filter((x) => !x.staple).map((x) => x.name);
+  assert.deepEqual(buy, ['mjölk', 'sockerärtor', 'kokosmjölk']);
+  for (const n of ['olivolja', 'rapsolja', 'olja', 'strösocker', 'vetemjöl', 'potatismjöl', 'japansk soja', 'sojasås', 'ljus sirap']) assert.ok(home.includes(n), n);
+});

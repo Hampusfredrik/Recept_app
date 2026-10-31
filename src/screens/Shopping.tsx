@@ -78,7 +78,7 @@ export function Shopping() {
       {home.length > 0 && (
         <div className="col" style={{ marginTop: 22 }}>
           <h3 style={{ margin: '0 0 2px', fontSize: 18 }}>Har ni hemma?</h3>
-          <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 6 }}>Kryddor och det som finns i ert skafferi</span>
+          <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 6 }}>Kryddor, olja, socker, mjöl, soja, sirap och det som finns i ert skafferi</span>
           <div className="col" style={{ margin: '0 -8px' }}>{home.map(row)}</div>
         </div>
       )}
