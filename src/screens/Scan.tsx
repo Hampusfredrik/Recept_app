@@ -40,13 +40,32 @@ export function Scan() {
 
   const append = (t: string) => { setRaw((r) => (r.trim() ? r.trim() + '\n' : '') + t.trim()); setClips((c) => c + 1); };
 
+  const [pasteHint, setPasteHint] = useState('');
+
+  /** Markören sist i rutan, på en ny rad om det redan finns text. */
+  const focusAtEnd = () => {
+    const ta = areaRef.current;
+    if (!ta) return;
+    ta.focus();
+    const end = ta.value.length;
+    ta.setSelectionRange(end, end);
+  };
+
   const pasteClip = async () => {
+    setPasteHint('');
+    if (raw.trim() && !raw.endsWith('\n')) setRaw((r) => r.trimEnd() + '\n');
+    // Fokus direkt i trycket: då kan iPhone öppna tangentbordet och visa "Klistra in"
+    // även om urklippsfunktionen nedan nekas (vanligt i appar på hemskärmen).
+    focusAtEnd();
     try {
+      if (!navigator.clipboard?.readText) throw new Error('saknas');
       const t = await navigator.clipboard.readText();
-      if (t.trim()) append(t);
+      if (!t.trim()) throw new Error('tomt');
+      append(t);
+      areaRef.current?.blur();
     } catch {
-      // Ingen åtkomst till urklipp: låt användaren klistra in själv.
-      areaRef.current?.focus();
+      setPasteHint('Tryck och håll i rutan och välj Klistra in.');
+      requestAnimationFrame(focusAtEnd);
     }
   };
 
@@ -197,7 +216,9 @@ export function Scan() {
         ))}
       </div>
       <div className="col" style={{ gap: 8 }}>
-        <textarea ref={areaRef} className="input" value={raw} onChange={(e) => { setRaw(e.target.value); if (!clips && e.target.value) setClips(1); }} placeholder="Klistra in texten här"
+        <textarea ref={areaRef} className="input" value={raw} onChange={(e) => { setRaw(e.target.value); if (!clips && e.target.value) setClips(1); }}
+          onPaste={() => { setPasteHint(''); setClips((c) => c + 1); }}
+          placeholder="Tryck och håll här och välj Klistra in"
           style={{ borderRadius: 26, minHeight: 200, padding: '14px 16px', fontSize: 16, lineHeight: 1.45 }} />
         <div className="wrap" style={{ gap: 8 }}>
           <button onClick={pasteClip} className="row" style={{ gap: 6, height: 40, padding: '0 16px', borderRadius: 999, border: 0, background: 'var(--color-text)', color: 'var(--color-bg)', cursor: 'pointer', font: '700 14px var(--font-body)' }}>
@@ -205,6 +226,7 @@ export function Scan() {
           </button>
           {raw.trim() && <button onClick={() => { setRaw(''); setClips(0); }} style={{ height: 40, padding: '0 14px', borderRadius: 999, border: '1.5px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', font: '600 14px var(--font-body)', color: 'var(--color-text)' }}>Rensa</button>}
         </div>
+        {pasteHint && <span className="err" style={{ fontWeight: 600 }}>{pasteHint}</span>}
         <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Två spalter? Kopiera en i taget och klistra in båda. Texten läggs till efter den förra.</span>
       </div>
       {err && <div className="err" style={{ marginTop: 12 }}>{err}</div>}
