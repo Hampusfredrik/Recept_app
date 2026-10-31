@@ -173,7 +173,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
         {res.ignored.length > 0 && ` Kryddor, salt och vatten som saknas i databasen räknas inte med.`}
         {res.stockCubes.length > 0 && ` Buljongtärningar räknas bara som salt (${fmt(STOCK_CUBE_SALT_G)} g per tärning).`}
         {res.assumedDensity > 0 && ' Volymmått räknas om med 1 g/ml där livsmedlet saknar egen vikt.'}
-        {res.standard.length > 0 && ' Lök, morot och ägg räknas med standardvikter (100, 80 och 58 g per styck) om ni inte angett egen vikt.'}
+        {res.standard.length > 0 && ' Lök, morot, ägg och citron räknas med standardvikter (100, 80, 58 och 125 g per styck) om ni inte angett egen vikt.'}
       </p>
 
       {swap && <FoodSheet ing={swap} onClose={() => setSwap(null)} weights={weights} />}
@@ -268,7 +268,9 @@ function WeightPrompts({ items, householdId, onSaved }: { items: Ingredient[]; h
       await onSaved();
       toast('Vikten är sparad');
     } catch (e) {
-      toast('Kunde inte spara vikten');
+      const msg = e instanceof Error ? e.message : String(e);
+      // Tabellen finns inte förrän SQL-filen för vikter har körts i Supabase.
+      toast(/household_unit_weights|schema cache|does not exist/i.test(msg) ? 'Vikten sparades inte: kör SQL-filen för vikter i Supabase' : 'Kunde inte spara vikten');
       console.error(e);
     }
     setBusy(null);

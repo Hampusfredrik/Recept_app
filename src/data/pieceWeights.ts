@@ -10,6 +10,7 @@ export const PIECE_WEIGHTS: { label: string; grams: number; names: string[] }[] 
   { label: 'lök', grams: 100, names: ['lök', 'lökar', 'rödlök', 'rödlökar', 'gullök', 'gullökar'] },
   { label: 'morot', grams: 80, names: ['morot', 'morötter'] },
   { label: 'ägg', grams: 58, names: ['ägg'] },
+  { label: 'citron', grams: 125, names: ['citron', 'citroner'] },
 ];
 
 /** Standardvikt i gram för 1 st av ingrediensen, eller null. */

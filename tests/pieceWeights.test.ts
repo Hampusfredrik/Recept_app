@@ -6,7 +6,8 @@ test('standardvikter träffar lök, morot och ägg men inte vitlök m.fl.', () =
   for (const n of ['gul lök', 'gula lökar', 'lök', 'rödlök', 'röd lök', 'stor gul lök, hackad']) assert.equal(standardPieceWeight(n)?.grams, 100, n);
   for (const n of ['morot', 'morötter', 'stora morötter']) assert.equal(standardPieceWeight(n)?.grams, 80, n);
   for (const n of ['ägg', 'ägg, kokta']) assert.equal(standardPieceWeight(n)?.grams, 58, n);
-  for (const n of ['vitlök', 'vitlöksklyftor', 'purjolök', 'salladslök', 'schalottenlök', 'äggula', 'äggvita', 'morotskaka']) assert.equal(standardPieceWeight(n), null, n);
+  for (const n of ['citron', 'citroner']) assert.equal(standardPieceWeight(n)?.grams, 125, n);
+  for (const n of ['vitlök', 'vitlöksklyftor', 'purjolök', 'salladslök', 'schalottenlök', 'äggula', 'äggvita', 'morotskaka', 'citronsaft', 'citronskal']) assert.equal(standardPieceWeight(n), null, n);
 });
 
 import { isStockCube } from '../src/data/pieceWeights.ts';
