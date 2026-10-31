@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { DEFAULT_DENSITY_G_PER_ML, G_PER_UNIT, ML_PER_UNIT } from '../data/units';
 import type { Ingredient } from './types';
+import { standardPieceWeight } from '../data/pieceWeights';
 
 export interface LvFood { id: number; name: string }
 export type Per100 = Partial<Record<'kcal' | 'protein' | 'fat' | 'carbs' | 'fiber' | 'sugar' | 'satfat' | 'salt' | 'vitd' | 'b12' | 'vitc' | 'folate' | 'iron' | 'calcium' | 'iodine' | 'selenium', number>>;
@@ -125,7 +126,7 @@ export async function saveUnitWeight(householdId: string, lvFoodId: number, unit
 }
 
 /** Mängd → gram. null om vikt saknas (t.ex. "1 st" utan känd styckvikt). */
-export function toGrams(i: Ingredient, weights: Map<string, number>): { grams: number | null; assumed: boolean } {
+export function toGrams(i: Ingredient, weights: Map<string, number>): { grams: number | null; assumed: boolean; standard?: boolean } {
   if (i.grams != null) return { grams: i.grams, assumed: false };
   if (i.amount == null) return { grams: null, assumed: false };
   const u = i.unit.toLowerCase().trim() || 'st';
@@ -137,6 +138,10 @@ export function toGrams(i: Ingredient, weights: Map<string, number>): { grams: n
     if (perDl) return { grams: i.amount * ML_PER_UNIT[u] / 100 * perDl, assumed: false };
     return { grams: i.amount * ML_PER_UNIT[u] * DEFAULT_DENSITY_G_PER_ML, assumed: true };
   }
+  if (u === 'st') {
+    const std = standardPieceWeight(i.name);
+    if (std) return { grams: i.amount * std.grams, assumed: false, standard: true };
+  }
   return { grams: null, assumed: false };
 }
 
@@ -147,6 +152,7 @@ export interface NutResult {
   noFood: Ingredient[];
   assumedDensity: number;
   assumed: Ingredient[];
+  standard: Ingredient[];
 }
 
 export function computeNutrition(ingredients: Ingredient[], portions: number, foods: Map<number, Per100>, weights: Map<string, number>): NutResult {
@@ -155,12 +161,14 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   const noFood: Ingredient[] = [];
   let counted = 0, assumedDensity = 0;
   const assumed: Ingredient[] = [];
+  const standard: Ingredient[] = [];
   for (const i of ingredients) {
     const food = i.lv_food_id != null ? foods.get(i.lv_food_id) : undefined;
     if (!food) { noFood.push(i); continue; }
     const g = toGrams(i, weights);
     if (g.grams == null) { noWeight.push(i); continue; }
     if (g.assumed) { assumedDensity++; assumed.push(i); }
+    if (g.standard) standard.push(i);
     counted++;
     for (const [k, v] of Object.entries(food)) {
       if (typeof v !== 'number') continue;
@@ -170,7 +178,7 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   }
   const p = Math.max(1, portions);
   const perPortion: Per100 = Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, v / p]));
-  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed };
+  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed, standard };
 }
 
 /** Uppskattad energi per portion för granskningsvyn (innan receptet är sparat). */
