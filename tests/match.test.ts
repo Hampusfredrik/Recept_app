@@ -55,3 +55,17 @@ test('namn som börjar med ett beskrivande ord', () => {
   assert.equal(matchFood('torkade gula ärter', list)?.food.name, 'Gula ärtor torkade');
   assert.equal(matchFood('gröna ärter', list)?.food.name, 'Gröna ärtor frysta');
 });
+
+test('pluralformer av grönsaker', () => {
+  const list = ['Rödbeta rå', 'Rödbetor inlagda', 'Aubergine rå', 'Gurka rå', 'Paprika röd rå', 'Tomat rå', 'Banan', 'Bönor vita kokta', 'Ärtor gröna frysta', 'Lök gul', 'Morot rå', 'Olja raps'].map((name, id) => ({ id, name }));
+  const m = (s: string) => matchFood(s, list)?.food.name ?? null;
+  assert.equal(m('rödbetor'), 'Rödbeta rå');
+  assert.equal(m('inlagda rödbetor'), 'Rödbetor inlagda');
+  assert.equal(m('auberginer'), 'Aubergine rå');
+  assert.equal(m('aubergine'), 'Aubergine rå');
+  assert.equal(m('gurkor'), 'Gurka rå');
+  assert.equal(m('röda paprikor'), 'Paprika röd rå');
+  assert.equal(m('tomater'), 'Tomat rå');
+  assert.equal(m('bananer'), 'Banan');
+  assert.equal(m('vita bönor'), 'Bönor vita kokta');
+});

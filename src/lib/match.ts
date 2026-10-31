@@ -39,7 +39,8 @@ export function words(s: string): string[] {
 
 /** Enkel svensk stam: tar bort vanliga plural- och bestämdhetsändelser. */
 export function stem(w: string): string {
-  for (const end of ['orna', 'arna', 'erna', 'or', 'ar', 'er', 'na', 'en', 'et', 'n']) {
+  // Slutvokalen i singular tas också bort: rödbeta/rödbetor → rödbet, aubergine/auberginer → aubergin.
+  for (const end of ['orna', 'arna', 'erna', 'or', 'ar', 'er', 'na', 'en', 'et', 'n', 'a', 'e']) {
     if (w.length - end.length >= 3 && w.endsWith(end)) return w.slice(0, -end.length);
   }
   return w;
