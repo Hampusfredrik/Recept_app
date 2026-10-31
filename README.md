@@ -3,7 +3,7 @@
 En receptapp för två som delar samma samling i realtid. Byggd enligt `design_handoff_receptappen/README.md`.
 
 - **Frontend:** React + Vite + TypeScript, PWA, hostas på **GitHub Pages**
-- **Backend:** Supabase (Postgres, Auth med e-postlänk/kod, Realtime, Storage)
+- **Backend:** Supabase (Postgres, Auth med e-post och lösenord, Realtime, Storage)
 - **Länkimport:** Supabase Edge Function `import-recipe`
 - **Näring:** Supabase Edge Function `lv-foods`, som cachar Livsmedelsverkets livsmedelsdatabas
 - **OCR-reserv:** Tesseract.js (`swe`), körs i webbläsaren
@@ -41,9 +41,7 @@ tests/                     tester för tolkningsreglerna (npm test)
    ```
 3. **Authentication → URL Configuration:** lägg till
    `https://<ditt-github-namn>.github.io/Recept_app/` under *Redirect URLs* och som *Site URL*.
-4. **Authentication → Email Templates → Magic Link:** lägg till koden i mejlet, t.ex.
-   `<p>Eller skriv in koden: {{ .Token }}</p>`.
-   En PWA på iPhones hemskärm har egen lagring, skild från Safari. Därför loggar man in i hemskärmsappen med koden, inte med länken.
+4. Inloggning sker med **e-post och lösenord**. En PWA på iPhones hemskärm har egen lagring, skild från Safari, så en länk i ett mejl skulle bara logga in Safari. Bekräftelsemejlet vid nytt konto använder Supabase standardmall; ingen mall behöver ändras.
 
 ### 2. GitHub Pages
 
@@ -71,7 +69,7 @@ Den första som loggar in skapar ett kök. Under personikonen på *Idag* finns i
 
 ## Val och avvikelser
 
-- **Hash-routing** (`#/recept/…`) så att direktlänkar fungerar på GitHub Pages utan serverkonfiguration. Inloggningen använder PKCE (`?code=`), så den krockar inte med hashen.
+- **Hash-routing** (`#/recept/…`) så att direktlänkar fungerar på GitHub Pages utan serverkonfiguration. Bekräftelselänken använder PKCE (`?code=`), så den krockar inte med hashen.
 - **Inbjudan, inloggning, "Byt livsmedel" och "Skriv in ingredienser"** är inte ritade i designen. De följer samma formspråk som arken.
 - **Bilder:** recept från webben använder sidans bild. Övriga får den randiga platshållaren i receptets ton. En storage-bucket (`recipe-images`) med RLS finns förberedd för egna bilder, men ingen uppladdning är byggd än.
 - **Kopplingen steg ↔ ingredienser** gissas enligt regeln i handoffen när `ingredient_ids` saknas. Det finns ännu inget gränssnitt för att rätta den.

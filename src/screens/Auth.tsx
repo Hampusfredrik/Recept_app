@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChefHat, Mail } from 'lucide-react';
+import { ChefHat, Lock, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useStore } from '../lib/store';
 import { Ico, Spinner } from '../components/ui';
@@ -17,30 +17,38 @@ export function NotConfigured() {
 }
 
 export function Login() {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
-  const [sent, setSent] = useState(false);
-  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [info, setInfo] = useState('');
 
-  const send = async () => {
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setErr('Skriv en giltig e-postadress.');
-    setBusy(true); setErr('');
-    const { error } = await supabase.auth.signInWithOtp({
-      email: email.trim(),
-      options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
-    });
+  // Lösenord i stället för e-postlänk: en PWA på iPhones hemskärm delar inte
+  // lagring med Safari, så en länk i mejlet loggar inte in hemskärmsappen.
+  const submit = async () => {
+    const e = email.trim();
+    if (!/^\S+@\S+\.\S+$/.test(e)) return setErr('Skriv en giltig e-postadress.');
+    if (password.length < 6) return setErr('Lösenordet behöver minst 6 tecken.');
+    setBusy(true); setErr(''); setInfo('');
+    if (mode === 'login') {
+      const { error } = await supabase.auth.signInWithPassword({ email: e, password });
+      if (error) setErr(/confirm/i.test(error.message) ? 'Bekräfta först din e-post via länken i mejlet.' : 'Fel e-post eller lösenord.');
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email: e, password, options: { emailRedirectTo: window.location.origin + import.meta.env.BASE_URL },
+      });
+      if (error) setErr(error.message);
+      else if (!data.session) {
+        setInfo('Kontot är skapat. Öppna länken i mejlet för att bekräfta din e-post, kom sedan tillbaka hit och logga in.');
+        setMode('login');
+      }
+    }
     setBusy(false);
-    if (error) return setErr(error.message);
-    setSent(true);
   };
 
-  const verify = async () => {
-    setBusy(true); setErr('');
-    const { error } = await supabase.auth.verifyOtp({ email: email.trim(), token: code.trim(), type: 'email' });
-    setBusy(false);
-    if (error) setErr('Koden stämmer inte eller har gått ut.');
-  };
+  const field = { flex: 1, minWidth: 0, border: 0, background: 'transparent', fontSize: 16, outline: 'none', color: 'var(--color-text)' } as const;
+  const pill = { gap: 10, height: 54, padding: '0 18px', borderRadius: 999, background: 'var(--color-surface)' } as const;
 
   return (
     <div className="screen no-tabs col" style={{ gap: 18 }}>
@@ -49,31 +57,28 @@ export function Login() {
       </span>
       <div className="col" style={{ gap: 2 }}>
         <span className="kicker">Receptappen</span>
-        <h1 className="h1">{sent ? 'Kolla mejlen' : 'Logga in'}</h1>
+        <h1 className="h1">{mode === 'login' ? 'Logga in' : 'Skapa konto'}</h1>
       </div>
-      {!sent ? (
-        <>
-          <p className="muted" style={{ margin: 0 }}>Vi skickar en inloggningslänk. Inget lösenord behövs.</p>
-          <label className="row" style={{ gap: 10, height: 54, padding: '0 18px', borderRadius: 999, background: 'var(--color-surface)' }}>
-            <Ico icon={Mail} size={18} color="var(--color-neutral-700)" />
-            <input type="email" autoComplete="email" inputMode="email" value={email} onChange={(e) => { setEmail(e.target.value); setErr(''); }}
-              onKeyDown={(e) => e.key === 'Enter' && send()} placeholder="din@epost.se"
-              style={{ flex: 1, minWidth: 0, border: 0, background: 'transparent', fontSize: 16, outline: 'none', color: 'var(--color-text)' }} />
-          </label>
-          {err && <span className="err" style={{ marginLeft: 18 }}>{err}</span>}
-          <button className="btn btn-primary btn-block" onClick={send} disabled={busy} style={{ height: 54, fontSize: 17 }}>{busy ? <Spinner /> : 'Skicka länk'}</button>
-        </>
-      ) : (
-        <>
-          <p className="muted" style={{ margin: 0 }}>Öppna länken vi skickade till <b>{email}</b>. Använder du appen från hemskärmen: skriv in koden från mejlet här i stället.</p>
-          <input className="input big" inputMode="numeric" autoComplete="one-time-code" value={code} placeholder="Kod från mejlet"
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 10))} onKeyDown={(e) => e.key === 'Enter' && verify()}
-            style={{ textAlign: 'center', letterSpacing: '.2em' }} />
-          {err && <span className="err">{err}</span>}
-          <button className="btn btn-primary btn-block" onClick={verify} disabled={busy || code.length < 6} style={{ height: 54, fontSize: 17 }}>{busy ? <Spinner /> : 'Logga in'}</button>
-          <button className="btn btn-ghost" onClick={() => { setSent(false); setCode(''); }} style={{ alignSelf: 'flex-start', color: 'var(--color-accent-700)' }}>Byt e-postadress</button>
-        </>
-      )}
+      {info && <div style={{ padding: '12px 16px', borderRadius: 22, background: 'var(--color-accent-2-100)', color: 'var(--color-accent-2-900)', fontSize: 14 }}>{info}</div>}
+      <label className="row" style={pill}>
+        <Ico icon={Mail} size={18} color="var(--color-neutral-700)" />
+        <input type="email" autoComplete="email" inputMode="email" autoCapitalize="off" value={email}
+          onChange={(e) => { setEmail(e.target.value); setErr(''); }} placeholder="din@epost.se" style={field} />
+      </label>
+      <label className="row" style={pill}>
+        <Ico icon={Lock} size={18} color="var(--color-neutral-700)" />
+        <input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password}
+          onChange={(e) => { setPassword(e.target.value); setErr(''); }} onKeyDown={(e) => e.key === 'Enter' && submit()}
+          placeholder="Lösenord" style={field} />
+      </label>
+      {err && <span className="err" style={{ marginLeft: 18 }}>{err}</span>}
+      <button className="btn btn-primary btn-block" onClick={submit} disabled={busy} style={{ height: 54, fontSize: 17 }}>
+        {busy ? <Spinner /> : mode === 'login' ? 'Logga in' : 'Skapa konto'}
+      </button>
+      <button className="btn btn-ghost" onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setErr(''); setInfo(''); }}
+        style={{ alignSelf: 'flex-start', color: 'var(--color-accent-700)' }}>
+        {mode === 'login' ? 'Inget konto än? Skapa ett' : 'Har du redan ett konto? Logga in'}
+      </button>
     </div>
   );
 }
