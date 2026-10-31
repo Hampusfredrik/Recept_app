@@ -5,6 +5,8 @@
 // torkade", "Salt"). Regeln är därför: livsmedlets första ord måste finnas i
 // ingrediensen. Hellre ingen träff än fel träff; utan träff frågar appen.
 
+import { FOOD_DEFAULTS } from '../data/foodDefaults.ts';
+
 export interface LvFood { id: number; name: string }
 
 // Beskrivande ord som inte räcker för en träff på egen hand.
@@ -14,7 +16,17 @@ const DESCRIPTORS = new Set([
   'hel', 'hela', 'konserverad', 'konserverade', 'tillagad', 'rökt', 'rimmat', 'rimmad', 'osaltad', 'saltad',
   'gul', 'gula', 'röd', 'röda', 'grön', 'gröna', 'vit', 'vita', 'svart', 'svarta', 'stor', 'stora', 'liten', 'små',
   'medelstor', 'medelstora', 'fint', 'grovt', 'malen', 'mald', 'malda', 'tärnad', 'tärnade', 'fast', 'fasta', 'mjölig', 'mjöliga',
+  'rått', 'råa', 'okokt', 'okokta',
 ]);
+// Tillagade varianter väljs bara om ingrediensen säger det ("stekt lök" → "Lök stekt …").
+const PREPARED = new Set(['stekt', 'stekta', 'friterad', 'friterade', 'panerad', 'panerade', 'stuvad', 'stuvade', 'gratinerad',
+  'hemlagad', 'tillagad', 'restaurang', 'wokad', 'grillad', 'ugnsstekt', 'värmd', 'kokt', 'kokta', 'rostad', 'rostade',
+  'bakad', 'gräddad', 'inlagd', 'inlagda', 'syltade', 'marinerad', 'rökt', 'gravad', 'kallrökt', 'varmrökt', 'storhushåll']);
+// Ord i ingrediensen som inte påverkar vilket livsmedel det är (för den fasta listan).
+const KEY_MODIFIERS = new Set(['riven', 'rivna', 'hackad', 'hackade', 'finhackad', 'finhackade', 'grovhackad', 'färsk', 'färska',
+  'skivad', 'skivade', 'tärnad', 'tärnade', 'strimlad', 'strimlade', 'stor', 'stora', 'liten', 'små', 'medelstor', 'medelstora',
+  'skalad', 'skalade', 'fryst', 'frysta', 'ekologisk', 'ekologiska', 'eko', 'kall', 'kallt', 'rumsvarm', 'rumsvarmt', 'smält',
+  'fast', 'fasta', 'mjölig', 'mjöliga', 'mogen', 'mogna', 'pressad', 'urkärnade', 'naturell']);
 const STOP = new Set(['och', 'eller', 'el', 'med', 'm', 'utan', 'u', 'till', 'av', 'ca', 'gärna', 'kan', 'uteslutas', 'valfritt', 'efter', 'smak', 'för']);
 // Måttord som ibland hamnar i namnet ("1,5 liter vatten").
 const UNIT_WORDS = new Set(['liter', 'l', 'dl', 'deciliter', 'cl', 'ml', 'msk', 'tsk', 'krm', 'matsked', 'matskedar', 'tesked', 'teskedar',
@@ -26,6 +38,25 @@ const REWRITE: Record<string, string[]> = {
 };
 // Livsmedelsverket inleder ofta kött med djurslaget ("Gris sidfläsk", "Nöt färs").
 const ANIMALS = new Set(['gris', 'nöt', 'kalv', 'lamm', 'får', 'ren', 'älg', 'hjort', 'vilt', 'kyckling', 'kalkon']);
+const FISH = new Set(['lax', 'torsk', 'sej', 'sill', 'tonfisk', 'kolja', 'makrill', 'abborre', 'gädda', 'räka', 'räkor', 'kräftor']);
+const KINDS = new Set([...ANIMALS, ...FISH]);
+/** Djur- eller fiskslag som nämns i ingrediensen, även i sammansatta ord ("kycklingfilé"). */
+const kindsIn = (ws: string[]) => [...KINDS].filter((k) => ws.some((w) => w === k || (w.startsWith(k) && w.length > k.length + 2)));
+
+// ── Fast lista för vanliga ingredienser ──
+const keyOf = (s: string) => words(s).filter((w) => !STOP.has(w) && !UNIT_WORDS.has(w) && !KEY_MODIFIERS.has(w)).map(stem).join(' ');
+const DEFAULT_BY_KEY = new Map<string, string>();
+for (const [aliases, name] of FOOD_DEFAULTS) for (const a of aliases) DEFAULT_BY_KEY.set(keyOf(a), name);
+const byNameCache = new WeakMap<LvFood[], Map<string, LvFood>>();
+
+/** Livsmedel ur den fasta listan, om ingrediensen finns där och livsmedlet finns i databasen. */
+export function defaultFood(ingredient: string, foods: LvFood[]): LvFood | null {
+  const name = DEFAULT_BY_KEY.get(keyOf(ingredient));
+  if (!name) return null;
+  let byName = byNameCache.get(foods);
+  if (!byName) { byName = new Map(foods.map((f) => [f.name.trim(), f])); byNameCache.set(foods, byName); }
+  return byName.get(name) ?? null;
+}
 
 /** Gemener, utan parenteser och skiljetecken, uppdelat i ord. */
 export function words(s: string): string[] {
@@ -73,10 +104,13 @@ export function defaultPrep(ingredient: string): string | null {
 }
 
 export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; sure: boolean } | null {
+  const preset = defaultFood(ingredient, foods);
+  if (preset) return { food: preset, sure: true };
   const prep = defaultPrep(ingredient);
   const ing = [...words(ingredient), ...(prep ? [prep] : [])].filter((w) => !STOP.has(w) && !UNIT_WORDS.has(w));
   const ingCore = ing.filter((w) => !DESCRIPTORS.has(w));
   if (!ingCore.length) return null;
+  const ingKinds = kindsIn(ing);
 
   let best: { food: LvFood; score: number; sure: boolean } | null = null;
   for (const f of foods) {
@@ -89,6 +123,8 @@ export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; 
     const at = fw.indexOf(first);
     const heads = ANIMALS.has(first) && fw[at + 1] ? [first, fw[at + 1]] : [first];
     if (!ingCore.some((w) => heads.some((h) => covers(w, h)))) continue;
+    // Fel djurslag: "kycklingfilé" ska aldrig bli "Kalv filé".
+    if (KINDS.has(first) && ingKinds.length && !ingKinds.includes(first)) continue;
     const exactHead = ingCore.some((w) => stem(w) === stem(first));
 
     const fCore = fw.filter((w) => !DESCRIPTORS.has(w));
@@ -98,6 +134,7 @@ export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; 
     const extraFood = fCore.length - matchedFood;
     const descAgree = fDesc.filter((d) => ing.includes(d)).length;
     const descConflict = fDesc.filter((d) => !ing.includes(d)).length;
+    const prepared = fw.filter((w) => PREPARED.has(w) && !ing.includes(w)).length;
 
     const score = coveredIng / ingCore.length * 10
       + matchedFood * 2
@@ -105,6 +142,7 @@ export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; 
       + (exactHead ? 5 : 0)
       + descAgree * 1.5
       - descConflict * 0.4
+      - prepared * 2
       + (fw.includes('rå') && !ing.some((w) => ['kokt', 'kokta', 'stekt', 'stekta'].includes(w)) ? 0.3 : 0)
       - fw.length * 0.05;
     const sure = coveredIng === ingCore.length && extraFood === 0;
