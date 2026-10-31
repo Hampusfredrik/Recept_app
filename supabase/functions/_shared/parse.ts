@@ -2,7 +2,14 @@
 // Edge-funktionen (Deno) och av frontend (Vite) så att reglerna är identiska.
 
 export const UNITS = ['g', 'kg', 'dl', 'l', 'ml', 'cl', 'msk', 'tsk', 'krm', 'st', 'burk', 'paket', 'kruka'];
-const UNIT_RE = UNITS.join('|');
+// Utskrivna former → förkortning. Längre ord först i regexen så att "liter" inte läses som "l".
+const UNIT_ALIASES: Record<string, string> = {
+  gram: 'g', kilo: 'kg', kilogram: 'kg', liter: 'l', deciliter: 'dl', centiliter: 'cl', milliliter: 'ml',
+  matsked: 'msk', matskedar: 'msk', tesked: 'tsk', teskedar: 'tsk', kryddmått: 'krm', styck: 'st', stycken: 'st',
+  burkar: 'burk', paket: 'paket', förp: 'paket', förpackning: 'paket', förpackningar: 'paket', krukor: 'kruka',
+};
+const UNIT_RE = [...Object.keys(UNIT_ALIASES), ...UNITS].sort((a, b) => b.length - a.length).join('|');
+const unitOf = (u: string | undefined) => { const k = (u || '').toLowerCase(); return UNIT_ALIASES[k] ?? k; };
 
 export interface ParsedIngredient {
   amount: number | null;
@@ -37,7 +44,7 @@ export function parseIngredientLine(line: string): ParsedIngredient {
   const t = line.trim().replace(/\s+/g, ' ');
   const m = t.match(INGR_LINE);
   if (!m) return { amount: null, unit: '', name: t };
-  return { amount: parseAmount(m[1]), unit: (m[2] || '').toLowerCase(), name: m[3].trim() };
+  return { amount: parseAmount(m[1]), unit: unitOf(m[2]), name: m[3].trim() };
 }
 
 /** Ser raden ut som en ingrediens enligt reglerna i handoffen? */

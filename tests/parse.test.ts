@@ -30,6 +30,11 @@ test('parseIngredientLine', () => {
   assert.deepEqual(parseIngredientLine('1 kruka dill'), { amount: 1, unit: 'kruka', name: 'dill' });
   assert.deepEqual(parseIngredientLine('salt och peppar'), { amount: null, unit: '', name: 'salt och peppar' });
   assert.deepEqual(parseIngredientLine('2 lime'), { amount: 2, unit: '', name: 'lime' });
+  assert.deepEqual(parseIngredientLine('1,5 liter vatten'), { amount: 1.5, unit: 'l', name: 'vatten' });
+  assert.deepEqual(parseIngredientLine('2 matskedar olja'), { amount: 2, unit: 'msk', name: 'olja' });
+  assert.deepEqual(parseIngredientLine('2 lökar'), { amount: 2, unit: '', name: 'lökar' });
+  assert.deepEqual(parseIngredientLine('1 gurka'), { amount: 1, unit: '', name: 'gurka' });
+  assert.deepEqual(parseIngredientLine('1 l mjölk'), { amount: 1, unit: 'l', name: 'mjölk' });
 });
 
 test('guessUse kopplar steg till ingredienser', () => {

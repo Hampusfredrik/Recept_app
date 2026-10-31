@@ -76,7 +76,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
   ];
 
   const missingNut = res.counted === 0 || n.kcal == null;
-  const unmatched = r.ingredients.filter((i) => i.lv_food_id == null).length;
+  const unmatched = res.noFood.filter((i) => i.lv_food_id == null).length;
   const noValues = res.noFood.length - unmatched;
   return (
     <div className="col" style={{ gap: 16 }}>
@@ -149,14 +149,17 @@ export function NutritionTab({ r }: { r: Recipe }) {
         {r.ingredients.map((i) => {
           const sure = i.match_confidence === 'sure' && i.lv_food_id != null;
           const noWeight = res.noWeight.some((x) => x.id === i.id);
+          const ignored = res.ignored.some((x) => x.id === i.id);
           return (
             <button key={i.id} onClick={() => setSwap(i)} className="row"
               style={{ gap: 10, padding: '9px 0', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)', font: 'inherit' }}>
               <div className="col" style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontSize: 14 }}>{[amountLabel(i.amount, i.unit), i.name].filter(Boolean).join(' ')}</span>
-                <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>→ {i.lv_food_name ?? 'Ingen träff'}{noWeight ? ' · vikt saknas' : ''}</span>
+                <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{ignored
+                  ? (i.amount == null ? 'Räknas inte (ingen mängd)' : 'Räknas inte (krydda, salt eller vatten)')
+                  : <>→ {i.lv_food_name ?? 'Ingen träff'}{noWeight ? ' · vikt saknas' : ''}</>}</span>
               </div>
-              <span className="tag" style={{ flex: 'none', fontWeight: 600, background: sure ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', color: sure ? 'var(--color-accent-2-800)' : 'var(--color-accent-800)' }}>{sure ? 'Säker' : 'Osäker'}</span>
+              {!ignored && <span className="tag" style={{ flex: 'none', fontWeight: 600, background: sure ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', color: sure ? 'var(--color-accent-2-800)' : 'var(--color-accent-800)' }}>{sure ? 'Säker' : 'Osäker'}</span>}
             </button>
           );
         })}
@@ -164,6 +167,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
       <p style={{ margin: 0, fontSize: 12, color: 'var(--color-neutral-700)' }}>
         Källa: Livsmedelsverkets livsmedelsdatabas. Värdena är uppskattningar baserade på råvarorna.
         {res.noWeight.length + res.noFood.length > 0 && ` ${res.noWeight.length + res.noFood.length} av ${r.ingredients.length} ingredienser räknas inte med (saknar livsmedel eller vikt).`}
+        {res.ignored.length > 0 && ` Kryddor, salt och vatten som saknas i databasen räknas inte med.`}
         {res.assumedDensity > 0 && ' Volymmått räknas om med 1 g/ml där livsmedlet saknar egen vikt.'}
         {res.standard.length > 0 && ' Lök, morot och ägg räknas med standardvikter (100, 80 och 58 g per styck) om ni inte angett egen vikt.'}
       </p>

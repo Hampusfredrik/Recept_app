@@ -1,9 +1,12 @@
 import { supabase } from './supabase';
 import { DEFAULT_DENSITY_G_PER_ML, G_PER_UNIT, ML_PER_UNIT } from '../data/units';
 import type { Ingredient } from './types';
+import { matchFood } from './match';
+import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
 import { standardPieceWeight } from '../data/pieceWeights';
 
-export interface LvFood { id: number; name: string }
+export type { LvFood } from './match';
+import type { LvFood } from './match';
 export type Per100 = Partial<Record<'kcal' | 'protein' | 'fat' | 'carbs' | 'fiber' | 'sugar' | 'satfat' | 'salt' | 'vitd' | 'b12' | 'vitc' | 'folate' | 'iron' | 'calcium' | 'iodine' | 'selenium', number>>;
 
 // ── Livsmedelslistan (cachas i minnet) ──
@@ -45,43 +48,41 @@ export function foodList(): Promise<LvFood[]> {
   return listPromise;
 }
 
-// ── Matchning: fritext mot livsmedelsnamn ──
-const norm = (s: string) => s.toLowerCase().normalize('NFC').replace(/[^a-zåäöéü\s]/g, ' ').split(/\s+/).filter((w) => w.length >= 2);
-const FILLER = new Set(['färsk', 'färska', 'hackad', 'hackade', 'riven', 'rivna', 'skalade', 'skalad', 'fint', 'grovt', 'gärna', 'eller', 'och', 'till', 'med', 'av', 'ca', 'gul', 'röd', 'stor', 'stora', 'liten', 'små']);
-const pre = (w: string) => w.slice(0, 5);
-const wordMatch = (a: string, b: string) => a.length >= 3 && b.length >= 3 && (b.startsWith(pre(a)) || a.startsWith(pre(b)));
+// ── Matchning mot livsmedelsnamn (se match.ts) ──
+export { matchFood };
 
-export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; sure: boolean } | null {
-  const all = norm(ingredient);
-  const words = all.filter((w) => !FILLER.has(w));
-  const keys = words.length ? words : all;
-  if (!keys.length) return null;
-  let best: { food: LvFood; score: number; covered: number; head: boolean } | null = null;
-  for (const f of foods) {
-    const fw = norm(f.name);
-    if (!fw.length) continue;
-    const covered = keys.filter((w) => fw.some((x) => wordMatch(w, x))).length;
-    if (!covered) continue;
-    const head = keys.some((w) => wordMatch(w, fw[0]));
-    const extra = all.filter((w) => FILLER.has(w) && fw.includes(w)).length; // t.ex. "gul" i "Lök gul rå"
-    const score = covered / keys.length * 10 + (head ? 4 : 0) + extra + (fw.includes('rå') ? 0.5 : 0) - fw.length * 0.3;
-    if (!best || score > best.score) best = { food: f, score, covered, head };
-  }
-  if (!best) return null;
-  return { food: best.food, sure: best.covered === keys.length && best.head };
-}
-
-/** Matchar ingredienser som saknar livsmedel och sparar resultatet. */
+/**
+ * Matchar ingredienser utan livsmedel, och matchar om automatiska kopplingar som inte
+ * håller enligt nuvarande regler (t.ex. "salt" → "Saltsill"). Ingredienser där måttet
+ * hamnat i namnet ("1,5 liter vatten") rättas samtidigt.
+ */
 export async function matchMissing(ingredients: Ingredient[], update: (id: number, p: Partial<Ingredient>) => Promise<void>) {
-  // Ingredienser utan livsmedel matchas om varje gång: listan kan ha fyllts på sedan sist.
-  const todo = ingredients.filter((i) => i.lv_food_id == null);
+  const fixed = ingredients.map((i) => {
+    if (i.unit || i.amount == null) return { i, patch: {} as Partial<Ingredient> };
+    const p = parseIngredientLine(`${i.amount} ${i.name}`);
+    return p.unit ? { i: { ...i, unit: p.unit, name: p.name }, patch: { unit: p.unit, name: p.name } as Partial<Ingredient> } : { i, patch: {} };
+  });
+  const stale = (i: Ingredient) => i.lv_food_id != null && i.lv_food_name != null
+    && !matchFood(i.name, [{ id: i.lv_food_id, name: i.lv_food_name }]);
+  const todo = fixed.filter(({ i, patch }) => i.lv_food_id == null || stale(i) || Object.keys(patch).length);
   if (!todo.length) return;
   const foods = await foodList();
-  await Promise.all(todo.map((i) => {
+  await Promise.all(todo.map(({ i, patch }) => {
+    if (i.lv_food_id != null && !stale(i)) return update(i.id, patch);
     const m = matchFood(i.name, foods);
-    if (m) return update(i.id, { lv_food_id: m.food.id, lv_food_name: m.food.name, match_confidence: m.sure ? 'sure' : 'unsure' });
-    return i.match_confidence == null ? update(i.id, { match_confidence: 'unsure' }) : Promise.resolve();
+    if (m) return update(i.id, { ...patch, lv_food_id: m.food.id, lv_food_name: m.food.name, match_confidence: m.sure ? 'sure' : 'unsure' });
+    // Redan markerad utan träff och inget att rätta: skriv inte igen.
+    if (i.lv_food_id == null && i.match_confidence != null && !Object.keys(patch).length) return Promise.resolve();
+    return update(i.id, { ...patch, lv_food_id: null, lv_food_name: null, match_confidence: 'unsure' });
   }));
+}
+
+/** Kryddor, salt och vatten som saknas i databasen räknas inte med (försumbar näring). */
+const NEGLIGIBLE = /^(salt|flingsalt|havssalt|peppar|svartpeppar|vitpeppar|kryddpeppar|cayennepeppar|vatten|kranvatten|kokande vatten|isbitar|lagerblad)$/;
+export function isNegligible(i: Ingredient): boolean {
+  const u = i.unit.toLowerCase();
+  const name = i.name.toLowerCase().replace(/\([^)]*\)/g, '').replace(/\b(torkad|torkade|färsk|färska|malen|mald|nymalen|grovmalen|hel|hela|efter smak|ev)\b/g, '').replace(/[,.]/g, ' ').replace(/\s+/g, ' ').trim();
+  return ['tsk', 'krm', 'nypa'].includes(u) || NEGLIGIBLE.test(name) || /krydd/.test(name);
 }
 
 /** Näringsvärden per livsmedel, plus eventuella fel från Livsmedelsverket per livsmedel. */
@@ -153,6 +154,7 @@ export interface NutResult {
   assumedDensity: number;
   assumed: Ingredient[];
   standard: Ingredient[];
+  ignored: Ingredient[];
 }
 
 export function computeNutrition(ingredients: Ingredient[], portions: number, foods: Map<number, Per100>, weights: Map<string, number>): NutResult {
@@ -162,8 +164,11 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   let counted = 0, assumedDensity = 0;
   const assumed: Ingredient[] = [];
   const standard: Ingredient[] = [];
+  const ignored: Ingredient[] = [];
   for (const i of ingredients) {
     const food = i.lv_food_id != null ? foods.get(i.lv_food_id) : undefined;
+    // Utan mängd går det inte att räkna; kryddor m.m. som saknas i databasen är försumbara.
+    if ((i.amount == null && i.grams == null) || (!food && i.lv_food_id == null && isNegligible(i))) { ignored.push(i); continue; }
     if (!food) { noFood.push(i); continue; }
     const g = toGrams(i, weights);
     if (g.grams == null) { noWeight.push(i); continue; }
@@ -178,7 +183,7 @@ export function computeNutrition(ingredients: Ingredient[], portions: number, fo
   }
   const p = Math.max(1, portions);
   const perPortion: Per100 = Object.fromEntries(Object.entries(sum).map(([k, v]) => [k, v / p]));
-  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed, standard };
+  return { perPortion, counted, noWeight, noFood, assumedDensity, assumed, standard, ignored };
 }
 
 /** Uppskattad energi per portion för granskningsvyn (innan receptet är sparat). */
