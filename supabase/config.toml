@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.lv-foods]
 verify_jwt = true
+
+[functions.image-search]
+verify_jwt = true

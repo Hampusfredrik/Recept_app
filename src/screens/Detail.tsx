@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
-import { ArrowUpRight, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Search, Sparkles, Users } from 'lucide-react';
+import { creditOf, searchImages, withCredit, type PexelsPhoto } from '../lib/images';
 import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
 import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
@@ -42,6 +43,7 @@ export function Detail() {
       <div className="detail-hero" style={{ position: 'relative', height: 330 }}>
         <Thumb id={r.id} image={r.image_url} radius="0 0 34px 34px" stripeW={10} style={{ position: 'absolute', inset: 0 }} />
         <ImageButton r={r} />
+        <PhotoCredit imageUrl={r.image_url} />
       </div>
       <button onClick={back} aria-label="Tillbaka" className="detail-back"
         style={{ position: 'absolute', top: 'max(58px, calc(env(safe-area-inset-top) + 14px))', left: 16, width: 44, height: 44, border: 0, borderRadius: '50%', background: 'var(--color-bg)', boxShadow: 'var(--shadow-md)', cursor: 'pointer', display: 'grid', placeItems: 'center', color: 'var(--color-text)', zIndex: 3 }}>
@@ -333,6 +335,7 @@ function ImageButton({ r }: { r: Recipe }) {
   const toast = useToast();
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [find, setFind] = useState(false);
   const onFile = async (file: File | undefined) => {
     if (!file) return;
     setBusy(true);
@@ -351,10 +354,71 @@ function ImageButton({ r }: { r: Recipe }) {
     <div className="row" style={{ position: 'absolute', right: 16, bottom: 16, gap: 8, zIndex: 2 }}>
       <input ref={ref} type="file" accept="image/*" hidden onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = ''; }} />
       {r.image_url && !busy && <button onClick={remove} style={pill}>Ta bort</button>}
+      {!busy && <button onClick={() => setFind(true)} style={pill}><Ico icon={Sparkles} size={16} />Hitta bild</button>}
       <button onClick={() => ref.current?.click()} disabled={busy} style={pill}>
         {busy ? <Spinner size={16} border={2} /> : <Ico icon={Camera} size={16} />}
         {busy ? 'Sparar…' : r.image_url ? 'Byt bild' : 'Lägg till bild'}
       </button>
+      {find && <ImageSearchSheet r={r} onClose={() => setFind(false)} />}
     </div>
+  );
+}
+
+/** Fotografens namn och Pexels, som deras villkor kräver. */
+function PhotoCredit({ imageUrl }: { imageUrl: string | null }) {
+  const c = creditOf(imageUrl);
+  if (!c) return null;
+  return (
+    <span style={{ position: 'absolute', left: 16, bottom: 66, zIndex: 2, padding: '3px 10px', borderRadius: 999, background: 'color-mix(in srgb, var(--color-neutral-900) 55%, transparent)', color: 'var(--color-neutral-100)', fontSize: 11 }}>
+      Foto: <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>{c.name}</a> / <a href={c.photo} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>Pexels</a>
+    </span>
+  );
+}
+
+/** Bildförslag från Pexels; användaren väljer en bild. */
+function ImageSearchSheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
+  const { setRecipeImageUrl } = useStore();
+  const toast = useToast();
+  const [q, setQ] = useState(r.name);
+  const [photos, setPhotos] = useState<PexelsPhoto[] | null>(null);
+  const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
+  const search = async (query = q) => {
+    if (!query.trim()) return;
+    setLoading(true); setErr('');
+    try { setPhotos((await searchImages(query.trim())).slice(0, 6)); } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    setLoading(false);
+  };
+  useEffect(() => { void search(r.name); }, []); // söker direkt på receptets namn
+  const choose = async (p: PexelsPhoto) => {
+    try { await setRecipeImageUrl(r.id, withCredit(p)); toast('Bilden är sparad'); onClose(); } catch { toast('Kunde inte spara bilden'); }
+  };
+  return (
+    <Sheet onClose={onClose} className="sheet-top" style={{ gap: 12 }}>
+      <h3>Hitta bild</h3>
+      <form onSubmit={(e) => { e.preventDefault(); void search(); }} className="row" style={{ gap: 8 }}>
+        <label className="row" style={{ flex: 1, gap: 10, height: 48, padding: '0 16px', borderRadius: 999, background: 'var(--color-surface)', color: 'var(--color-neutral-700)' }}>
+          <Ico icon={Search} />
+          <input value={q} onChange={(e) => setQ(e.target.value)} type="search" enterKeyHint="search" placeholder="t.ex. lasagne"
+            style={{ flex: 1, minWidth: 0, border: 0, background: 'transparent', fontSize: 16, color: 'var(--color-text)', outline: 'none' }} />
+        </label>
+        <button className="btn btn-secondary" type="submit" style={{ flex: 'none', height: 48, padding: '0 16px' }}>Sök</button>
+      </form>
+      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: -4 }}>Inga bra träffar? Prova ett enklare ord eller på engelska, t.ex. "lasagna".</span>
+      {loading && <div className="row" style={{ gap: 8 }}><Spinner /> Söker…</div>}
+      {err && <span className="err">{err}</span>}
+      {photos && !loading && photos.length === 0 && <span className="muted" style={{ fontSize: 14 }}>Inga bilder hittades.</span>}
+      {photos && photos.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          {photos.map((p) => (
+            <button key={p.id} onClick={() => choose(p)} aria-label={p.alt || 'Välj bild'}
+              style={{ position: 'relative', aspectRatio: '4 / 3', border: 0, padding: 0, borderRadius: 16, overflow: 'hidden', cursor: 'pointer', background: `var(--color-surface) center/cover no-repeat url("${p.thumb}")` }}>
+              <span style={{ position: 'absolute', left: 6, bottom: 6, right: 6, padding: '2px 8px', borderRadius: 999, background: 'color-mix(in srgb, var(--color-neutral-900) 55%, transparent)', color: 'var(--color-neutral-100)', fontSize: 10, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.photographer}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Bilder från Pexels</a>
+    </Sheet>
   );
 }

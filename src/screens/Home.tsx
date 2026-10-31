@@ -64,7 +64,7 @@ export function Home() {
             <span style={{ position: 'relative', padding: '6px 12px', borderRadius: 999, background: 'var(--color-bg)', fontSize: 12, fontWeight: 700, color: 'var(--color-accent-800)' }}>Länge sedan sist</span>
           </div>
           <div className="col" style={{ gap: 10, padding: '16px 18px 18px' }}>
-            <div style={{ fontFamily: 'var(--font-heading)', fontSize: 24, lineHeight: 1.1, textWrap: 'pretty' }}>{hero.name}</div>
+            <div onClick={() => open(hero.id)} role="link" style={{ fontFamily: 'var(--font-heading)', fontSize: 24, lineHeight: 1.1, textWrap: 'pretty', cursor: 'pointer' }}>{hero.name}</div>
             <div className="row" style={{ gap: 10, fontSize: 13, color: 'var(--color-neutral-800)' }}>
               <EffortIcons n={hero.effort} size={14} gap={2} />
               <span>{lastLabel(daysSince(hero.last_cooked_on))}</span>

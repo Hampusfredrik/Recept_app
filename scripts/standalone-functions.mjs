@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const root = new URL('../supabase/', import.meta.url);
-for (const name of ['import-recipe', 'lv-foods']) {
+for (const name of ['import-recipe', 'lv-foods', 'image-search']) {
   const src = readFileSync(new URL(`functions/${name}/index.ts`, root), 'utf8');
   const shared = [];
   const body = src.replace(/^import \{[^}]*\} from '\.\.\/_shared\/([\w-]+)\.ts';\n/gm, (_, file) => {

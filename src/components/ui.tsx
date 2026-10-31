@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, ChevronLeft, Flame, Minus, Plus, X, type LucideIcon } from 'lucide-react';
 import { EFFORT, stripe } from '../lib/format';
 import type { Tag } from '../lib/types';
@@ -116,11 +117,13 @@ export function Sheet({ onClose, children, style, className }: { onClose: () => 
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
-  return (
+  // Direkt i <body>, så att arket hamnar överst även när det öppnas inifrån en yta med egen z-index.
+  return createPortal(
     <>
       <div className="backdrop" onClick={onClose} />
       <div className={'sheet' + (className ? ' ' + className : '')} role="dialog" aria-modal="true" style={style}>{children}</div>
-    </>
+    </>,
+    document.body,
   );
 }
 

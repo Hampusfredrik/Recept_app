@@ -39,6 +39,7 @@ interface Store extends Data {
   addIngredients: (recipeId: string, lines: { amount: number | null; unit: string; name: string }[]) => Promise<void>;
   editRecipe: (recipeId: string, edit: RecipeEdit) => Promise<void>;
   setRecipeImage: (recipeId: string, file: File | null) => Promise<void>;
+  setRecipeImageUrl: (recipeId: string, url: string) => Promise<void>;
   updateIngredient: (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams' | 'lv_manual'>>) => Promise<void>;
   // taggar
   addTag: (name: string) => Promise<Tag>;
@@ -284,6 +285,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           if (up.error) throw new Error(up.error.message);
           image_url = supabase.storage.from('recipe-images').getPublicUrl(path).data.publicUrl;
         }
+        patchRecipe(recipeId, (x) => ({ ...x, image_url }));
+        must(await supabase.from('recipes').update({ image_url }).eq('id', recipeId));
+        if (oldPath) await supabase.storage.from('recipe-images').remove([oldPath]);
+      },
+      setRecipeImageUrl: async (recipeId: string, image_url: string) => {
+        const r = data.recipes.find((x) => x.id === recipeId);
+        const marker = '/storage/v1/object/public/recipe-images/';
+        const oldPath = r?.image_url?.includes(marker) ? r.image_url.split(marker)[1].split('?')[0] : null;
         patchRecipe(recipeId, (x) => ({ ...x, image_url }));
         must(await supabase.from('recipes').update({ image_url }).eq('id', recipeId));
         if (oldPath) await supabase.storage.from('recipe-images').remove([oldPath]);
