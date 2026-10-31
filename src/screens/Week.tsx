@@ -2,14 +2,14 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { useUi } from '../components/uiState';
-import { EffortIcons, Ico } from '../components/ui';
-import { iso, isoWeek, MONTHS_SHORT, today, weekDates, WEEKDAYS_SHORT } from '../lib/dates';
+import { EffortIcons, Ico, WeekToggle } from '../components/ui';
+import { iso, isoWeek, MONTHS_SHORT, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
 
 export function Week() {
   const { recipes, plan, setPlan } = useStore();
-  const { setSheet } = useUi();
+  const { setSheet, weekOffset, setWeekOffset } = useUi();
   const nav = useNavigate();
-  const days = weekDates();
+  const days = weekAt(weekOffset);
   const t = today();
   const first = days[0], last = days[6];
   const range = first.getMonth() === last.getMonth()
@@ -31,7 +31,8 @@ export function Week() {
     <div className="screen">
       <span className="kicker">Vecka {isoWeek(first)} · {range}</span>
       <h1 className="h1" style={{ margin: '2px 0 6px' }}>Veckan</h1>
-      <p style={{ margin: '0 0 18px', color: 'var(--color-neutral-700)', fontSize: 14 }}>{summary}</p>
+      <p style={{ margin: '0 0 14px', color: 'var(--color-neutral-700)', fontSize: 14 }}>{summary}</p>
+      <div style={{ marginBottom: 16 }}><WeekToggle value={weekOffset} onChange={setWeekOffset} /></div>
       <div className="col" style={{ gap: 8 }}>
         {rows.map(({ d, date, r }, i) => {
           const isToday = date === t, past = date < t;

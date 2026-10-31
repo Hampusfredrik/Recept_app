@@ -11,12 +11,16 @@ export function heroRecipe(recipes: Recipe[], plan: PlanEntry[]): Recipe | null 
   return longest.find((r) => !planned.has(r.id)) ?? longest[0] ?? null;
 }
 
-/** Första tomma dag från idag och framåt i aktuell vecka. */
-export function firstEmptyDay(plan: PlanEntry[], ref = new Date()): string | null {
+/** Första tomma dag från idag och framåt: först den här veckan, sedan nästa. */
+export function firstEmptyDay(plan: PlanEntry[], ref = new Date()): { date: string; nextWeek: boolean } | null {
   const t = today();
   const taken = new Set(plan.map((p) => p.date));
-  const d = weekDates(ref).map(iso).find((x) => x >= t && !taken.has(x));
-  return d ?? null;
+  const free = (days: Date[]) => days.map(iso).find((x) => x >= t && !taken.has(x));
+  const now = free(weekDates(ref));
+  if (now) return { date: now, nextWeek: false };
+  const next = new Date(ref); next.setDate(next.getDate() + 7);
+  const later = free(weekDates(next));
+  return later ? { date: later, nextWeek: true } : null;
 }
 
 export const dayName = (dateIso: string) => WEEKDAYS[(fromIso(dateIso).getDay() + 6) % 7];

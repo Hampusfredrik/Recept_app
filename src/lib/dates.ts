@@ -21,6 +21,9 @@ export const weekdayIndex = (d: Date) => (d.getDay() + 6) % 7;
 
 export function mondayOf(d: Date) { return addDays(new Date(d.getFullYear(), d.getMonth(), d.getDate()), -weekdayIndex(d)); }
 
+/** offset 0 = den här veckan, 1 = nästa vecka */
+export const weekAt = (offset: number) => weekDates(addDays(new Date(), 7 * offset));
+
 export function weekDates(ref = new Date()): Date[] {
   const m = mondayOf(ref);
   return Array.from({ length: 7 }, (_, i) => addDays(m, i));

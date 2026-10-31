@@ -3,8 +3,8 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
 import { ArrowUpRight, BookOpen, CalendarDays, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Users } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { EffortIcons, Ico, Sheet, Stepper, TagPill, Thumb, useToast } from '../components/ui';
-import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekDates, WEEKDAYS_SHORT } from '../lib/dates';
+import { EffortIcons, Ico, Sheet, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
+import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
 import { dayName } from '../lib/logic';
 import { amountLabel, domainOf, EFFORT } from '../lib/format';
 import { guessUse, parseIngredientLine } from '../../supabase/functions/_shared/parse';
@@ -32,8 +32,9 @@ export function Detail() {
   const days = daysSince(r.last_cooked_on);
   const cooked = days === 0;
   const recTags = r.tagIds.map((t) => tags.find((x) => x.id === t)).filter((t) => !!t);
-  const weekIso = weekDates().map(iso);
-  const plannedDays = plan.filter((p) => p.recipe_id === r.id && weekIso.includes(p.date)).map((p) => p.date).sort();
+  const thisWeek = weekAt(0).map(iso), nextWeek = weekAt(1).map(iso);
+  const plannedDays = plan.filter((p) => p.recipe_id === r.id && (thisWeek.includes(p.date) || nextWeek.includes(p.date))).map((p) => p.date).sort();
+  const plannedLabel = plannedDays.map((d) => dayName(d).toLowerCase() + (nextWeek.includes(d) ? ' nästa vecka' : '')).join(', ');
   const sinceLabel = lastLabel(days).replace('Lagad ', '').replace(/^./, (c) => c.toUpperCase());
 
   return (
@@ -98,7 +99,7 @@ export function Detail() {
           <span className="col" style={{ flex: 1, minWidth: 0 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>Veckan</span>
             <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>
-              {plannedDays.length ? 'Planerad ' + plannedDays.map((d) => dayName(d).toLowerCase()).join(', ') : 'Inte planerad'}
+              {plannedDays.length ? 'Planerad ' + plannedLabel : 'Inte planerad'}
             </span>
           </span>
           <button onClick={() => setPickDay(true)} className="row"
@@ -264,15 +265,18 @@ function WriteIngredients({ r, onClose }: { r: Recipe; onClose: () => void }) {
 function WeekDaySheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
   const { recipes, plan, setPlan } = useStore();
   const toast = useToast();
-  const days = weekDates();
   const t = today();
+  // Från lördag visas nästa vecka direkt, eftersom det mesta av den här veckan har passerat.
+  const [offset, setOffset] = useState(new Date().getDay() === 6 || new Date().getDay() === 0 ? 1 : 0);
+  const days = weekAt(offset);
+  const when = (date: string) => dayName(date).toLowerCase() + (offset === 1 ? ' nästa vecka' : '');
   const choose = async (date: string, mine: boolean) => {
     if (mine) {
       await setPlan(date, null);
-      toast(`Borttaget från ${dayName(date).toLowerCase()}`);
+      toast(`Borttaget från ${when(date)}`);
     } else {
       await setPlan(date, r.id);
-      toast(`Lagt på ${dayName(date).toLowerCase()}`);
+      toast(`Lagt på ${when(date)}`);
       onClose();
     }
   };
@@ -282,6 +286,7 @@ function WeekDaySheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
         <h3>Lägg i veckan</h3>
         <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Vecka {isoWeek(days[0])} · tryck på en dag</span>
       </div>
+      <WeekToggle value={offset} onChange={setOffset} />
       <div className="col" style={{ gap: 6 }}>
         {days.map((d, i) => {
           const date = iso(d);

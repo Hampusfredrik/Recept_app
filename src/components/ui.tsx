@@ -148,3 +148,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     </ToastCtx.Provider>
   );
 }
+
+export function WeekToggle({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="seg2" style={{ gridTemplateColumns: '1fr 1fr' }}>
+      {['Den här veckan', 'Nästa vecka'].map((label, i) => (
+        <button key={label} className={value === i ? 'on' : ''} onClick={() => onChange(i)} aria-pressed={value === i} style={{ height: 38 }}>{label}</button>
+      ))}
+    </div>
+  );
+}

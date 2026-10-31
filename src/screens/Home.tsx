@@ -18,16 +18,18 @@ export function Home() {
 
   const todayEntry = plan.find((p) => p.date === today());
   const todayR = todayEntry && recipes.find((r) => r.id === todayEntry.recipe_id);
-  const hero = heroRecipe(recipes, plan);
-  const heroPlanned = !!hero && plan.some((p) => p.recipe_id === hero.id);
+  // Gamla planer räknas inte: bara det som ligger från idag och framåt.
+  const upcoming = plan.filter((p) => p.date >= today());
+  const hero = heroRecipe(recipes, upcoming);
+  const heroPlanned = !!hero && upcoming.some((p) => p.recipe_id === hero.id);
 
   const planHero = async () => {
     if (!hero) return;
     if (heroPlanned) return nav('/veckan');
     const d = firstEmptyDay(plan);
     if (!d) return toast('Veckan är redan full');
-    await setPlan(d, hero.id);
-    toast(`Lagt på ${dayName(d).toLowerCase()}`);
+    await setPlan(d.date, hero.id);
+    toast(`Lagt på ${dayName(d.date).toLowerCase()}${d.nextWeek ? ' nästa vecka' : ''}`);
   };
 
   const trio = [1, 2, 3].map((lvl, k) => {
