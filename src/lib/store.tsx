@@ -16,6 +16,8 @@ interface Store extends Data {
   session: Session | null;
   authReady: boolean;
   household: Household | null;
+  households: Household[];
+  selectHousehold: (id: string) => void;
   householdLoading: boolean;
   loaded: boolean;
   error: string | null;
@@ -58,6 +60,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [authReady, setAuthReady] = useState(false);
   const [household, setHousehold] = useState<Household | null>(null);
+  const [households, setHouseholds] = useState<Household[]>([]);
   const [householdLoading, setHouseholdLoading] = useState(true);
   const [data, setData] = useState<Data>({ recipes: [], tags: [], plan: [], pantry: [] });
   const [loaded, setLoaded] = useState(false);
@@ -75,10 +78,20 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const loadHousehold = useCallback(async (): Promise<{ h: Household | null; error: string | null }> => {
     if (!session) { setHousehold(null); setHouseholdLoading(false); return { h: null, error: null }; }
     setHouseholdLoading(true);
-    const { data: rows, error: e } = await supabase.from('households').select('id,name,invite_code').order('created_at');
+    const withCount = await supabase.from('households')
+      .select('id,name,invite_code,created_at,recipes!recipes_household_id_fkey(count)').order('created_at');
+    // Reserv om antal inte går att bädda in: hämta köken utan antal.
+    const res = withCount.error ? await supabase.from('households').select('id,name,invite_code,created_at').order('created_at') : withCount;
+    const { data, error: e } = res as { data: unknown[] | null; error: { message: string } | null };
     setError(e ? e.message : null);
+    type Row = Household & { created_at: string; recipes: { count: number }[] };
+    const rows: Household[] = ((data ?? []) as unknown as Row[]).map(({ recipes, created_at: _c, ...h }) => ({ ...h, recipeCount: Array.isArray(recipes) ? recipes[0]?.count ?? 0 : undefined }));
+    setHouseholds(rows);
+    // Senast valda köket på den här enheten; annars köket med flest recept (vid lika: det nyaste).
     const preferred = localStorage.getItem(HH_KEY);
-    const h = rows?.find((x) => x.id === preferred) ?? rows?.[0] ?? null;
+    const fallback = [...rows].reverse().sort((a, b) => (b.recipeCount ?? 0) - (a.recipeCount ?? 0))[0] ?? null;
+    const h = rows.find((x) => x.id === preferred) ?? fallback;
+    if (h) localStorage.setItem(HH_KEY, h.id);
     setHousehold(h);
     setHouseholdLoading(false);
     return { h, error: e?.message ?? null };
@@ -281,6 +294,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [hid, data.tags, data.recipes, loadHousehold, reload, session]);
 
-  const value: Store = { session, authReady, household, householdLoading, loaded, error, reload, ...data, ...actions };
+  const selectHousehold = useCallback((id: string) => {
+    const h = households.find((x) => x.id === id);
+    if (!h) return;
+    localStorage.setItem(HH_KEY, id);
+    setHousehold(h);
+  }, [households]);
+
+  const value: Store = { session, authReady, household, households, selectHousehold, householdLoading, loaded, error, reload, ...data, ...actions };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

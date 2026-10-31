@@ -56,6 +56,7 @@ export interface Household {
   id: string;
   name: string;
   invite_code: string;
+  recipeCount?: number;
 }
 
 export interface PlanEntry { date: string; recipe_id: string }

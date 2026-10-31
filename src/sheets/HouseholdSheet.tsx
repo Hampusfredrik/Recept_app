@@ -4,7 +4,7 @@ import { Sheet, useToast } from '../components/ui';
 
 // Inbjudan och utloggning. Inte ritat i designen; följer arkens formspråk.
 export function HouseholdSheet({ onClose }: { onClose: () => void }) {
-  const { household, session, rotateInvite, renameHousehold, signOut } = useStore();
+  const { household, households, selectHousehold, session, rotateInvite, renameHousehold, signOut } = useStore();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(household?.name ?? '');
@@ -45,6 +45,23 @@ export function HouseholdSheet({ onClose }: { onClose: () => void }) {
         <button className="btn btn-primary" onClick={share} style={{ height: 52, flex: 1, fontSize: 16 }}>Dela inbjudan</button>
         <button className="btn btn-secondary" disabled={busy} onClick={async () => { setBusy(true); await rotateInvite(); setBusy(false); }} style={{ height: 52, flex: 'none', padding: '0 16px', fontSize: 15 }}>Ny kod</button>
       </div>
+      {households.length > 1 && (
+        <div className="col" style={{ gap: 6 }}>
+          <span className="label">Du är med i {households.length} kök</span>
+          {households.map((h) => {
+            const on = h.id === household.id;
+            return (
+              <button key={h.id} disabled={on} onClick={() => { selectHousehold(h.id); setName(h.name); onClose(); }} className="row hover-surface"
+                style={{ justifyContent: 'space-between', gap: 10, padding: '10px 14px', borderRadius: 18, border: `1.5px solid ${on ? 'var(--color-accent)' : 'var(--color-divider)'}`, background: 'transparent', cursor: on ? 'default' : 'pointer', textAlign: 'left', font: '600 14px var(--font-body)', color: 'var(--color-text)' }}>
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{h.name}</span>
+                <span style={{ flex: 'none', fontSize: 12, fontWeight: 400, color: 'var(--color-neutral-700)' }}>
+                  {on ? 'Valt' : h.recipeCount != null ? `${h.recipeCount} recept` : 'Byt hit'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
       <div className="row" style={{ justifyContent: 'space-between', gap: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Inloggad som {session?.user.email}</span>
         <button className="btn btn-ghost" onClick={async () => { onClose(); await signOut(); }} style={{ color: 'var(--color-accent-700)', flex: 'none' }}>Logga ut</button>
