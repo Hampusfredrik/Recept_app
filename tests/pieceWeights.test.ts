@@ -24,3 +24,13 @@ test('buljongtärningar känns igen när de anges i styck', () => {
   assert.ok(!isStockCube('grönsaksbuljong', 'dl'));
   assert.ok(!isStockCube('buljongtärning', 'msk'));
 });
+
+import { standardCanWeight } from '../src/data/pieceWeights.ts';
+test('burkvikter', () => {
+  assert.equal(standardCanWeight('krossade tomater')?.grams, 400);
+  assert.equal(standardCanWeight('kidneybönor')?.grams, 230);
+  assert.equal(standardCanWeight('svarta bönor')?.grams, 230);
+  assert.equal(standardCanWeight('kikärtor')?.grams, 230);
+  assert.equal(standardCanWeight('majs')?.grams, 200);
+  assert.equal(standardCanWeight('kokosmjölk'), null);
+});

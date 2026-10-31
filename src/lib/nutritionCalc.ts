@@ -1,6 +1,6 @@
 // Ren beräkning av näringsvärde: inga databasanrop, så att den kan testas direkt.
 import { DEFAULT_DENSITY_G_PER_ML, G_PER_UNIT, ML_PER_UNIT } from '../data/units.ts';
-import { isStockCube, standardDlWeight, standardPieceWeight, STOCK_CUBE_SALT_G } from '../data/pieceWeights.ts';
+import { isStockCube, standardCanWeight, standardDlWeight, standardPieceWeight, STOCK_CUBE_SALT_G } from '../data/pieceWeights.ts';
 import type { Ingredient } from './types.ts';
 
 export type Per100 = Partial<Record<'kcal' | 'protein' | 'fat' | 'carbs' | 'fiber' | 'sugar' | 'satfat' | 'salt' | 'vitd' | 'b12' | 'vitc' | 'folate' | 'iron' | 'calcium' | 'iodine' | 'selenium', number>>;
@@ -54,6 +54,10 @@ export function toGrams(i: Ingredient, weights: Map<string, number>): { grams: n
     const std = standardDlWeight(i.name);
     if (std) return { grams: i.amount * ML_PER_UNIT[u] / 100 * std.grams, assumed: false, standard: true };
     return { grams: i.amount * ML_PER_UNIT[u] * DEFAULT_DENSITY_G_PER_ML, assumed: true };
+  }
+  if (u === 'burk') {
+    const can = standardCanWeight(i.name);
+    if (can) return { grams: i.amount * can.grams, assumed: false, standard: true };
   }
   if (u === 'st') {
     const std = standardPieceWeight(i.name);

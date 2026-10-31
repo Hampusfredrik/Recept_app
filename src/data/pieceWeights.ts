@@ -97,6 +97,14 @@ export const DL_WEIGHTS: { grams: number; source: string; names: string[] }[] = 
   { grams: 11, source: MT, names: ['ruccola', 'rucola'] },
 ];
 
+/** Gram per burk (användarens värden; förpackningar skiljer sig mellan märken). Bönor m.fl. är avrunnen vikt. */
+export const CAN_WEIGHTS: { grams: number; source: string; names: string[] }[] = [
+  { grams: 400, source: USER, names: ['krossade tomater', 'krossad tomat', 'hela tomater', 'tomater', 'passerade tomater'] },
+  { grams: 230, source: USER, names: ['kidneybönor', 'svarta bönor', 'vita bönor', 'bruna bönor', 'borlottibönor', 'cannellinibönor',
+    'bönor', 'kikärtor', 'kikärter', 'linser', 'gröna linser', 'belugalinser'] },
+  { grams: 200, source: USER, names: ['majs', 'majskorn'] },
+];
+
 const keyOf = (name: string) => words(name.split(',')[0]).filter((w) => !STRIP.has(w)).map(stem).join(' ');
 const index = (list: { grams: number; source: string; names: string[] }[]) => {
   const m = new Map<string, { grams: number; source: string }>();
@@ -105,9 +113,12 @@ const index = (list: { grams: number; source: string; names: string[] }[]) => {
 };
 const PIECE = index(PIECE_WEIGHTS);
 const DL = index(DL_WEIGHTS);
+const CAN = index(CAN_WEIGHTS);
 
 /** Standardvikt i gram för 1 st av ingrediensen, eller null. */
 export const standardPieceWeight = (name: string) => PIECE.get(keyOf(name)) ?? null;
+/** Standardvikt i gram för 1 burk av ingrediensen, eller null. */
+export const standardCanWeight = (name: string) => CAN.get(keyOf(name)) ?? null;
 /** Standardvikt i gram för 1 dl av ingrediensen, eller null. */
 export const standardDlWeight = (name: string) => DL.get(keyOf(name)) ?? null;
 
