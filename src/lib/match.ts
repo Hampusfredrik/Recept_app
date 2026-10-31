@@ -21,7 +21,8 @@ const DESCRIPTORS = new Set([
 // Tillagade varianter väljs bara om ingrediensen säger det ("stekt lök" → "Lök stekt …").
 const PREPARED = new Set(['stekt', 'stekta', 'friterad', 'friterade', 'panerad', 'panerade', 'stuvad', 'stuvade', 'gratinerad',
   'hemlagad', 'tillagad', 'restaurang', 'wokad', 'grillad', 'ugnsstekt', 'värmd', 'kokt', 'kokta', 'rostad', 'rostade',
-  'bakad', 'gräddad', 'inlagd', 'inlagda', 'syltade', 'marinerad', 'rökt', 'gravad', 'kallrökt', 'varmrökt', 'storhushåll']);
+  'bakad', 'gräddad', 'inlagd', 'inlagda', 'syltade', 'marinerad', 'rökt', 'gravad', 'kallrökt', 'varmrökt', 'storhushåll',
+  'torkad', 'torkade', 'torkat', 'frysvara']);
 // Ord i ingrediensen som inte påverkar vilket livsmedel det är (för den fasta listan).
 const KEY_MODIFIERS = new Set(['riven', 'rivna', 'hackad', 'hackade', 'finhackad', 'finhackade', 'grovhackad', 'färsk', 'färska',
   'skivad', 'skivade', 'tärnad', 'tärnade', 'strimlad', 'strimlade', 'stor', 'stora', 'liten', 'små', 'medelstor', 'medelstora',
@@ -34,7 +35,7 @@ const UNIT_WORDS = new Set(['liter', 'l', 'dl', 'deciliter', 'cl', 'ml', 'msk', 
 
 // Oregelbundna former och sammansättningar som Livsmedelsverket skriver isär.
 const REWRITE: Record<string, string[]> = {
-  morötter: ['morot'], rödlök: ['lök', 'röd'], rödlökar: ['lök', 'röd'], gullök: ['lök', 'gul'], gullökar: ['lök', 'gul'],
+  morötter: ['morot'], kålrötter: ['kålrot'], rötter: ['rot'], rödlök: ['lök', 'röd'], rödlökar: ['lök', 'röd'], gullök: ['lök', 'gul'], gullökar: ['lök', 'gul'],
 };
 // Livsmedelsverket inleder ofta kött med djurslaget ("Gris sidfläsk", "Nöt färs").
 const ANIMALS = new Set(['gris', 'nöt', 'kalv', 'lamm', 'får', 'ren', 'älg', 'hjort', 'vilt', 'kyckling', 'kalkon']);
@@ -116,10 +117,12 @@ export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; 
   const ingCore = ing.filter((w) => !DESCRIPTORS.has(w));
   if (!ingCore.length) return null;
   const ingKinds = kindsIn(ing);
+  const ingStems = new Set(ing.map(stem));
 
   let best: { food: LvFood; score: number; sure: boolean } | null = null;
   for (const f of foods) {
-    const fw = words(f.name).filter((w) => !STOP.has(w));
+    // "u. salt" (utan) och "m. salt" säger inget om vilket livsmedel det är.
+    const fw = words(f.name).filter((w, k, all) => !STOP.has(w) && !(['u', 'utan'].includes(all[k - 1])) && !(all[k - 1] === 'm' && w === 'salt'));
     if (!fw.length) continue;
     // Livsmedlets huvudord måste finnas bland ingrediensens kärnord. Huvudordet är
     // första ordet, eller ordet efter djurslaget för kött.
@@ -137,9 +140,10 @@ export function matchFood(ingredient: string, foods: LvFood[]): { food: LvFood; 
     const coveredIng = ingCore.filter((w) => fCore.some((x) => covers(w, x))).length;
     const matchedFood = fCore.filter((x) => ing.some((w) => covers(w, x))).length;
     const extraFood = fCore.length - matchedFood;
-    const descAgree = fDesc.filter((d) => ing.includes(d)).length;
-    const descConflict = fDesc.filter((d) => !ing.includes(d)).length;
-    const prepared = fw.filter((w) => PREPARED.has(w) && !ing.includes(w)).length;
+    // Böjningar jämförs på stammen: röd/röda, kokt/kokta, inlagd/inlagda.
+    const descAgree = fDesc.filter((d) => ingStems.has(stem(d))).length;
+    const descConflict = fDesc.filter((d) => !ingStems.has(stem(d))).length;
+    const prepared = fw.filter((w) => PREPARED.has(w) && !ingStems.has(stem(w))).length;
 
     const score = coveredIng / ingCore.length * 10
       + matchedFood * 2

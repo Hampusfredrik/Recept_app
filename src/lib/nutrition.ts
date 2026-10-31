@@ -58,6 +58,23 @@ export { matchFood };
  * håller enligt nuvarande regler (t.ex. "salt" → "Saltsill"). Ingredienser där måttet
  * hamnat i namnet ("1,5 liter vatten") rättas samtidigt.
  */
+/** Matchar om alla ingredienser med nuvarande regler (utom livsmedel markerade som egna val). */
+export async function rematchAll(ingredients: Ingredient[], update: (id: number, p: Partial<Ingredient>) => Promise<void>) {
+  const foods = await foodList();
+  let changed = 0;
+  for (const i of ingredients) {
+    if (i.lv_manual || isStockCube(i.name, i.unit) || isSpice(i)) continue;
+    const m = matchFood(i.name, foods);
+    const patch: Partial<Ingredient> = m
+      ? { lv_food_id: m.food.id, lv_food_name: m.food.name, match_confidence: m.sure ? 'sure' : 'unsure' }
+      : { lv_food_id: null, lv_food_name: null, match_confidence: 'unsure' };
+    if (patch.lv_food_id === i.lv_food_id && patch.match_confidence === i.match_confidence) continue;
+    await update(i.id, patch);
+    changed++;
+  }
+  return changed;
+}
+
 export async function matchMissing(ingredients: Ingredient[], update: (id: number, p: Partial<Ingredient>) => Promise<void>) {
   const fixed = ingredients.map((i) => {
     if (i.unit || i.amount == null) return { i, patch: {} as Partial<Ingredient> };

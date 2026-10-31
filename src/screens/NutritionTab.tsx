@@ -4,7 +4,7 @@ import { useStore } from '../lib/store';
 import { Ico, Sheet, Spinner, useToast } from '../components/ui';
 import { ML_PER_UNIT } from '../data/units';
 import { STOCK_CUBE_SALT_G } from '../data/pieceWeights';
-import { computeNutrition, isNegligible, fetchNutrients, fetchUnitWeights, foodList, matchFood, matchMissing, saveUnitWeight, toGrams, weightUnit, type LvFood, type Per100 } from '../lib/nutrition';
+import { computeNutrition, isNegligible, fetchNutrients, rematchAll, fetchUnitWeights, foodList, matchFood, matchMissing, saveUnitWeight, toGrams, weightUnit, type LvFood, type Per100 } from '../lib/nutrition';
 import { amountLabel, fmt } from '../lib/format';
 import { NNR } from '../data/nnr';
 import type { Ingredient, Recipe } from '../lib/types';
@@ -149,7 +149,10 @@ export function NutritionTab({ r }: { r: Recipe }) {
       </>)}
 
       <div className="col" style={{ gap: 2 }}>
-        <h4 style={{ margin: '8px 0 2px', fontSize: 19 }}>Matchat mot Livsmedelsverket</h4>
+        <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+          <h4 style={{ margin: '8px 0 2px', fontSize: 19 }}>Matchat mot Livsmedelsverket</h4>
+          <RematchButton r={r} />
+        </div>
         <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 6 }}>Varje ingrediens kopplas till ett livsmedel i databasen. Tryck för att byta.</span>
         {r.ingredients.map((i) => {
           const sure = i.match_confidence === 'sure' && i.lv_food_id != null;
@@ -315,5 +318,26 @@ function WeightPrompts({ items, householdId, onSaved }: { items: Ingredient[]; h
         );
       })}
     </div>
+  );
+}
+
+/** Kopplar om alla ingredienser i receptet med de senaste matchningsreglerna. */
+function RematchButton({ r }: { r: Recipe }) {
+  const { updateIngredient } = useStore();
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    if (!confirm('Matcha om alla ingredienser i receptet med de senaste reglerna? Livsmedel du har valt själv kan också ändras.')) return;
+    setBusy(true);
+    try {
+      const n = await rematchAll(r.ingredients, updateIngredient);
+      toast(n ? `${n} ${n === 1 ? 'ingrediens' : 'ingredienser'} kopplades om` : 'Alla kopplingar var redan aktuella');
+    } catch (e) { toast(e instanceof Error ? e.message : 'Kunde inte matcha om'); }
+    setBusy(false);
+  };
+  return (
+    <button className="btn btn-ghost" onClick={run} disabled={busy} style={{ flex: 'none', color: 'var(--color-accent-700)', fontSize: 13 }}>
+      {busy ? <Spinner size={14} border={2} /> : 'Matcha om'}
+    </button>
   );
 }
