@@ -7,7 +7,7 @@ import { BookSuggestions } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
 import { amountLabel } from '../lib/format';
 import { toggle } from '../lib/logic';
-import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
+import { parseIngredientLine, stepsFromText } from '../../supabase/functions/_shared/parse';
 import type { Recipe } from '../lib/types';
 
 // Inte ritad i designen; följer formspråket från "Bara bok och sida".
@@ -28,7 +28,7 @@ export function EditRecipe() {
   const [book, setBook] = useState(r?.book_title ?? '');
   const [page, setPage] = useState(r?.page ?? '');
   // Delar i receptet: huvuddelen (utan namn) och t.ex. "Frosting", var och en med ingredienser och steg.
-  const [parts, setParts] = useState<Part[]>(() => (r ? initialParts(r) : [{ name: '', ingr: '', steps: [] }]));
+  const [parts, setParts] = useState<Part[]>(() => (r ? initialParts(r) : [{ name: '', ingr: '', steps: [], stepsText: '' }]));
   const setPart = (k: number, p: Partial<Part>) => setParts((ps) => ps.map((x, j) => (j === k ? { ...x, ...p } : x)));
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
@@ -45,7 +45,7 @@ export function EditRecipe() {
 
   const save = async () => {
     if (!name.trim()) return setErr('Receptet behöver ett namn.');
-    if (parts.some((p, k) => k > 0 && !p.name.trim() && (p.ingr.trim() || p.steps.some((x) => x.trim())))) return setErr('Ge varje del ett namn, t.ex. Frosting.');
+    if (parts.some((p, k) => k > 0 && !p.name.trim() && (p.ingr.trim() || p.stepsText.trim()))) return setErr('Ge varje del ett namn, t.ex. Frosting.');
     if (r.source_type === 'book' && !book.trim()) return setErr('Fyll i vilken bok receptet står i.');
     const p = parseInt(portions, 10);
     setSaving(true); setErr('');
@@ -58,7 +58,7 @@ export function EditRecipe() {
         },
         ingredients: parts.flatMap((p) => p.ingr.split('\n').map((x) => x.trim()).filter(Boolean)
           .map((x) => ({ ...parseIngredientLine(x), section: p.name.trim() || null }))),
-        steps: parts.flatMap((p) => p.steps.map((x) => x.trim().replace(/\s+/g, ' ')).filter(Boolean)
+        steps: parts.flatMap((p, pk) => (pk > 0 ? stepsFromText(p.stepsText).map((x) => x.text) : p.steps.map((x) => x.trim().replace(/\s+/g, ' ')).filter(Boolean))
           .map((text) => ({ text, section: p.name.trim() || null }))),
         tagIds,
       });
@@ -110,11 +110,11 @@ export function EditRecipe() {
           <div key={pk} className="col" style={{ gap: 14, ...(pk > 0 ? { padding: 14, borderRadius: 20, border: '1.5px solid var(--color-divider)' } : {}) }}>
             {pk > 0 && (
               <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
-                <div className="field" style={{ flex: 1 }}><label>Del</label>
+                <div className="field" style={{ flex: 1 }}><label>Delrecept</label>
                   <input className="input big" value={p.name} onChange={(e) => { setPart(pk, { name: e.target.value }); setErr(''); }} placeholder="t.ex. Frosting" />
                 </div>
                 <button style={{ ...smallBtn, width: 44, height: 44 }} className="hover-surface" aria-label={`Ta bort delen ${p.name}`}
-                  onClick={() => { if ((!p.ingr.trim() && !p.steps.some((x) => x.trim())) || confirm(`Ta bort delen ”${p.name || 'utan namn'}” med dess ingredienser och steg?`)) setParts((ps) => ps.filter((_, j) => j !== pk)); }}>
+                  onClick={() => { if ((!p.ingr.trim() && !p.stepsText.trim()) || confirm(`Ta bort delen ”${p.name || 'utan namn'}” med dess ingredienser och steg?`)) setParts((ps) => ps.filter((_, j) => j !== pk)); }}>
                   <Ico icon={Trash2} size={18} />
                 </button>
               </div>
@@ -123,6 +123,12 @@ export function EditRecipe() {
               <textarea className="input" value={p.ingr} onChange={(e) => setPart(pk, { ingr: e.target.value })} placeholder={pk > 0 ? '200 g färskost\n1 dl florsocker' : '400 g kycklingfilé\n1 gul lök'}
                 style={{ borderRadius: 24, minHeight: pk > 0 ? 110 : 160, padding: '12px 16px', fontSize: 16, lineHeight: 1.5 }} />
             </div>
+            {pk > 0 ? (
+              <div className="field"><label>{p.name.trim() ? `Gör så här · ${p.name.trim().toLowerCase()}` : 'Gör så här'} · alla steg</label>
+                <textarea className="input" value={p.stepsText} onChange={(e) => setPart(pk, { stepsText: e.target.value })} placeholder={'1. Vispa smör och färskost.\n2. Sikta ner florsockret.'}
+                  style={{ borderRadius: 24, minHeight: 130, padding: '12px 16px', fontSize: 16, lineHeight: 1.5 }} />
+              </div>
+            ) : (
             <div className="col" style={{ gap: 10 }}>
               <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{pk > 0 && p.name.trim() ? `Gör så här · ${p.name.trim().toLowerCase()}` : 'Gör så här'}</span>
               {p.steps.map((text, k) => (
@@ -142,10 +148,11 @@ export function EditRecipe() {
                 <Ico icon={Plus} size={16} />Lägg till steg
               </button>
             </div>
+            )}
           </div>
         ))}
-        <button onClick={() => setParts((ps) => [...ps, { name: '', ingr: '', steps: [''] }])} className="btn btn-secondary" style={{ alignSelf: 'flex-start', height: 46, padding: '0 16px' }}>
-          <Ico icon={Plus} size={16} style={{ marginRight: 6 }} />Lägg till del, t.ex. frosting
+        <button onClick={() => setParts((ps) => [...ps, { name: '', ingr: '', steps: [], stepsText: '' }])} className="btn btn-secondary" style={{ alignSelf: 'flex-start', height: 46, padding: '0 16px' }}>
+          <Ico icon={Plus} size={16} style={{ marginRight: 6 }} />Lägg till delrecept, t.ex. frosting
         </button>
 
         {err && <span className="err">{err}</span>}
@@ -155,15 +162,20 @@ export function EditRecipe() {
   );
 }
 
-interface Part { name: string; ingr: string; steps: string[] }
+/** steps används för huvuddelen (en ruta per steg), stepsText för delrecept (alla steg i en ruta). */
+interface Part { name: string; ingr: string; steps: string[]; stepsText: string }
 
 /** Receptets delar som redigerbara fält: huvuddelen först, sedan varje namngiven del. */
 function initialParts(r: Recipe): Part[] {
   const line = (i: Recipe['ingredients'][number]) => [amountLabel(i.amount, i.unit, 1, i.amount_max), i.name].filter(Boolean).join(' ');
   const names = [...new Set([...r.ingredients, ...r.steps].map((x) => x.section?.trim() || '').filter(Boolean))];
-  return ['', ...names].map((name) => ({
-    name,
-    ingr: r.ingredients.filter((i) => (i.section?.trim() || '') === name).map(line).join('\n'),
-    steps: r.steps.filter((x) => (x.section?.trim() || '') === name).map((x) => x.text),
-  }));
+  return ['', ...names].map((name) => {
+    const steps = r.steps.filter((x) => (x.section?.trim() || '') === name).map((x) => x.text);
+    return {
+      name,
+      ingr: r.ingredients.filter((i) => (i.section?.trim() || '') === name).map(line).join('\n'),
+      steps,
+      stepsText: steps.map((t, k) => `${k + 1}. ${t}`).join('\n'),
+    };
+  });
 }

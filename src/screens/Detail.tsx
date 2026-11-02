@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
-import { ArrowUpRight, Heart, UserRound, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Search, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, Heart, UserRound, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Plus, Search, Sparkles, Users } from 'lucide-react';
 import { creditOf, searchImages, withCredit, type PexelsPhoto } from '../lib/images';
 import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
@@ -9,7 +9,7 @@ import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_
 import { dayName } from '../lib/logic';
 import { amountLabel, domainOf, EFFORT } from '../lib/format';
 import { bySection } from '../lib/sections';
-import { guessUse, parseIngredientLine } from '../../supabase/functions/_shared/parse';
+import { guessUse, ingredientsFromText, parseIngredientLine, stepsFromText } from '../../supabase/functions/_shared/parse';
 import { NutritionTab } from './NutritionTab';
 import type { Recipe } from '../lib/types';
 
@@ -24,6 +24,7 @@ export function Detail() {
   const [tab, setTab] = useState<Tab>('ingr');
   const [port, setPort] = useState<number | null>(null);
   const [writeIngr, setWriteIngr] = useState(false);
+  const [addSub, setAddSub] = useState(false);
   const [pickDay, setPickDay] = useState(false);
   const back = useBack();
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
@@ -180,6 +181,13 @@ export function Detail() {
           </div>
         ))}
 
+        {(tab === 'ingr' || tab === 'steps') && (
+          <button onClick={() => setAddSub(true)} className="row hover-surface"
+            style={{ alignSelf: 'flex-start', gap: 8, height: 44, padding: '0 16px', marginTop: 14, borderRadius: 22, border: '1.5px dashed var(--color-neutral-400)', background: 'transparent', cursor: 'pointer', font: '600 14px var(--font-body)', color: 'var(--color-neutral-700)' }}>
+            <Ico icon={Plus} size={16} />Lägg till delrecept, t.ex. frosting
+          </button>
+        )}
+
         {tab === 'nut' && <NutritionTab r={r} />}
       </div>
 
@@ -194,6 +202,7 @@ export function Detail() {
       </div>
 
       {writeIngr && <WriteIngredients r={r} onClose={() => setWriteIngr(false)} />}
+      {addSub && <SubRecipeSheet r={r} onClose={() => setAddSub(false)} />}
       {pickDay && <WeekDaySheet r={r} onClose={() => setPickDay(false)} />}
     </div>
   );
@@ -289,6 +298,44 @@ function WriteIngredients({ r, onClose }: { r: Recipe; onClose: () => void }) {
       <textarea className="input" autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder={'400 g kycklingfilé\n1 gul lök\n4 dl kokosmjölk'}
         style={{ borderRadius: 24, minHeight: 160, padding: '12px 16px', fontSize: 16 }} />
       <button className="btn btn-primary btn-block" disabled={busy} onClick={save} style={{ height: 52, fontSize: 16 }}>Spara ingredienser</button>
+    </Sheet>
+  );
+}
+
+/** Delrecept (t.ex. Frosting): namn, alla ingredienser i en ruta och alla steg i en ruta. */
+function SubRecipeSheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
+  const { addSection } = useStore();
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [ingr, setIngr] = useState('');
+  const [steps, setSteps] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (!name.trim()) return setErr('Ge delreceptet ett namn, t.ex. Frosting.');
+    const lines = ingredientsFromText(ingr).map(({ section: _s, ...l }) => l);
+    const st = stepsFromText(steps).map((x) => x.text);
+    if (!lines.length && !st.length) return setErr('Klistra in ingredienser eller steg.');
+    setBusy(true); setErr('');
+    try { await addSection(r.id, name, lines, st); toast(`${name.trim()} har lagts till`); onClose(); }
+    catch (e) { setErr(e instanceof Error ? e.message : String(e)); setBusy(false); }
+  };
+  return (
+    <Sheet onClose={onClose} style={{ gap: 12, maxHeight: 'calc(100dvh - 40px)', overflowY: 'auto' }}>
+      <h3>Lägg till delrecept</h3>
+      <div className="field"><label>Namn</label>
+        <input className="input big" value={name} onChange={(e) => { setName(e.target.value); setErr(''); }} placeholder="t.ex. Frosting" />
+      </div>
+      <div className="field"><label>Ingredienser · en per rad</label>
+        <textarea className="input" value={ingr} onChange={(e) => { setIngr(e.target.value); setErr(''); }} placeholder={'200 g färskost\n1 dl florsocker\n50 g smör'}
+          style={{ borderRadius: 16, minHeight: 130, padding: '12px 14px', fontSize: 16, lineHeight: 1.45 }} />
+      </div>
+      <div className="field"><label>Gör så här · klistra in alla steg</label>
+        <textarea className="input" value={steps} onChange={(e) => setSteps(e.target.value)} placeholder={'1. Vispa smör och färskost.\n2. Sikta ner florsockret.'}
+          style={{ borderRadius: 16, minHeight: 130, padding: '12px 14px', fontSize: 16, lineHeight: 1.45 }} />
+      </div>
+      {err && <span className="err">{err}</span>}
+      <button className="btn btn-primary btn-block" disabled={busy} onClick={save} style={{ height: 52, fontSize: 16 }}>{busy ? <Spinner /> : 'Spara delrecept'}</button>
     </Sheet>
   );
 }

@@ -54,6 +54,8 @@ interface Store extends Data {
   saveNote: (recipeId: string, text: string) => Promise<void>;
   addIngredients: (recipeId: string, lines: { amount: number | null; amount_max?: number | null; unit: string; name: string }[]) => Promise<void>;
   editRecipe: (recipeId: string, edit: RecipeEdit) => Promise<void>;
+  /** Lägger till ett delrecept (t.ex. Frosting) sist i receptet. */
+  addSection: (recipeId: string, name: string, ingredients: { amount: number | null; amount_max?: number | null; unit: string; name: string }[], steps: string[]) => Promise<void>;
   setRecipeImage: (recipeId: string, file: File | null) => Promise<void>;
   setRecipeImageUrl: (recipeId: string, url: string) => Promise<void>;
   updateIngredient: (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams' | 'lv_manual' | 'amount' | 'amount_max' | 'unit' | 'name'>>) => Promise<void>;
@@ -421,6 +423,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         patchRecipe(recipeId, (x) => ({ ...x, image_url }));
         must(await supabase.from('recipes').update({ image_url }).eq('id', recipeId));
         if (oldPath) await supabase.storage.from('recipe-images').remove([oldPath]);
+      },
+      addSection: async (recipeId: string, name: string, ingredients: { amount: number | null; amount_max?: number | null; unit: string; name: string }[], steps: string[]) => {
+        const household_id = need();
+        const r = data.recipes.find((x) => x.id === recipeId);
+        if (!r) throw new Error('Receptet finns inte');
+        const section = name.trim().slice(0, 80);
+        if (!section) throw new Error('Ge delreceptet ett namn, t.ex. Frosting.');
+        sectionsMissing.current = false;
+        const i0 = r.ingredients.reduce((m, x) => Math.max(m, x.position + 1), 0);
+        const s0 = r.steps.reduce((m, x) => Math.max(m, x.position + 1), 0);
+        if (ingredients.length) must(await insertIngredients(ingredients.map((l, k) => ({ ...l, section, position: i0 + k, household_id, recipe_id: recipeId }))));
+        if (steps.length) must(await insertRows('recipe_steps', steps.map((text, k) => ({ text, section, position: s0 + k, household_id, recipe_id: recipeId }))));
+        await reload();
+        if (sectionsMissing.current) {
+          sectionsMissing.current = false;
+          throw new Error('Delreceptet sparades i huvudreceptet: delar kräver migreringen 20261107120000_recipe_sections.sql i Supabase.');
+        }
       },
       editRecipe: async (recipeId: string, edit: RecipeEdit) => {
         const household_id = need();
