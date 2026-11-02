@@ -168,3 +168,9 @@ a:hover { color: var(--color-accent-600); }
 @media (min-width: 1300px) {
   .lib-list { grid-template-columns: 1fr 1fr 1fr; }
 }
+
+/* iPhone zoomar in när man trycker i ett textfält med text mindre än 16 px.
+   På pekskärmar får alla fält därför minst 16 px (går före inline-stilar). */
+@media (pointer: coarse) {
+  input, textarea, select { font-size: 16px !important; }
+}
