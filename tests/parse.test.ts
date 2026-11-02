@@ -71,3 +71,14 @@ test('cup blir dl', () => {
   assert.deepEqual(parseIngredientLine('1/2 cups sugar'), { amount: 1.18, unit: 'dl', name: 'sugar' });
   assert.deepEqual(parseIngredientLine('1-2 cups water'), { amount: 2.37, amount_max: 4.73, unit: 'dl', name: 'water' });
 });
+
+test('tbsp blir msk och tsp blir tsk', () => {
+  assert.deepEqual(parseIngredientLine('2 tbsp olive oil'), { amount: 1.97, unit: 'msk', name: 'olive oil' });
+  assert.deepEqual(parseIngredientLine('1 teaspoon salt'), { amount: 0.99, unit: 'tsk', name: 'salt' });
+  assert.deepEqual(parseIngredientLine('2 msk smör'), { amount: 2, unit: 'msk', name: 'smör' });
+});
+
+test('blandade bråk som "1 1/2"', () => {
+  assert.deepEqual(parseIngredientLine('1 1/2 dl mjölk'), { amount: 1.5, unit: 'dl', name: 'mjölk' });
+  assert.deepEqual(parseIngredientLine('2 1/4 cups flour'), { amount: 5.32, unit: 'dl', name: 'flour' });
+});

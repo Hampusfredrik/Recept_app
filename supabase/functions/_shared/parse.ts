@@ -26,6 +26,13 @@ const FRACTIONS: Record<string, number> = { '½': 0.5, '¼': 0.25, '¾': 0.75, '
 /** Övre värdet i ett intervall ("2-3" → 3), annars null. */
 /** 1 US cup i dl (236,5882365 ml). */
 export const CUP_DL = 2.365882365;
+// 1 US tbsp = 14,78676478 ml (msk = 15 ml), 1 US tsp = 4,928921594 ml (tsk = 5 ml).
+const TBSP_MSK = 14.78676478 / 15, TSP_TSK = 4.928921594 / 5;
+export const US_TO_SV: Record<string, { unit: string; factor: number }> = {
+  cup: { unit: 'dl', factor: CUP_DL }, cups: { unit: 'dl', factor: CUP_DL },
+  tbsp: { unit: 'msk', factor: TBSP_MSK }, tablespoon: { unit: 'msk', factor: TBSP_MSK }, tablespoons: { unit: 'msk', factor: TBSP_MSK },
+  tsp: { unit: 'tsk', factor: TSP_TSK }, teaspoon: { unit: 'tsk', factor: TSP_TSK }, teaspoons: { unit: 'tsk', factor: TSP_TSK },
+};
 
 export function amountMax(raw: string): number | null {
   const range = raw.trim().match(/^[\d.,]+\s*[-–]\s*([\d.,]+)$/);
@@ -39,6 +46,9 @@ export function parseAmount(raw: string): number | null {
   // "1½" eller "1 ½"
   const mixed = s.match(/^(\d+)\s*([½¼¾⅓⅔])$/);
   if (mixed) return parseInt(mixed[1], 10) + FRACTIONS[mixed[2]];
+  // "1 1/2"
+  const mixedFrac = s.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  if (mixedFrac) return parseInt(mixedFrac[1], 10) + parseInt(mixedFrac[2], 10) / parseInt(mixedFrac[3], 10);
   // "1/2"
   const frac = s.match(/^(\d+)\/(\d+)$/);
   if (frac) return parseInt(frac[1], 10) / parseInt(frac[2], 10);
@@ -49,7 +59,7 @@ export function parseAmount(raw: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-const AMOUNT_RE = '(\\d+\\s*[½¼¾⅓⅔]|[½¼¾⅓⅔]|\\d+\\/\\d+|[\\d.,]+(?:\\s*[-–]\\s*[\\d.,]+)?)';
+const AMOUNT_RE = '(\\d+\\s+\\d+\\/\\d+|\\d+\\s*[½¼¾⅓⅔]|[½¼¾⅓⅔]|\\d+\\/\\d+|[\\d.,]+(?:\\s*[-–]\\s*[\\d.,]+)?)';
 const INGR_LINE = new RegExp(`^${AMOUNT_RE}\\s*(${UNIT_RE})?\\.?\\s+(.+)$`, 'i');
 
 /** "400 g torskfilé" → { amount: 400, unit: 'g', name: 'torskfilé' } */
@@ -60,10 +70,11 @@ export function parseIngredientLine(line: string): ParsedIngredient {
   let amount = parseAmount(m[1]);
   let max = amountMax(m[1]);
   let unit = unitOf(m[2]);
-  // Engelska recept: cup räknas om till dl (1 US cup = 236,5882365 ml).
-  if (unit === 'cup' || unit === 'cups') {
-    const dl = (x: number | null) => (x == null ? null : Math.round(x * CUP_DL * 100) / 100);
-    amount = dl(amount); max = dl(max); unit = 'dl';
+  // Engelska recept: amerikanska mått räknas om till svenska (cup → dl, tbsp → msk, tsp → tsk).
+  const us = US_TO_SV[unit];
+  if (us) {
+    const conv = (x: number | null) => (x == null ? null : Math.round(x * us.factor * 100) / 100);
+    amount = conv(amount); max = conv(max); unit = us.unit;
   }
   return { amount, ...(max != null && amount != null && max > amount ? { amount_max: max } : {}), unit, name: m[3].trim() };
 }
