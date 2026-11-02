@@ -93,8 +93,13 @@ export async function matchMissing(ingredients: Ingredient[], update: (id: numbe
   const view = (i: Ingredient) => { const v = sv.get(i.id); return v ? { ...i, name: v.name, unit: v.unit } : i; };
   const fixed = ingredients.map((i) => {
     if (i.unit || i.amount == null) return { i, patch: {} as Partial<Ingredient> };
-    const p = parseIngredientLine(`${i.amount} ${i.name}`);
-    return p.unit ? { i: { ...i, unit: p.unit, name: p.name }, patch: { unit: p.unit, name: p.name } as Partial<Ingredient> } : { i, patch: {} };
+    // Måttet hamnade i namnet ("0,25" + "cup cottage cheese"). Mängden tas också från tolkningen,
+    // eftersom amerikanska mått räknas om (¼ cup → 0,59 dl), inte bara enheten.
+    const range = i.amount_max != null && i.amount_max > i.amount ? `${i.amount}-${i.amount_max}` : `${i.amount}`;
+    const p = parseIngredientLine(`${range} ${i.name}`);
+    if (!p.unit) return { i, patch: {} };
+    const patch: Partial<Ingredient> = { unit: p.unit, name: p.name, amount: p.amount, ...(p.amount_max != null ? { amount_max: p.amount_max } : {}) };
+    return { i: { ...i, ...patch }, patch };
   });
   // Bara osäkra automatiska träffar prövas igen. Säkra träffar, och livsmedel som
   // användaren valt själv (alltid säkra), lämnas orörda.
