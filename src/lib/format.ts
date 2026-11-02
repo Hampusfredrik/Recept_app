@@ -51,10 +51,19 @@ export function fmtAmount(n: number): string {
   return fmt(n);
 }
 
+// Matsked och tesked skrivs ut, så att de inte blandas ihop (användarens val).
+const WORDS: Record<string, [string, string]> = { msk: ['matsked', 'matskedar'], tsk: ['tesked', 'teskedar'] };
+/** Enheten som den visas: "msk" → "matsked" eller "matskedar" beroende på mängden. */
+export const unitWord = (unit: string, n = 1) => {
+  const w = WORDS[unit.trim().toLowerCase()];
+  return w ? (n > 1 ? w[1] : w[0]) : unit;
+};
+
 // Recept som sparades innan amerikanska mått räknades om vid importen visas också i svenska mått.
 export const amountLabel = (amount: number | null, unit: string, scale = 1, max?: number | null) => {
   if (amount == null) return '';
   const us = US_TO_SV[unit.trim().toLowerCase()];
   if (us) { scale *= us.factor; unit = us.unit; }
-  return `${fmtAmount(amount * scale)}${max != null && max > amount ? `–${fmtAmount(max * scale)}` : ''}${unit ? ' ' + unit : ''}`;
+  const top = (max != null && max > amount ? max : amount) * scale;
+  return `${fmtAmount(amount * scale)}${max != null && max > amount ? `–${fmtAmount(max * scale)}` : ''}${unit ? ' ' + unitWord(unit, top) : ''}`;
 };

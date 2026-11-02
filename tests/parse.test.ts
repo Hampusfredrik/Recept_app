@@ -82,3 +82,7 @@ test('blandade bråk som "1 1/2"', () => {
   assert.deepEqual(parseIngredientLine('1 1/2 dl mjölk'), { amount: 1.5, unit: 'dl', name: 'mjölk' });
   assert.deepEqual(parseIngredientLine('2 1/4 cups flour'), { amount: 5.32, unit: 'dl', name: 'flour' });
 });
+
+test('felstavningar av tablespoon', () => {
+  for (const u of ['tbps', 'Tbsp', 'tbsps', 'tbs', 'tblsp', 'tbsp.']) assert.equal(parseIngredientLine(`2 ${u} olive oil`).unit, 'msk', u);
+});

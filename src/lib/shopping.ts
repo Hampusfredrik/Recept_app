@@ -59,8 +59,8 @@ const num = (n: number) => {
 function volume(ml: number): string {
   if (ml >= 1000) return `${num(ml / 1000)} l`;
   if (ml >= 100) return `${num(ml / 100)} dl`;
-  if (ml >= 15) return `${num(ml / 15)} msk`;
-  if (ml >= 5) return `${num(ml / 5)} tsk`;
+  if (ml >= 15) return `${num(ml / 15)} ${ml / 15 > 1 ? 'matskedar' : 'matsked'}`;
+  if (ml >= 5) return `${num(ml / 5)} ${ml / 5 > 1 ? 'teskedar' : 'tesked'}`;
   return `${num(ml)} krm`;
 }
 

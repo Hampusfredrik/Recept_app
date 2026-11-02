@@ -214,7 +214,7 @@ export function toSwedish(name: string): string | null {
 // Engelska mått → svenska (amerikanska mått: 1 cup = 236,6 ml, 1 tbsp = 14,8 ml, 1 tsp = 4,9 ml,
 // 1 oz = 28,35 g, 1 lb = 453,6 g enligt NIST:s definitioner av US customary units).
 const UNIT_MAP: Record<string, string> = {
-  cup: 'cup', cups: 'cup', c: 'cup', tablespoon: 'tbsp', tablespoons: 'tbsp', tbsp: 'tbsp', tbs: 'tbsp', tbl: 'tbsp',
+  cup: 'cup', cups: 'cup', c: 'cup', tablespoon: 'tbsp', tablespoons: 'tbsp', tbsp: 'tbsp', tbsps: 'tbsp', tbps: 'tbsp', tblsp: 'tbsp', tbs: 'tbsp', tbl: 'tbsp', tsps: 'tsp',
   teaspoon: 'tsp', teaspoons: 'tsp', tsp: 'tsp', ounce: 'oz', ounces: 'oz', oz: 'oz', pound: 'lb', pounds: 'lb', lb: 'lb', lbs: 'lb',
   can: 'burk', cans: 'burk', tin: 'burk', tins: 'burk', clove: 'st', cloves: 'st', piece: 'st', pieces: 'st', whole: 'st',
   pinch: 'nypa', pinches: 'nypa', bunch: 'knippe', bunches: 'knippe', package: 'paket', packages: 'paket', pkg: 'paket', stick: 'stick', sticks: 'stick',

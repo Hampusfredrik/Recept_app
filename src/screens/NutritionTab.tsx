@@ -6,7 +6,7 @@ import { ML_PER_UNIT } from '../data/units';
 import { STOCK_CUBE_SALT_G } from '../data/pieceWeights';
 import { computeNutrition, isNegligible, fetchNutrients, rematchAll, fetchUnitWeights, foodList, matchFood, matchMissing, saveUnitWeight, toGrams, weightUnit, type LvFood, type Per100 } from '../lib/nutrition';
 import { forNutrition } from '../lib/english';
-import { amountLabel, fmt } from '../lib/format';
+import { amountLabel, fmt, unitWord } from '../lib/format';
 import { NNR } from '../data/nnr';
 import type { Ingredient, Recipe } from '../lib/types';
 
@@ -258,7 +258,7 @@ function FoodSheet({ ing, sv, onClose, weights }: { ing: Ingredient; sv?: Ingred
   );
 }
 
-const unitLabel = (u: string) => (u.trim() ? u.trim() : 'st');
+const unitLabel = (u: string) => (u.trim() ? unitWord(u) : 'st');
 
 /** Frågar efter vikt för 1 enhet (t.ex. 1 st gul lök). Sparas i köket och gäller alla recept. */
 function WeightPrompts({ items, householdId, onSaved }: { items: Ingredient[]; householdId: string; onSaved: () => Promise<void> }) {

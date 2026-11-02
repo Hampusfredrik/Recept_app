@@ -143,7 +143,7 @@ export function Detail() {
                 const c = r.checked.includes(i.id);
                 return (
                   <button key={i.id} onClick={() => toggleChecked(r.id, i.id)} aria-pressed={c}
-                    style={{ display: 'grid', gridTemplateColumns: '26px 78px 1fr', alignItems: 'center', gap: 10, padding: '11px 0', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: '15px var(--font-body)', color: 'var(--color-text)', opacity: c ? 0.5 : 1 }}>
+                    style={{ display: 'grid', gridTemplateColumns: '26px 104px 1fr', alignItems: 'center', gap: 10, padding: '11px 0', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: '15px var(--font-body)', color: 'var(--color-text)', opacity: c ? 0.5 : 1 }}>
                     <span style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${c ? 'var(--color-accent-2-600)' : 'var(--color-neutral-400)'}`, background: c ? 'var(--color-accent-2-600)' : 'transparent', display: 'grid', placeItems: 'center' }}>
                       <Ico icon={Check} size={12} color="var(--color-bg)" />
                     </span>

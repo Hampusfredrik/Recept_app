@@ -3,7 +3,7 @@
 
 export const UNITS = ['g', 'kg', 'dl', 'l', 'ml', 'cl', 'msk', 'tsk', 'krm', 'st', 'burk', 'paket', 'kruka',
   // Engelska mått sparas som de skrevs; näringsberäkningen räknar om dem (src/lib/english.ts).
-  'cup', 'cups', 'tbsp', 'tablespoon', 'tablespoons', 'tsp', 'teaspoon', 'teaspoons', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds', 'cans', 'can', 'cloves', 'clove', 'pinch'];
+  'cup', 'cups', 'tbsp', 'tbsps', 'tbps', 'tbs', 'tblsp', 'tablespoon', 'tablespoons', 'tsp', 'tsps', 'teaspoon', 'teaspoons', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds', 'cans', 'can', 'cloves', 'clove', 'pinch'];
 // Utskrivna former → förkortning. Längre ord först i regexen så att "liter" inte läses som "l".
 const UNIT_ALIASES: Record<string, string> = {
   gram: 'g', kilo: 'kg', kilogram: 'kg', liter: 'l', deciliter: 'dl', centiliter: 'cl', milliliter: 'ml',
@@ -30,7 +30,8 @@ export const CUP_DL = 2.365882365;
 const TBSP_MSK = 14.78676478 / 15, TSP_TSK = 4.928921594 / 5;
 export const US_TO_SV: Record<string, { unit: string; factor: number }> = {
   cup: { unit: 'dl', factor: CUP_DL }, cups: { unit: 'dl', factor: CUP_DL },
-  tbsp: { unit: 'msk', factor: TBSP_MSK }, tablespoon: { unit: 'msk', factor: TBSP_MSK }, tablespoons: { unit: 'msk', factor: TBSP_MSK },
+  tbsp: { unit: 'msk', factor: TBSP_MSK }, tbsps: { unit: 'msk', factor: TBSP_MSK }, tbps: { unit: 'msk', factor: TBSP_MSK },
+  tbs: { unit: 'msk', factor: TBSP_MSK }, tblsp: { unit: 'msk', factor: TBSP_MSK }, tsps: { unit: 'tsk', factor: TSP_TSK }, tablespoon: { unit: 'msk', factor: TBSP_MSK }, tablespoons: { unit: 'msk', factor: TBSP_MSK },
   tsp: { unit: 'tsk', factor: TSP_TSK }, teaspoon: { unit: 'tsk', factor: TSP_TSK }, teaspoons: { unit: 'tsk', factor: TSP_TSK },
 };
 
