@@ -107,9 +107,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── hushåll ──
+  // Beror bara på vem som är inloggad, inte på sessionsobjektet: Supabase förnyar sessionen
+  // i bakgrunden (t.ex. när man kommer tillbaka till fliken), och det får inte ladda om köket
+  // och visa laddningsskärmen, för då försvinner det man höll på med.
+  const sessionUid = session?.user.id ?? null;
+  const hhOnce = useRef(false);
   const loadHousehold = useCallback(async (): Promise<{ h: Household | null; error: string | null }> => {
-    if (!session) { setHousehold(null); setHouseholdLoading(false); return { h: null, error: null }; }
-    setHouseholdLoading(true);
+    if (!sessionUid) { hhOnce.current = false; setHousehold(null); setHouseholdLoading(false); return { h: null, error: null }; }
+    // Laddningsskärmen visas bara första gången; senare hämtningar sker i bakgrunden.
+    if (!hhOnce.current) setHouseholdLoading(true);
     const withCount = await supabase.from('households')
       .select('id,name,invite_code,created_at,recipes!recipes_household_id_fkey(count)').order('created_at');
     // Reserv om antal inte går att bädda in: hämta köken utan antal.
@@ -124,10 +130,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     const fallback = [...rows].reverse().sort((a, b) => (b.recipeCount ?? 0) - (a.recipeCount ?? 0))[0] ?? null;
     const h = rows.find((x) => x.id === preferred) ?? fallback;
     if (h) localStorage.setItem(HH_KEY, h.id);
-    setHousehold(h);
+    // Samma kök som förut: behåll objektet, så att inget laddas om i onödan.
+    setHousehold((cur) => (cur && h && cur.id === h.id && cur.name === h.name && cur.invite_code === h.invite_code ? cur : h));
+    hhOnce.current = true;
     setHouseholdLoading(false);
     return { h, error: e?.message ?? null };
-  }, [session]);
+  }, [sessionUid]);
 
   useEffect(() => { void loadHousehold(); }, [loadHousehold]);
 
