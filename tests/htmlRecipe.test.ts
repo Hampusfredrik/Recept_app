@@ -113,3 +113,16 @@ Servera direkt.`);
   assert.deepEqual(steps.map((x) => x.text), ['Hacka löken och fräs den i smöret.', 'Tillsätt riset.', 'Servera direkt.']);
   assert.deepEqual(steps.map((x) => x.section), ['Risotto', 'Risotto', 'Risotto']);
 });
+
+test('å, ä och ö: HTML-koder, dubbelkodning och teckenkodning', async () => {
+  const { decodeHtml, fixMojibake, decodeBody } = await import('../supabase/functions/_shared/parse.ts');
+  assert.equal(decodeHtml('Gr&auml;ddfil, &Aring;ngbakad &ouml;rt, cr&egrave;me &#228; &#xe5;'), 'Gräddfil, Ångbakad ört, crème ä å');
+  assert.equal(decodeHtml('Sm&amp;ouml;r'), 'Smör');
+  assert.equal(fixMojibake('GrÃ¤ddfil och Ã¶rter, Ã…ngbakad, Ã–l'), 'Gräddfil och örter, Ångbakad, Öl');
+  assert.equal(fixMojibake('Vanlig text med å, ä och ö'), 'Vanlig text med å, ä och ö');
+  const latin1 = Uint8Array.from([0x47, 0x72, 0xe4, 0x64, 0x64, 0x65]); // "Grädde" i ISO-8859-1
+  assert.equal(decodeBody(latin1, 'text/html; charset=ISO-8859-1'), 'Grädde');
+  assert.equal(decodeBody(latin1, null), 'Grädde');
+  const utf8 = new TextEncoder().encode('<meta charset="utf-8">Grädde');
+  assert.equal(decodeBody(utf8, null), '<meta charset="utf-8">Grädde');
+});

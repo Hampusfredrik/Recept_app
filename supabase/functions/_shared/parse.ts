@@ -144,12 +144,52 @@ export function parseYield(y: unknown): number | null {
 
 // ── Recept i vanlig HTML (bloggar utan schema.org/Recipe) ──
 
-const ENTITIES: Record<string, string> = { quot: '"', apos: "'", nbsp: ' ', lt: '<', gt: '>', amp: '&', ndash: '–', mdash: '—', frac12: '½', frac14: '¼', frac34: '¾', hellip: '…' };
-function decodeHtml(s: string): string {
-  return s
+const ENTITIES: Record<string, string> = {
+  quot: '"', apos: "'", nbsp: ' ', lt: '<', gt: '>', amp: '&', ndash: '–', mdash: '—', hellip: '…', frac12: '½', frac14: '¼', frac34: '¾',
+  aring: 'å', auml: 'ä', ouml: 'ö', Aring: 'Å', Auml: 'Ä', Ouml: 'Ö', eacute: 'é', Eacute: 'É', egrave: 'è', ecirc: 'ê', agrave: 'à', aacute: 'á',
+  acirc: 'â', uuml: 'ü', Uuml: 'Ü', iuml: 'ï', ccedil: 'ç', ntilde: 'ñ', oslash: 'ø', Oslash: 'Ø', aelig: 'æ', AElig: 'Æ', szlig: 'ß', ocirc: 'ô',
+  rsquo: '’', lsquo: '‘', ldquo: '“', rdquo: '”', laquo: '«', raquo: '»', deg: '°', times: '×', bull: '•', middot: '·', minus: '−', shy: '',
+};
+/** HTML-koder → tecken, t.ex. "&auml;" → "ä", "&#228;" → "ä". Dubbelkodade ("&amp;auml;") avkodas också. */
+export function decodeHtml(s: string): string {
+  const once = (x: string) => x
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
-    .replace(/&([a-z0-9]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] ?? m);
+    .replace(/&([a-z0-9]+);/gi, (m, n) => ENTITIES[n] ?? ENTITIES[n.toLowerCase()] ?? m);
+  const a = once(s);
+  return /&(#\d+|#x[0-9a-f]+|[a-z]+\d*);/i.test(a) && /&amp;/i.test(s) ? once(a) : a;
+}
+
+/**
+ * Text som avkodats två gånger ("Ã¤" i stället för "ä", "Ã¥" för "å") rättas.
+ * Bara när mönstret syns och resultatet blir giltig UTF-8.
+ */
+export function fixMojibake(s: string): string {
+  if (!/Ã[\u0080-¿]|Ã[¤¥¶„…–©¨¼]/.test(s) || [...s].some((c) => c.charCodeAt(0) > 0xff && !CP1252_REV[c])) return s;
+  const bytes = Uint8Array.from([...s].map((c) => CP1252_REV[c] ?? c.charCodeAt(0)));
+  const out = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
+  return out.includes('\uFFFD') ? s : out;
+}
+// Tecken i windows-1252 (0x80–0x9f) som feltolkad UTF-8 ofta innehåller, t.ex. "Ã„" (Ä) och "Ã–" (Ö).
+const CP1252_REV: Record<string, number> = { '€': 0x80, '‚': 0x82, 'ƒ': 0x83, '„': 0x84, '…': 0x85, '†': 0x86, '‡': 0x87, 'ˆ': 0x88, '‰': 0x89, 'Š': 0x8a,
+  '‹': 0x8b, 'Œ': 0x8c, 'Ž': 0x8e, '‘': 0x91, '’': 0x92, '“': 0x93, '”': 0x94, '•': 0x95, '–': 0x96, '—': 0x97, '˜': 0x98, '™': 0x99, 'š': 0x9a,
+  '›': 0x9b, 'œ': 0x9c, 'ž': 0x9e, 'Ÿ': 0x9f };
+
+/**
+ * Sidans bytes → text med rätt teckenkodning: från Content-Type, annars från <meta charset>
+ * i början av sidan, annars UTF-8. Blir UTF-8 ogiltig används windows-1252 (äldre svenska sidor).
+ */
+export function decodeBody(buf: ArrayBuffer | Uint8Array, contentType: string | null): string {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  const head = new TextDecoder('latin1').decode(bytes.slice(0, 4096));
+  const label = (contentType?.match(/charset=["']?([\w-]+)/i)?.[1]
+    ?? head.match(/<meta[^>]+charset=["']?([\w-]+)/i)?.[1] ?? 'utf-8').toLowerCase();
+  const enc = /^(iso-8859-1|latin-?1|windows-1252|cp1252|us-ascii|ascii)$/.test(label) ? 'windows-1252' : /^utf-?8$/.test(label) ? 'utf-8' : label;
+  let text: string;
+  try { text = new TextDecoder(enc).decode(bytes); } catch { text = new TextDecoder('utf-8').decode(bytes); }
+  // Ogiltig UTF-8 (ersättningstecken) men ingen angiven kodning: troligen en äldre sida i windows-1252.
+  if (enc === 'utf-8' && text.includes('\uFFFD')) text = new TextDecoder('windows-1252').decode(bytes);
+  return text;
 }
 
 /** Sidans huvudtext som rader: ett stycke, en listpunkt eller en rubrik per rad. */
@@ -169,6 +209,7 @@ export function htmlLines(html: string): string[] {
     .replace(/<[^>]+>/g, ' '))
     .split('\n')
     .map((l) => l.replace(/\s+/g, ' ').replace(/^[•·\-–*]\s*/, '').trim())
+    .map(fixMojibake)
     .filter(Boolean);
 }
 

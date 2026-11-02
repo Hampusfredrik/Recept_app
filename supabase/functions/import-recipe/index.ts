@@ -3,7 +3,7 @@
 // Kräver inloggad användare (verify_jwt = true), så den kan inte användas som öppen proxy.
 
 import { corsHeaders, json } from '../_shared/cors.ts';
-import { parseIngredientLine, parseYield, recipeFromHtml } from '../_shared/parse.ts';
+import { decodeBody, decodeHtml, fixMojibake, parseIngredientLine, parseYield, recipeFromHtml } from '../_shared/parse.ts';
 
 const MAX_BYTES = 3_000_000;
 const TIMEOUT_MS = 10_000;
@@ -21,13 +21,8 @@ function isPublicHttpUrl(u: URL): boolean {
   return true;
 }
 
-function decodeEntities(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCodePoint(parseInt(n, 16)))
-    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&nbsp;/g, ' ')
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-}
+// HTML-koder ("&auml;") och dubbelkodad text ("Ã¤") blir riktiga tecken.
+const decodeEntities = (s: string) => fixMojibake(decodeHtml(s));
 
 function clean(s: unknown): string {
   return typeof s === 'string' ? decodeEntities(s.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() : '';
@@ -113,7 +108,7 @@ Deno.serve(async (req) => {
     }
     const buf = await res.arrayBuffer();
     if (buf.byteLength > MAX_BYTES) return json({ error: 'Sidan är för stor' }, 502);
-    html = new TextDecoder('utf-8').decode(buf);
+    html = decodeBody(buf, res.headers.get('content-type'));
   } catch (e) {
     const timeout = e instanceof DOMException && (e.name === 'TimeoutError' || e.name === 'AbortError');
     return json({ error: timeout ? 'sidan svarade inte inom 10 sekunder' : 'sidan gick inte att nå', detail: String(e) }, 502);
