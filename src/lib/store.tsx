@@ -474,6 +474,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         must(await supabase.from('tags').update({ tone }).eq('id', id));
       },
       deleteTag: async (id: string) => {
+        // Taggar som något recept har tas inte bort (användarens val).
+        const used = data.recipes.filter((r) => r.tagIds.includes(id)).length;
+        if (used) throw new Error(`Taggen används i ${used} recept. Ta bort den från recepten först.`);
         setData((d) => ({ ...d, tags: d.tags.filter((x) => x.id !== id), recipes: d.recipes.map((r) => ({ ...r, tagIds: r.tagIds.filter((t) => t !== id) })) }));
         must(await supabase.from('tags').delete().eq('id', id));
       },

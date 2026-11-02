@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { BookMarked, CalendarDays, ChefHat, House, MessageSquare, Plus, ShoppingBasket, Tag } from 'lucide-react';
+import { BookMarked, CalendarDays, ChefHat, House, MessageSquare, Plus, ShoppingBasket } from 'lucide-react';
 import { Ico } from './ui';
 import { useUi } from './uiState';
 
@@ -21,8 +21,6 @@ export function TabBar({ desktopOnly = false }: { desktopOnly?: boolean }) {
       </button>
       {tab('/veckan', CalendarDays, 'Veckan')}
       {tab('/veckan/handla', ShoppingBasket, 'Inköp')}
-      {/* Taggar nås från receptlistan på mobil; i sidomenyn på dator finns de kvar. */}
-      {tab('/taggar', Tag, 'Taggar', ' desk')}
       {/* Bara i sidomenyn på dator; på mobil nås feedback från startsidan och Ert kök. */}
       {tab('/feedback', MessageSquare, 'Feedback', ' desk')}
     </nav>

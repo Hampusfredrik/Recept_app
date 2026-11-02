@@ -11,7 +11,6 @@ import { Library } from './screens/Library';
 import { Week } from './screens/Week';
 import { Shopping } from './screens/Shopping';
 import { Feedback } from './screens/Feedback';
-import { Tags } from './screens/Tags';
 import { Pantry } from './screens/Pantry';
 import { Detail } from './screens/Detail';
 import { EditRecipe } from './screens/EditRecipe';
@@ -82,14 +81,14 @@ function Gate() {
         <Route path="/veckan" element={<Week />} />
         <Route path="/veckan/handla" element={<Shopping />} />
         <Route path="/feedback" element={<Feedback />} />
-        <Route path="/taggar" element={<Tags />} />
+        <Route path="/taggar" element={<Navigate to="/recept" replace />} />
         <Route path="/laga" element={<Pantry />} />
         <Route path="/ny/lank" element={<AddLink />} />
         <Route path="/ny/bok" element={<AddBook />} />
         <Route path="/ny/kokbok" element={<Scan />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <TabBar desktopOnly={!['/', '/recept', '/veckan', '/taggar'].includes(loc.pathname)} />
+      <TabBar desktopOnly={!['/', '/recept', '/veckan', '/veckan/handla', '/feedback'].includes(loc.pathname)} />
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useUi } from '../components/uiState';
 import { EffortIcons, EffortPicker, Ico, Sheet, TagPill, Thumb } from '../components/ui';
 import { emptyFilter, FAV_CHIP, filterCount, filterRecipes, toggle, type LibFilter } from '../lib/logic';
 import { EFFORT, sourceLabel } from '../lib/format';
+import { TagsSheet } from '../sheets/TagsSheet';
 
 export function Library() {
   const { recipes, tags, members, memberName } = useStore();
@@ -13,6 +14,7 @@ export function Library() {
   const by = (r: { created_by?: string | null }) => { const n = memberName(r.created_by); return n ? ` · ${n}` : ''; };
   const { filter: f, setFilter, view, setView } = useUi();
   const [showFilter, setShowFilter] = useState(false);
+  const [showTags, setShowTags] = useState(false);
   const nav = useNavigate();
   const items = filterRecipes(recipes, tags, f);
   const n = filterCount(f);
@@ -54,7 +56,7 @@ export function Library() {
         {[{ id: null as string | null, name: 'Alla' }, ...(recipes.some((r) => r.is_favorite) || f.chip === FAV_CHIP ? [{ id: FAV_CHIP, name: '♥ Favoriter' }] : []), ...tags].map((c) => (
           <button key={c.id ?? 'alla'} className={'chip' + (f.chip === c.id ? ' on' : '')} onClick={() => set({ chip: c.id })} style={{ padding: '0 16px' }}>{c.name}</button>
         ))}
-        <button className="chip" onClick={() => nav('/taggar')} style={{ padding: '0 16px', color: 'var(--color-neutral-700)' }}>Hantera taggar</button>
+        <button className="chip" onClick={() => setShowTags(true)} style={{ padding: '0 16px', color: 'var(--color-neutral-700)' }}>Hantera taggar</button>
       </div>
 
       {items.length === 0 && (
@@ -105,6 +107,8 @@ export function Library() {
           ))}
         </div>
       )}
+
+      {showTags && <TagsSheet onClose={() => setShowTags(false)} onPick={(id) => set({ chip: id })} />}
 
       {showFilter && (
         <Sheet onClose={() => setShowFilter(false)} style={{ gap: 18 }}>
