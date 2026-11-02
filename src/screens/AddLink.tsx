@@ -4,11 +4,11 @@ import { Check, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { functionError } from '../lib/nutrition';
 import { useStore } from '../lib/store';
-import { Ico, Spinner, Thumb, TopBar, useToast } from '../components/ui';
+import { Ico, Spinner, Stepper, Thumb, TopBar, useToast } from '../components/ui';
 import { KcalEstimate, useSaveFields } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
 import { domainOf } from '../lib/format';
-import { recipeFromText, type ParsedIngredient } from '../../supabase/functions/_shared/parse';
+import { ingredientsFromText, stepsFromText, type ParsedIngredient } from '../../supabase/functions/_shared/parse';
 
 interface Imported {
   found: 'recipe' | 'html' | 'opengraph' | 'text';
@@ -31,7 +31,10 @@ export function AddLink() {
   const [err, setErr] = useState('');
   const [clip, setClip] = useState<string | null>(null);
   const [phase, setPhase] = useState<'input' | 'loading' | 'review' | 'paste'>('input');
-  const [pasted, setPasted] = useState('');
+  const [pName, setPName] = useState('');
+  const [pIngr, setPIngr] = useState('');
+  const [pSteps, setPSteps] = useState('');
+  const [pPortions, setPPortions] = useState(4);
   const [pasteErr, setPasteErr] = useState('');
   const [failed, setFailed] = useState(false);
   const [data, setData] = useState<Imported | null>(null);
@@ -65,12 +68,12 @@ export function AddLink() {
   };
 
   const readPasted = () => {
-    const r = recipeFromText(pasted);
-    if (!r.ingredients.length) return setPasteErr('Hittade inga ingredienser i texten. Kontrollera att ingredienslistan kom med.');
+    const ingredients = ingredientsFromText(pIngr);
+    if (!ingredients.length) return setPasteErr('Klistra in minst en ingrediens.');
     const u = url.trim();
     const full = u ? (/^https?:\/\//i.test(u) ? u : 'https://' + u) : '';
-    setData({ found: 'text', url: full, domain: u ? domainOf(u) : '', name: r.name, image: null, portions: r.portions, ingredients: r.ingredients, steps: r.steps });
-    setName(r.name);
+    setData({ found: 'text', url: full, domain: u ? domainOf(u) : '', name: pName.trim(), image: null, portions: pPortions, ingredients, steps: stepsFromText(pSteps) });
+    setName(pName.trim());
     setPhase('review');
   };
 
@@ -126,16 +129,22 @@ export function AddLink() {
       {phase === 'paste' && (
         <div className="col" style={{ gap: 14 }}>
           <h1 style={{ margin: 0, fontSize: 30 }}>Klistra in receptet</h1>
-          <ol style={{ margin: 0, paddingLeft: 20, color: 'var(--color-neutral-700)', fontSize: 14, lineHeight: 1.5 }}>
-            <li>Öppna receptet i Safari.</li>
-            <li>Håll fingret på receptets namn och dra markeringen till sista steget.</li>
-            <li>Tryck Kopiera och klistra in här.</li>
-          </ol>
-          <textarea className="input" value={pasted} onChange={(e) => { setPasted(e.target.value); setPasteErr(''); }} rows={10}
-            placeholder={'Receptets namn\nIngredienser\n400 g pasta\n…\nGör så här\n…'} style={{ borderRadius: 16, minHeight: 220, padding: '12px 14px', fontSize: 15, lineHeight: 1.45 }} />
+          <p style={{ margin: 0, color: 'var(--color-neutral-700)', fontSize: 14 }}>Öppna receptet i Safari, markera ingredienserna och kopiera dem till första rutan. Gör sedan likadant med stegen.</p>
+          <div className="field"><label>Namn</label>
+            <input className="input big" value={pName} onChange={(e) => setPName(e.target.value)} placeholder="t.ex. Pumparisotto" />
+          </div>
+          <Stepper label="Antal portioner" value={pPortions} onChange={setPPortions} />
+          <div className="field"><label>Ingredienser · en per rad</label>
+            <textarea className="input" value={pIngr} onChange={(e) => { setPIngr(e.target.value); setPasteErr(''); }} rows={7}
+              placeholder={'400 g pasta\n2 msk olivolja\n1 gul lök'} style={{ borderRadius: 16, minHeight: 150, padding: '12px 14px', fontSize: 15, lineHeight: 1.45 }} />
+          </div>
+          <div className="field"><label>Steg</label>
+            <textarea className="input" value={pSteps} onChange={(e) => setPSteps(e.target.value)} rows={7}
+              placeholder={'1. Koka pastan.\n2. Fräs löken i oljan.'} style={{ borderRadius: 16, minHeight: 150, padding: '12px 14px', fontSize: 15, lineHeight: 1.45 }} />
+          </div>
           {pasteErr && <span className="err">{pasteErr}</span>}
           <div className="row" style={{ gap: 8 }}>
-            <button className="btn btn-primary" onClick={readPasted} disabled={!pasted.trim()} style={{ height: 50, padding: '0 20px', fontSize: 16 }}>Läs receptet</button>
+            <button className="btn btn-primary" onClick={readPasted} disabled={!pIngr.trim()} style={{ height: 50, padding: '0 20px', fontSize: 16 }}>Fortsätt</button>
             <button className="btn btn-ghost" onClick={() => setPhase('input')} style={{ height: 50 }}>Tillbaka</button>
           </div>
         </div>
@@ -164,7 +173,7 @@ export function AddLink() {
           <div className="field"><label>Namn</label><input className="input big" value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="col" style={{ gap: 8, padding: '14px 16px', borderRadius: 24, background: data.found === 'recipe' ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', color: data.found === 'recipe' ? 'var(--color-accent-2-900)' : 'var(--color-accent-900)' }}>
             {data.found === 'opengraph' && <span style={{ fontSize: 14 }}>Sidan saknar receptdata. Bara titel och bild kunde läsas.</span>}
-            {data.found === 'text' && <span style={{ fontSize: 14 }}>Receptet lästes från texten du klistrade in. Kontrollera ingredienser och steg efter att det sparats.</span>}
+            {data.found === 'text' && <span style={{ fontSize: 14 }}>Från texten du klistrade in. Kontrollera ingredienser och steg efter att det sparats.</span>}
             {data.found === 'html' && <span style={{ fontSize: 14 }}>Sidan saknar receptdata, så receptet lästes ur texten. Kontrollera ingredienser och steg efter att det sparats.</span>}
             {[['Ingredienser', `${data.ingredients.length} st`], ['Steg', `${data.steps.length} st`], ['Portioner', data.portions ? String(data.portions) : '–']].map(([label, val]) => (
               <div key={label} className="row" style={{ gap: 10, fontSize: 14 }}>

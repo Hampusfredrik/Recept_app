@@ -92,3 +92,22 @@ Leftovers keep for 3 days.`);
   assert.deepEqual(r.ingredients.map((i) => i.name), ['penne', 'olive oil', 'heavy cream', 'salt to taste']);
   assert.deepEqual(r.steps, ['Cook the pasta until al dente.', 'Stir in the cream and serve.']);
 });
+
+test('ingredienser och steg i var sin ruta', async () => {
+  const { ingredientsFromText, stepsFromText } = await import('../supabase/functions/_shared/parse.ts');
+  const ings = ingredientsFromText(`Ingredients
+• 2 tbsp olive oil
+• 1 onion, chopped
+Servering
+150 g chèvre
+salt och peppar`);
+  assert.deepEqual(ings.map((i) => i.name), ['olive oil', 'onion, chopped', 'chèvre', 'salt och peppar']);
+  const steps = stepsFromText(`Gör så här
+Risotto
+1. Hacka löken och fräs den
+i smöret.
+2. Tillsätt riset.
+
+Servera direkt.`);
+  assert.deepEqual(steps, ['Hacka löken och fräs den i smöret.', 'Tillsätt riset.', 'Servera direkt.']);
+});

@@ -270,3 +270,37 @@ function recipeFromLines(rows: string[]): HtmlRecipe {
 
   return { portions, ingredients: ingr.map(parseIngredientLine), steps };
 }
+
+// ── Inklistrade ingredienser och steg i var sin ruta ──
+
+const BULLET = /^[•·\-–*▢□☐✓✔]\s*/;
+
+/** En ingrediens per rad. Rubriker och delrubriker ("Ingredienser", "Servering:") hoppas över. */
+export function ingredientsFromText(text: string): ParsedIngredient[] {
+  const rows = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').replace(BULLET, '').trim()).filter(Boolean);
+  return rows
+    .filter((t, k) => !INGR_HEAD.test(t.replace(/:$/, '')) && !portionsOf(t) && !(isSubhead(t, rows[k + 1]) && !looksLikeIngredient(t)))
+    .map(parseIngredientLine);
+}
+
+/**
+ * Ett steg per stycke. Numrerade rader ("1. Skär …") börjar ett nytt steg; en rad utan
+ * avslutande punkt fortsätter i nästa (radbrytning mitt i en mening). Rubriker hoppas över.
+ */
+export function stepsFromText(text: string): string[] {
+  const rows = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').replace(BULLET, '').trim());
+  const steps: string[] = [];
+  let open = false;
+  for (const t of rows) {
+    if (!t) { open = false; continue; }
+    if (STEP_HEAD.test(t) || /^(steg|step)\s*\d+\s*:?$/i.test(t)) { open = false; continue; }
+    const numbered = /^\d+[.)]\s+/.test(t);
+    const clean = t.replace(/^(?:steg|step)?\s*\d+[.):]\s*/i, '');
+    // Kort rad utan punkt före ett numrerat steg: delrubrik ("Risotto").
+    if (!numbered && clean.length < 30 && !/[.!?]$/.test(clean) && !open) continue;
+    if (open && !numbered && steps.length) steps[steps.length - 1] += ' ' + clean;
+    else steps.push(clean);
+    open = !/[.!?)]$/.test(clean);
+  }
+  return steps.filter(Boolean);
+}
