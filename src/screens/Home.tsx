@@ -8,8 +8,19 @@ import { byLongestAgo, dayName, firstEmptyDay, heroRecipe } from '../lib/logic';
 import { daysSince, lastLabel, today, todayKicker } from '../lib/dates';
 import { EFFORT } from '../lib/format';
 
+const BY_KEY = 'receptappen.homeBy';
+
 export function Home() {
-  const { recipes, plan, setPlan, household, feedback } = useStore();
+  const { recipes: allRecipes, plan, setPlan, household, feedback, members, memberName } = useStore();
+  const named = members.filter((m) => m.display_name);
+  // Vald person på startsidan (sparas på enheten). Bara den personens recept visas.
+  const [byPick, setByPick] = useState<string | null>(() => { try { return localStorage.getItem(BY_KEY); } catch { return null; } });
+  const by = byPick && named.some((m) => m.user_id === byPick) ? byPick : null;
+  const pickBy = (id: string | null) => {
+    setByPick(id);
+    try { if (id) localStorage.setItem(BY_KEY, id); else localStorage.removeItem(BY_KEY); } catch { /* ingen lagring */ }
+  };
+  const recipes = by ? allRecipes.filter((r) => r.created_by === by) : allRecipes;
   const openFeedback = feedback.filter((f) => !f.done_at).length;
   const { setSheet } = useUi();
   const nav = useNavigate();
@@ -18,7 +29,7 @@ export function Home() {
   const open = (id: string) => nav(`/recept/${id}`);
 
   const todayEntry = plan.find((p) => p.date === today());
-  const todayR = todayEntry && recipes.find((r) => r.id === todayEntry.recipe_id);
+  const todayR = todayEntry && allRecipes.find((r) => r.id === todayEntry.recipe_id);
   // Gamla planer räknas inte: bara det som ligger från idag och framåt.
   const upcoming = plan.filter((p) => p.date >= today());
   const hero = heroRecipe(recipes, upcoming);
@@ -55,6 +66,15 @@ export function Home() {
         </div>
         <span className="kicker">{todayKicker()}</span>
         <h1 className="h1">Vad blir det idag?</h1>
+        {named.length > 1 && (
+          <div className="wrap" role="group" aria-label="Visa recept inlagda av" style={{ marginTop: 12 }}>
+            {[{ user_id: null as string | null, display_name: 'Alla' }, ...named].map((m) => (
+              <button key={m.user_id ?? 'alla'} className={'chip' + (by === m.user_id ? ' on' : '')} aria-pressed={by === m.user_id} onClick={() => pickBy(m.user_id)}>
+                {m.display_name}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {todayR && (
@@ -84,8 +104,8 @@ export function Home() {
         </div>
       ) : (
         <div className="col home-hero" style={{ gap: 10, padding: 18, borderRadius: 34, background: 'var(--color-surface)', alignItems: 'flex-start' }}>
-          <span style={{ fontFamily: 'var(--font-heading)', fontSize: 22 }}>Inga recept än</span>
-          <p className="muted" style={{ margin: 0, fontSize: 14 }}>Spara ert första recept från en länk eller en kokbok.</p>
+          <span style={{ fontFamily: 'var(--font-heading)', fontSize: 22 }}>{by ? `${memberName(by)} har inga recept än` : 'Inga recept än'}</span>
+          <p className="muted" style={{ margin: 0, fontSize: 14 }}>{by ? 'Recept som saknar namn på vem som lade in dem kan få det under Redigera.' : 'Spara ert första recept från en länk eller en kokbok.'}</p>
           <button className="btn btn-primary" onClick={() => setSheet({ kind: 'add' })} style={{ height: 46, fontSize: 15, padding: '0 18px' }}>Lägg till recept</button>
         </div>
       )}
@@ -118,7 +138,7 @@ export function Home() {
       )}
 
       <div className="home-tiles" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <BigTile onClick={() => setSheet({ kind: 'random' })} bg="var(--color-accent-100)" hover="var(--color-accent-200)" fg="var(--color-accent-900)" dot="var(--color-accent)" icon={Shuffle} title="Slumpa" sub="Välj insats och tagg" />
+        <BigTile onClick={() => setSheet({ kind: 'random', by })} bg="var(--color-accent-100)" hover="var(--color-accent-200)" fg="var(--color-accent-900)" dot="var(--color-accent)" icon={Shuffle} title="Slumpa" sub="Välj insats och tagg" />
         <BigTile onClick={() => nav('/laga')} bg="var(--color-accent-2-100)" hover="var(--color-accent-2-200)" fg="var(--color-accent-2-900)" dot="var(--color-accent-2-600)" icon={Refrigerator} title="Vad kan jag laga?" sub="Utgå från det du har" />
       </div>
     </div>

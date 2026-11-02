@@ -7,7 +7,7 @@ import { HouseholdSheet } from '../sheets/HouseholdSheet';
 
 export type SheetState =
   | { kind: 'add' }
-  | { kind: 'random'; pickDate?: string }
+  | { kind: 'random'; pickDate?: string; by?: string | null }
   | { kind: 'pick'; date: string }
   | { kind: 'household' }
   | null;
@@ -36,7 +36,7 @@ export function UiProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{ filter, setFilter, view, setView, weekOffset, setWeekOffset, sheet, setSheet }}>
       {children}
       {sheet?.kind === 'add' && <AddSheet onClose={close} />}
-      {sheet?.kind === 'random' && <RandomSheet pickDate={sheet.pickDate} onClose={close} />}
+      {sheet?.kind === 'random' && <RandomSheet pickDate={sheet.pickDate} by={sheet.by} onClose={close} />}
       {sheet?.kind === 'pick' && <PickSheet date={sheet.date} onClose={close} />}
       {sheet?.kind === 'household' && <HouseholdSheet onClose={close} />}
     </Ctx.Provider>

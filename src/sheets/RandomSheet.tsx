@@ -7,8 +7,11 @@ import { dayName, toggle } from '../lib/logic';
 import { daysSince, lastLabel } from '../lib/dates';
 import { EFFORT } from '../lib/format';
 
-export function RandomSheet({ onClose, pickDate }: { onClose: () => void; pickDate?: string }) {
-  const { recipes, tags, setPlan } = useStore();
+export function RandomSheet({ onClose, pickDate, by }: { onClose: () => void; pickDate?: string; by?: string | null }) {
+  const store = useStore();
+  const { tags, setPlan } = store;
+  // Från startsidan med en vald person: bara den personens recept.
+  const recipes = by ? store.recipes.filter((r) => r.created_by === by) : store.recipes;
   const nav = useNavigate();
   const [eff, setEff] = useState<number[]>([]);
   const [tagSel, setTagSel] = useState<string[]>([]);
