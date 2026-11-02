@@ -46,7 +46,7 @@ export function Scan() {
   const nav = useNavigate();
   const back = useBack();
   const toast = useToast();
-  const { saveRecipe } = useStore();
+  const { saveRecipe, takeSaveWarning } = useStore();
   const [draft] = useState(() => loadDraft());
   const [phase, setPhase] = useState<Phase>(draft?.phase ?? 'paste');
   const [raw, setRaw] = useState(draft?.raw ?? '');
@@ -155,7 +155,7 @@ export function Scan() {
       });
       clearDraft();
       nav(`/recept/${id}`, { replace: true });
-      toast('Receptet är sparat');
+      toast(takeSaveWarning() ?? 'Receptet är sparat');
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
       setSaving(false);

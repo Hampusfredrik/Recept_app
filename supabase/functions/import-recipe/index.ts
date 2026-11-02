@@ -3,7 +3,7 @@
 // Kräver inloggad användare (verify_jwt = true), så den kan inte användas som öppen proxy.
 
 import { corsHeaders, json } from '../_shared/cors.ts';
-import { decodeBody, decodeHtml, fixMojibake, groupKey, ingredientGroups, parseIngredientLine, parseYield, recipeFromHtml } from '../_shared/parse.ts';
+import { decodeBody, decodeHtml, fixMojibake, parseIngredientLine, sectionsForIngredients, parseYield, recipeFromHtml } from '../_shared/parse.ts';
 
 const MAX_BYTES = 3_000_000;
 const TIMEOUT_MS = 10_000;
@@ -132,11 +132,9 @@ Deno.serve(async (req) => {
 
   if (recipe) {
     // Ingredienserna kommer som en lista; grupper som "Sås" och "Sallad" läses från sidan.
-    const groups = ingredientGroups(html);
-    const ingredients = (Array.isArray(recipe.recipeIngredient) ? recipe.recipeIngredient : [])
-      .map(clean).filter(Boolean).map((t) => ({ ...parseIngredientLine(t), section: groups.get(groupKey(t)) ?? null }));
-    // En enda grupp är ingen uppdelning: då hör allt till huvuddelen.
-    if (new Set(ingredients.map((i) => i.section)).size === 1) for (const i of ingredients) i.section = null;
+    const lines = (Array.isArray(recipe.recipeIngredient) ? recipe.recipeIngredient : []).map(clean).filter(Boolean);
+    const sections = sectionsForIngredients(html, lines);
+    const ingredients = lines.map((t, k) => ({ ...parseIngredientLine(t), section: sections[k] }));
     const steps = stepsOf(recipe.recipeInstructions);
     if (new Set(steps.map((x) => x.section)).size === 1) for (const x of steps) x.section = null;
     return json({

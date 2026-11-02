@@ -397,3 +397,40 @@ export function ingredientGroups(html: string): Map<string, string> {
   return map;
 }
 export const groupKey = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+
+/**
+ * Del för varje ingrediens i schema.org-listan, i samma ordning. Sidans listpunkter gås igenom
+ * i ordning; en ingrediens matchar en listpunkt med samma text, eller där den ena texten börjar
+ * med den andra (t.ex. en kommentar efter ingrediensen på sidan). Hittas ingen matchning ärvs
+ * delen från ingrediensen före, eftersom listan och sidan har samma ordning.
+ */
+export function sectionsForIngredients(html: string, ingredients: string[]): (string | null)[] {
+  const h = html.replace(/<(script|style|noscript|svg)\b[\s\S]*?<\/\1>/gi, ' ');
+  const re = /<(h[2-6])\b[^>]*>([\s\S]*?)<\/\1>|<(?:div|span|p|strong)\b[^>]*class=["'][^"']*(?:group-name|group-title|ingredient-group-name|ingredients-group-title|tasty-recipes-ingredients-header)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|span|p|strong)>|<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+  const text = (x: string) => fixMojibake(decodeHtml(x.replace(/<[^>]+>/g, ' '))).replace(/\s+/g, ' ').trim();
+  const items: { key: string; section: string | null }[] = [];
+  let current: string | null = null;
+  for (const m of h.matchAll(re)) {
+    const head = m[2] ?? m[3];
+    if (head != null) {
+      const t = text(head).replace(/:$/, '');
+      current = !t || t.length > 40 || INGR_HEAD.test(t) || STEP_HEAD.test(t) || END.test(t) ? null : sectionName(t);
+      continue;
+    }
+    const key = groupKey(text(m[4] ?? ''));
+    if (key) items.push({ key, section: current });
+  }
+  const same = (a: string, b: string) => a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a)));
+  let at = 0;
+  let last: string | null = null;
+  const out = ingredients.map((ing) => {
+    const k = groupKey(ing);
+    const j = items.findIndex((x, n) => n >= at && same(x.key, k));
+    if (j < 0) return last;
+    at = j + 1;
+    last = items[j].section;
+    return last;
+  });
+  // Bara en del (eller ingen): ingen uppdelning.
+  return new Set(out).size < 2 ? out.map(() => null) : out;
+}

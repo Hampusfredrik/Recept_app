@@ -47,6 +47,8 @@ interface Store extends Data {
   removeFeedback: (id: number) => Promise<void>;
   // recept
   saveRecipe: (r: NewRecipe) => Promise<string>;
+  /** Meddelande efter saveRecipe om något inte kunde sparas fullt ut (t.ex. delar utan migrering), annars null. */
+  takeSaveWarning: () => string | null;
   deleteRecipe: (id: string) => Promise<void>;
   cookedToday: (id: string) => Promise<void>;
   toggleChecked: (recipeId: string, ingredientId: number) => Promise<void>;
@@ -232,6 +234,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   // Kolumnen section (delar som "Frosting") kan också saknas: då sparas raderna utan del,
   // och sectionsMissing sätts så att den som redigerar får veta det.
   const sectionsMissing = useRef(false);
+  const saveWarning = useRef<string | null>(null);
   const insertRows = async (table: 'recipe_ingredients' | 'recipe_steps', rows: Record<string, unknown>[]) => {
     let res = await supabase.from(table).insert(rows);
     for (const col of ['amount_max', 'section']) {
@@ -347,6 +350,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveRecipe: async (r: NewRecipe) => {
         const household_id = need();
         const { ingredients, steps, tagIds, ...rest } = r;
+        sectionsMissing.current = false;
         const rec = must(await supabase.from('recipes').insert({ ...rest, household_id }).select('id').single()) as { id: string };
         if (ingredients.length) {
           must(await insertIngredients(ingredients.map((i, position) => ({ ...i, position, household_id, recipe_id: rec.id }))));
@@ -359,8 +363,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           must(await supabase.from('recipe_tags').insert(tagIds.map((tag_id) => ({ tag_id, household_id, recipe_id: rec.id }))));
         }
         await reload();
+        const usedSections = ingredients.some((i) => i.section?.trim()) || steps.some((x) => typeof x !== 'string' && x.section?.trim());
+        if (sectionsMissing.current && usedSections) {
+          saveWarning.current = 'Receptet är sparat, men delarna (t.ex. Sås) hamnade i huvudreceptet: kör migreringen 20261107120000_recipe_sections.sql i Supabase.';
+        }
+        sectionsMissing.current = false;
         return rec.id;
       },
+      takeSaveWarning: () => { const w = saveWarning.current; saveWarning.current = null; return w; },
       deleteRecipe: async (id: string) => {
         setData((d) => ({ ...d, recipes: d.recipes.filter((r) => r.id !== id), plan: d.plan.filter((p) => p.recipe_id !== id) }));
         must(await supabase.from('recipes').delete().eq('id', id));

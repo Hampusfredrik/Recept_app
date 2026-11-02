@@ -138,3 +138,14 @@ test('ingrediensgrupper på sidan (Sås, Sallad) blir delar', async () => {
   assert.equal(g.get(groupKey('1 gurka')), 'Sallad');
   assert.equal(g.get(groupKey('Blanda såsen.')), undefined);
 });
+
+test('delar för schema.org-ingredienser följer sidans ordning, även med kommentarer', async () => {
+  const { sectionsForIngredients } = await import('../supabase/functions/_shared/parse.ts');
+  // Påhittad sida: listpunkterna har en kommentar som inte finns i schema.org-listan.
+  const html = `<h3>Ingredients</h3><h4 class="wprm-recipe-group-name">Chicken</h4><ul><li>600 g chicken thighs (or breasts)</li><li>1 tbsp oil</li></ul>
+    <h4 class="wprm-recipe-group-name">Sauce</h4><ul><li>2 dl yoghurt</li><li>1 garlic clove, grated</li></ul>
+    <h4 class="wprm-recipe-group-name">Salad</h4><ul><li>1 cucumber</li></ul><h3>Instructions</h3><ol><li>Cook.</li></ol>`;
+  assert.deepEqual(sectionsForIngredients(html, ['600 g chicken thighs', '1 tbsp oil', '2 dl yoghurt', '1 garlic clove', '1 cucumber']),
+    ['Chicken', 'Chicken', 'Sauce', 'Sauce', 'Salad']);
+  assert.deepEqual(sectionsForIngredients('<ul><li>1 lök</li></ul>', ['1 lök']), [null]);
+});

@@ -11,7 +11,7 @@ export function AddBook() {
   const nav = useNavigate();
   const back = useBack();
   const toast = useToast();
-  const { saveRecipe } = useStore();
+  const { saveRecipe, takeSaveWarning } = useStore();
   const [name, setName] = useState('');
   const [portions, setPortions] = useState(4);
   const [book, setBook] = useState('');
@@ -34,7 +34,7 @@ export function AddBook() {
         ingredients: ingredientsFromText(ingr), steps: stepsFromText(steps), tagIds,
       });
       nav(`/recept/${id}`, { replace: true });
-      toast('Receptet är sparat');
+      toast(takeSaveWarning() ?? 'Receptet är sparat');
     } catch (e) {
       setSaveErr(e instanceof Error ? e.message : String(e));
       setSaving(false);

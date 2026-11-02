@@ -40,7 +40,7 @@ const clearPaste = () => { try { localStorage.removeItem(PASTE_KEY); } catch { /
 export function AddLink() {
   const nav = useNavigate();
   const toast = useToast();
-  const { saveRecipe } = useStore();
+  const { saveRecipe, takeSaveWarning } = useStore();
   const [url, setUrl] = useState(() => loadPaste(120)?.url ?? '');
   const [err, setErr] = useState('');
   const [clip, setClip] = useState<string | null>(null);
@@ -110,7 +110,7 @@ export function AddLink() {
       });
       clearPaste();
       nav(`/recept/${id}`, { replace: true });
-      toast('Receptet är sparat');
+      toast(takeSaveWarning() ?? 'Receptet är sparat');
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
       setSaving(false);
