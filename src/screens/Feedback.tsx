@@ -33,7 +33,7 @@ export function Feedback() {
   const meta = (f: Item) => [memberName(f.created_by), shortDate(f.created_at), f.done_at ? `fixat ${shortDate(f.done_at)}` : null].filter(Boolean).join(' · ');
 
   const row = (f: Item) => (
-    <div key={f.id} className="row" style={{ alignItems: 'flex-start', gap: 12, padding: '14px 14px 14px 16px', borderRadius: 22, background: 'var(--color-surface)', opacity: f.done_at ? 0.65 : 1 }}>
+    <div key={f.id} className="row" style={{ alignItems: 'flex-start', gap: 12, padding: '14px 14px 14px 16px', borderRadius: 10, background: 'var(--color-surface)', opacity: f.done_at ? 0.65 : 1 }}>
       <div className="col" style={{ flex: 1, minWidth: 0, gap: 4 }}>
         <span style={{ fontSize: 15, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', textDecoration: f.done_at ? 'line-through' : undefined }}>{f.text}</span>
         <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{meta(f)}</span>
@@ -51,7 +51,7 @@ export function Feedback() {
         </div>
       ) : (
         <button className="btn btn-secondary" onClick={() => run(setFeedbackDone(f.id, true), 'Markerat som fixat')}
-          style={{ flex: 'none', height: 38, padding: '0 12px', fontSize: 13, gap: 6 }}>
+          style={{ flex: 'none', height: 38, padding: '0 12px', fontSize: 13, gap: 6, borderRadius: 8 }}>
           <Ico icon={Check} size={15} />Fixat
         </button>
       )}
@@ -66,8 +66,8 @@ export function Feedback() {
 
       <div className="col" style={{ gap: 8, marginBottom: 22 }}>
         <textarea className="input" value={text} onChange={(e) => setText(e.target.value)} maxLength={2000} rows={3}
-          placeholder="t.ex. Jag vill kunna sortera recepten efter tid" style={{ resize: 'vertical', minHeight: 90, padding: '12px 14px', font: '400 15px var(--font-body)' }} />
-        <button className="btn btn-primary" onClick={send} disabled={busy || !text.trim()} style={{ alignSelf: 'flex-start', height: 46, padding: '0 18px' }}>Skicka förslag</button>
+          placeholder="t.ex. Jag vill kunna sortera recepten efter tid" style={{ resize: 'vertical', minHeight: 90, padding: '12px 14px', borderRadius: 8, font: '400 15px var(--font-body)' }} />
+        <button className="btn btn-primary" onClick={send} disabled={busy || !text.trim()} style={{ alignSelf: 'flex-start', height: 46, padding: '0 18px', borderRadius: 8 }}>Skicka förslag</button>
       </div>
 
       <div className="col" style={{ gap: 8 }}>
