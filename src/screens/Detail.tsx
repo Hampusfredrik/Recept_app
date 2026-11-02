@@ -8,6 +8,7 @@ import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, We
 import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
 import { dayName } from '../lib/logic';
 import { amountLabel, domainOf, EFFORT } from '../lib/format';
+import { bySection } from '../lib/sections';
 import { guessUse, parseIngredientLine } from '../../supabase/functions/_shared/parse';
 import { NutritionTab } from './NutritionTab';
 import type { Recipe } from '../lib/types';
@@ -138,8 +139,10 @@ export function Detail() {
         {tab === 'ingr' && (r.ingredients.length ? (
           <div className="col" style={{ gap: 6 }}>
             <Stepper label="Räknat för" value={portions} onChange={setPort} />
-            <div className="col">
-              {r.ingredients.map((i) => {
+            {bySection(r.ingredients).map((g) => (
+            <div key={g.section ?? ''} className="col">
+              {g.section && <SectionHeading name={g.section} />}
+              {g.items.map((i) => {
                 const c = r.checked.includes(i.id);
                 return (
                   <button key={i.id} onClick={() => toggleChecked(r.id, i.id)} aria-pressed={c}
@@ -153,6 +156,7 @@ export function Detail() {
                 );
               })}
             </div>
+            ))}
             {r.checked.length > 0 && (
               <button className="btn btn-ghost" onClick={() => resetChecked(r.id)} style={{ alignSelf: 'flex-start', color: 'var(--color-accent-700)', marginTop: 4 }}>
                 {r.checked.length} av {r.ingredients.length} avbockade · Återställ
@@ -196,14 +200,21 @@ export function Detail() {
 }
 
 function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; scale: number; setPort: (n: number) => void }) {
-  const names = r.ingredients.map((i) => i.name);
   return (
     <div className="col" style={{ gap: 18 }}>
       {r.ingredients.length > 0 && <Stepper label="Mängder för" value={portions} onChange={setPort} />}
-      {r.steps.map((s, k) => {
+      {bySection(r.steps).map((g) => {
+      // Stegen i en del använder i första hand delens egna ingredienser.
+      const own = r.ingredients.filter((i) => (i.section?.trim() || null) === g.section);
+      const pool = own.length ? own : r.ingredients;
+      const names = pool.map((i) => i.name);
+      return (
+      <div key={g.section ?? ''} className="col" style={{ gap: 18 }}>
+      {g.section && <SectionHeading name={g.section} />}
+      {g.items.map((s, k) => {
         const used = s.ingredient_ids?.length
           ? s.ingredient_ids.map((iid) => r.ingredients.find((i) => i.id === Number(iid))).filter((i) => !!i)
-          : guessUse(s.text, names).map((x) => r.ingredients[x]);
+          : guessUse(s.text, names).map((x) => pool[x]);
         return (
           <div key={s.id} className="row" style={{ gap: 14, alignItems: 'flex-start' }}>
             <span style={{ flex: 'none', width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-heading)', fontSize: 15 }}>{k + 1}</span>
@@ -221,6 +232,9 @@ function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; s
             </div>
           </div>
         );
+      })}
+      </div>
+      );
       })}
     </div>
   );
@@ -427,4 +441,8 @@ function ImageSearchSheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
       <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Bilder från Pexels</a>
     </Sheet>
   );
+}
+
+function SectionHeading({ name }: { name: string }) {
+  return <h4 style={{ margin: '18px 0 4px', fontSize: 18 }}>{name}</h4>;
 }

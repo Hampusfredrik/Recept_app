@@ -8,6 +8,7 @@ import { useBack } from '../components/useBack';
 import { amountLabel } from '../lib/format';
 import { toggle } from '../lib/logic';
 import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
+import type { Recipe } from '../lib/types';
 
 // Inte ritad i designen; följer formspråket från "Bara bok och sida".
 export function EditRecipe() {
@@ -26,23 +27,25 @@ export function EditRecipe() {
   const [author, setAuthor] = useState<string | null>(r?.created_by ?? null);
   const [book, setBook] = useState(r?.book_title ?? '');
   const [page, setPage] = useState(r?.page ?? '');
-  const [ingr, setIngr] = useState(r ? r.ingredients.map((i) => [amountLabel(i.amount, i.unit, 1, i.amount_max), i.name].filter(Boolean).join(' ')).join('\n') : '');
-  const [steps, setSteps] = useState<string[]>(r ? r.steps.map((s) => s.text) : []);
+  // Delar i receptet: huvuddelen (utan namn) och t.ex. "Frosting", var och en med ingredienser och steg.
+  const [parts, setParts] = useState<Part[]>(() => (r ? initialParts(r) : [{ name: '', ingr: '', steps: [] }]));
+  const setPart = (k: number, p: Partial<Part>) => setParts((ps) => ps.map((x, j) => (j === k ? { ...x, ...p } : x)));
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
 
   if (!r) return <Navigate to="/recept" replace />;
 
-  const setStep = (k: number, v: string) => setSteps((s) => s.map((x, j) => (j === k ? v : x)));
-  const move = (k: number, d: -1 | 1) => setSteps((s) => {
-    const t = [...s]; const j = k + d;
-    if (j < 0 || j >= t.length) return s;
+  const setStep = (pk: number, k: number, v: string) => setPart(pk, { steps: parts[pk].steps.map((x, j) => (j === k ? v : x)) });
+  const move = (pk: number, k: number, d: -1 | 1) => {
+    const t = [...parts[pk].steps]; const j = k + d;
+    if (j < 0 || j >= t.length) return;
     [t[k], t[j]] = [t[j], t[k]];
-    return t;
-  });
+    setPart(pk, { steps: t });
+  };
 
   const save = async () => {
     if (!name.trim()) return setErr('Receptet behöver ett namn.');
+    if (parts.some((p, k) => k > 0 && !p.name.trim() && (p.ingr.trim() || p.steps.some((x) => x.trim())))) return setErr('Ge varje del ett namn, t.ex. Frosting.');
     if (r.source_type === 'book' && !book.trim()) return setErr('Fyll i vilken bok receptet står i.');
     const p = parseInt(portions, 10);
     setSaving(true); setErr('');
@@ -53,8 +56,10 @@ export function EditRecipe() {
           ...(r.source_type === 'book' ? { book_title: book.trim(), page: page || null } : {}),
           ...(author !== (r.created_by ?? null) ? { created_by: author } : {}),
         },
-        ingredients: ingr.split('\n').map((x) => x.trim()).filter(Boolean).map(parseIngredientLine),
-        steps: steps.map((x) => x.trim().replace(/\s+/g, ' ')).filter(Boolean),
+        ingredients: parts.flatMap((p) => p.ingr.split('\n').map((x) => x.trim()).filter(Boolean)
+          .map((x) => ({ ...parseIngredientLine(x), section: p.name.trim() || null }))),
+        steps: parts.flatMap((p) => p.steps.map((x) => x.trim().replace(/\s+/g, ' ')).filter(Boolean)
+          .map((text) => ({ text, section: p.name.trim() || null }))),
         tagIds,
       });
       toast('Receptet är uppdaterat');
@@ -101,34 +106,64 @@ export function EditRecipe() {
           </div>
         )}
 
-        <div className="field"><label>Ingredienser · en per rad</label>
-          <textarea className="input" value={ingr} onChange={(e) => setIngr(e.target.value)} placeholder={'400 g kycklingfilé\n1 gul lök'}
-            style={{ borderRadius: 24, minHeight: 160, padding: '12px 16px', fontSize: 16, lineHeight: 1.5 }} />
-        </div>
-
-        <div className="col" style={{ gap: 10 }}>
-          <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Gör så här</span>
-          {steps.map((text, k) => (
-            <div key={k} className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
-              <span style={{ flex: 'none', width: 32, height: 32, marginTop: 8, borderRadius: '50%', background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-heading)', fontSize: 15 }}>{k + 1}</span>
-              <textarea className="input" value={text} onChange={(e) => setStep(k, e.target.value)} rows={Math.max(2, Math.ceil(text.length / 38))}
-                style={{ flex: 1, borderRadius: 20, minHeight: 0, padding: '10px 14px', fontSize: 16, lineHeight: 1.45 }} />
-              <div className="col" style={{ flex: 'none' }}>
-                <button style={smallBtn} className="hover-surface" onClick={() => move(k, -1)} disabled={k === 0} aria-label="Flytta upp"><Ico icon={ArrowUp} size={16} /></button>
-                <button style={smallBtn} className="hover-surface" onClick={() => move(k, 1)} disabled={k === steps.length - 1} aria-label="Flytta ner"><Ico icon={ArrowDown} size={16} /></button>
-                <button style={smallBtn} className="hover-surface" onClick={() => setSteps((s) => s.filter((_, j) => j !== k))} aria-label="Ta bort steg"><Ico icon={Trash2} size={16} /></button>
+        {parts.map((p, pk) => (
+          <div key={pk} className="col" style={{ gap: 14, ...(pk > 0 ? { padding: 14, borderRadius: 20, border: '1.5px solid var(--color-divider)' } : {}) }}>
+            {pk > 0 && (
+              <div className="row" style={{ gap: 8, alignItems: 'flex-end' }}>
+                <div className="field" style={{ flex: 1 }}><label>Del</label>
+                  <input className="input big" value={p.name} onChange={(e) => { setPart(pk, { name: e.target.value }); setErr(''); }} placeholder="t.ex. Frosting" />
+                </div>
+                <button style={{ ...smallBtn, width: 44, height: 44 }} className="hover-surface" aria-label={`Ta bort delen ${p.name}`}
+                  onClick={() => { if ((!p.ingr.trim() && !p.steps.some((x) => x.trim())) || confirm(`Ta bort delen ”${p.name || 'utan namn'}” med dess ingredienser och steg?`)) setParts((ps) => ps.filter((_, j) => j !== pk)); }}>
+                  <Ico icon={Trash2} size={18} />
+                </button>
               </div>
+            )}
+            <div className="field"><label>{pk > 0 && p.name.trim() ? `Ingredienser till ${p.name.trim().toLowerCase()}` : 'Ingredienser'} · en per rad</label>
+              <textarea className="input" value={p.ingr} onChange={(e) => setPart(pk, { ingr: e.target.value })} placeholder={pk > 0 ? '200 g färskost\n1 dl florsocker' : '400 g kycklingfilé\n1 gul lök'}
+                style={{ borderRadius: 24, minHeight: pk > 0 ? 110 : 160, padding: '12px 16px', fontSize: 16, lineHeight: 1.5 }} />
             </div>
-          ))}
-          <button onClick={() => setSteps((s) => [...s, ''])} className="row hover-surface"
-            style={{ gap: 8, height: 48, padding: '0 16px', borderRadius: 22, border: '1.5px dashed var(--color-neutral-400)', background: 'transparent', cursor: 'pointer', font: '600 14px var(--font-body)', color: 'var(--color-neutral-700)' }}>
-            <Ico icon={Plus} size={16} />Lägg till steg
-          </button>
-        </div>
+            <div className="col" style={{ gap: 10 }}>
+              <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{pk > 0 && p.name.trim() ? `Gör så här · ${p.name.trim().toLowerCase()}` : 'Gör så här'}</span>
+              {p.steps.map((text, k) => (
+                <div key={k} className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{ flex: 'none', width: 32, height: 32, marginTop: 8, borderRadius: '50%', background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-heading)', fontSize: 15 }}>{k + 1}</span>
+                  <textarea className="input" value={text} onChange={(e) => setStep(pk, k, e.target.value)} rows={Math.max(2, Math.ceil(text.length / 38))}
+                    style={{ flex: 1, borderRadius: 20, minHeight: 0, padding: '10px 14px', fontSize: 16, lineHeight: 1.45 }} />
+                  <div className="col" style={{ flex: 'none' }}>
+                    <button style={smallBtn} className="hover-surface" onClick={() => move(pk, k, -1)} disabled={k === 0} aria-label="Flytta upp"><Ico icon={ArrowUp} size={16} /></button>
+                    <button style={smallBtn} className="hover-surface" onClick={() => move(pk, k, 1)} disabled={k === p.steps.length - 1} aria-label="Flytta ner"><Ico icon={ArrowDown} size={16} /></button>
+                    <button style={smallBtn} className="hover-surface" onClick={() => setPart(pk, { steps: p.steps.filter((_, j) => j !== k) })} aria-label="Ta bort steg"><Ico icon={Trash2} size={16} /></button>
+                  </div>
+                </div>
+              ))}
+              <button onClick={() => setPart(pk, { steps: [...p.steps, ''] })} className="row hover-surface"
+                style={{ gap: 8, height: 48, padding: '0 16px', borderRadius: 22, border: '1.5px dashed var(--color-neutral-400)', background: 'transparent', cursor: 'pointer', font: '600 14px var(--font-body)', color: 'var(--color-neutral-700)' }}>
+                <Ico icon={Plus} size={16} />Lägg till steg
+              </button>
+            </div>
+          </div>
+        ))}
+        <button onClick={() => setParts((ps) => [...ps, { name: '', ingr: '', steps: [''] }])} className="btn btn-secondary" style={{ alignSelf: 'flex-start', height: 46, padding: '0 16px' }}>
+          <Ico icon={Plus} size={16} style={{ marginRight: 6 }} />Lägg till del, t.ex. frosting
+        </button>
 
         {err && <span className="err">{err}</span>}
         <button className="btn btn-primary btn-block" disabled={saving} onClick={save} style={{ height: 54, fontSize: 17 }}>{saving ? <Spinner /> : 'Spara ändringar'}</button>
       </div>
     </div>
   );
+}
+
+interface Part { name: string; ingr: string; steps: string[] }
+
+/** Receptets delar som redigerbara fält: huvuddelen först, sedan varje namngiven del. */
+function initialParts(r: Recipe): Part[] {
+  const line = (i: Recipe['ingredients'][number]) => [amountLabel(i.amount, i.unit, 1, i.amount_max), i.name].filter(Boolean).join(' ');
+  const names = [...new Set([...r.ingredients, ...r.steps].map((x) => x.section?.trim() || '').filter(Boolean))];
+  return ['', ...names].map((name) => ({
+    name,
+    ingr: r.ingredients.filter((i) => (i.section?.trim() || '') === name).map(line).join('\n'),
+    steps: r.steps.filter((x) => (x.section?.trim() || '') === name).map((x) => x.text),
+  }));
 }

@@ -11,6 +11,8 @@ export interface Ingredient {
   unit: string;
   name: string;
   grams: number | null;
+  /** Del av receptet, t.ex. "Frosting". Tomt = huvuddelen. */
+  section?: string | null;
   lv_food_id: number | null;
   lv_food_name: string | null;
   match_confidence: 'sure' | 'unsure' | null;
@@ -24,6 +26,8 @@ export interface Step {
   position: number;
   text: string;
   ingredient_ids: number[] | null;
+  /** Del av receptet, t.ex. "Frosting". Tomt = huvuddelen. */
+  section?: string | null;
 }
 
 export interface Tag {
@@ -67,6 +71,9 @@ export interface Household {
   recipeCount?: number;
 }
 
+/** Ett steg: bara text, eller text i en del av receptet. */
+export type StepInput = string | { text: string; section: string | null };
+
 export interface Member { user_id: string; display_name: string | null }
 
 export interface ShoppingExtra { id: number; name: string; checked: boolean; created_by: string | null; created_at: string }
@@ -85,7 +92,7 @@ export interface NewRecipe {
   book_title?: string | null;
   page?: string | null;
   image_url?: string | null;
-  ingredients: { amount: number | null; amount_max?: number | null; unit: string; name: string }[];
-  steps: string[];
+  ingredients: { amount: number | null; amount_max?: number | null; unit: string; name: string; section?: string | null }[];
+  steps: StepInput[];
   tagIds: string[];
 }

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Check, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { functionError } from '../lib/nutrition';
+import type { StepInput } from '../lib/types';
 import { useStore } from '../lib/store';
 import { Ico, Spinner, Stepper, Thumb, TopBar, useToast } from '../components/ui';
 import { KcalEstimate, useSaveFields } from '../components/SaveFields';
@@ -17,8 +18,8 @@ interface Imported {
   name: string;
   image: string | null;
   portions: number | null;
-  ingredients: ParsedIngredient[];
-  steps: string[];
+  ingredients: (ParsedIngredient & { section?: string | null })[];
+  steps: StepInput[];
 }
 
 const URL_RE = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+/i;

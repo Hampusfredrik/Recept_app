@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 import { today } from './dates';
 import { TONE_ORDER } from './format';
 import { shrinkImage } from './images';
-import type { Household, Ingredient, NewRecipe, PlanEntry, Recipe, Step, Tag, Tone, Member, ShoppingExtra, Feedback } from './types';
+import type { Household, Ingredient, NewRecipe, PlanEntry, Recipe, Step, Tag, Tone, Member, ShoppingExtra, Feedback, StepInput } from './types';
 
 interface Data {
   recipes: Recipe[];
@@ -71,8 +71,8 @@ interface Store extends Data {
 
 export interface RecipeEdit {
   fields: Partial<Pick<Recipe, 'name' | 'portions' | 'effort' | 'book_title' | 'page' | 'created_by'>>;
-  ingredients: { amount: number | null; unit: string; name: string }[];
-  steps: string[];
+  ingredients: { amount: number | null; amount_max?: number | null; unit: string; name: string; section?: string | null }[];
+  steps: StepInput[];
   tagIds: string[];
 }
 
@@ -226,13 +226,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Kolumnen amount_max (intervall som "1–2 msk") kan saknas om migreringen inte körts:
   // då sparas det lägre värdet som förut.
-  const insertIngredients = async (rows: Record<string, unknown>[]) => {
-    const res = await supabase.from('recipe_ingredients').insert(rows);
-    if (res.error && /amount_max/.test(res.error.message)) {
-      return supabase.from('recipe_ingredients').insert(rows.map(({ amount_max: _m, ...r }) => r));
+  // Kolumnen section (delar som "Frosting") kan också saknas: då sparas raderna utan del,
+  // och sectionsMissing sätts så att den som redigerar får veta det.
+  const sectionsMissing = useRef(false);
+  const insertRows = async (table: 'recipe_ingredients' | 'recipe_steps', rows: Record<string, unknown>[]) => {
+    let res = await supabase.from(table).insert(rows);
+    for (const col of ['amount_max', 'section']) {
+      if (res.error && new RegExp(col).test(res.error.message)) {
+        if (col === 'section') sectionsMissing.current = true;
+        rows = rows.map(({ [col]: _x, ...r }) => r);
+        res = await supabase.from(table).insert(rows);
+      }
     }
     return res;
   };
+  const insertIngredients = (rows: Record<string, unknown>[]) => insertRows('recipe_ingredients', rows);
+  const normStep = (s: StepInput) => (typeof s === 'string' ? { text: s, section: null } : s);
 
   // Som must, men med en tydlig hänvisning om tabellen inte finns än.
   const migrated = <T,>(r: { data: T; error: { message: string; code?: string } | null }, table: string): T => {
@@ -340,8 +349,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           must(await insertIngredients(ingredients.map((i, position) => ({ ...i, position, household_id, recipe_id: rec.id }))));
         }
         if (steps.length) {
-          must(await supabase.from('recipe_steps').insert(
-            steps.map((text, position) => ({ text, position, household_id, recipe_id: rec.id }))));
+          must(await insertRows('recipe_steps',
+            steps.map(normStep).map(({ text, section }, position) => ({ text, position, household_id, recipe_id: rec.id, ...(section ? { section } : {}) }))));
         }
         if (tagIds.length) {
           must(await supabase.from('recipe_tags').insert(tagIds.map((tag_id) => ({ tag_id, household_id, recipe_id: rec.id }))));
@@ -415,6 +424,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       editRecipe: async (recipeId: string, edit: RecipeEdit) => {
         const household_id = need();
+        sectionsMissing.current = false;
         const r = data.recipes.find((x) => x.id === recipeId);
         if (!r) throw new Error('Receptet finns inte');
         must(await supabase.from('recipes').update(edit.fields).eq('id', recipeId));
@@ -423,25 +433,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const key = (i: { amount: number | null; amount_max?: number | null; unit: string; name: string }) => `${i.amount ?? ''}|${i.amount_max ?? ''}|${i.unit}|${i.name.trim().toLowerCase()}`;
         const remaining = [...r.ingredients];
         const keepIds: number[] = [];
+        const sectionOf = (x: { section?: string | null }) => x.section?.trim() || null;
         const plan = edit.ingredients.map((l, position) => {
           const k = remaining.findIndex((x) => key(x) === key(l));
-          if (k >= 0) { const [old] = remaining.splice(k, 1); keepIds.push(old.id); return { id: old.id, position }; }
-          return { new: { ...l, position, household_id, recipe_id: recipeId } };
+          if (k >= 0) { const [old] = remaining.splice(k, 1); keepIds.push(old.id); return { id: old.id, position, section: sectionOf(l), oldSection: sectionOf(old) }; }
+          const { section, ...rest } = l;
+          return { new: { ...rest, position, household_id, recipe_id: recipeId, ...(sectionOf({ section }) ? { section: sectionOf({ section }) } : {}) } };
         });
         if (remaining.length) must(await supabase.from('recipe_ingredients').delete().in('id', remaining.map((x) => x.id)));
-        for (const p of plan) if ('id' in p) must(await supabase.from('recipe_ingredients').update({ position: p.position }).eq('id', p.id!));
+        for (const p of plan) {
+          if (!('id' in p)) continue;
+          if (p.section === p.oldSection) { must(await supabase.from('recipe_ingredients').update({ position: p.position }).eq('id', p.id!)); continue; }
+          const res = await supabase.from('recipe_ingredients').update({ position: p.position, section: p.section }).eq('id', p.id!);
+          if (res.error && /section/.test(res.error.message)) { sectionsMissing.current = true; must(await supabase.from('recipe_ingredients').update({ position: p.position }).eq('id', p.id!)); }
+          else must(res);
+        }
         const fresh = plan.filter((p) => 'new' in p).map((p) => p.new!);
         if (fresh.length) must(await insertIngredients(fresh));
 
         // Steg: oförändrade steg behåller sin koppling till ingredienser.
         const oldSteps = [...r.steps];
-        const stepRows = edit.steps.map((text, position) => {
+        const stepRows = edit.steps.map(normStep).map(({ text, section }, position) => {
           const k = oldSteps.findIndex((x) => x.text === text);
           const ids = k >= 0 ? oldSteps.splice(k, 1)[0].ingredient_ids : null;
-          return { text, position, household_id, recipe_id: recipeId, ingredient_ids: ids?.filter((id) => keepIds.includes(Number(id))) ?? null };
+          return { text, position, household_id, recipe_id: recipeId, ingredient_ids: ids?.filter((id) => keepIds.includes(Number(id))) ?? null, ...(section?.trim() ? { section: section.trim() } : {}) };
         });
         must(await supabase.from('recipe_steps').delete().eq('recipe_id', recipeId));
-        if (stepRows.length) must(await supabase.from('recipe_steps').insert(stepRows));
+        if (stepRows.length) must(await insertRows('recipe_steps', stepRows));
 
         // Taggar
         const add = edit.tagIds.filter((t) => !r.tagIds.includes(t));
@@ -449,6 +467,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (del.length) must(await supabase.from('recipe_tags').delete().eq('recipe_id', recipeId).in('tag_id', del));
         if (add.length) must(await supabase.from('recipe_tags').insert(add.map((tag_id) => ({ tag_id, household_id, recipe_id: recipeId }))));
         await reload();
+        const usedSections = edit.ingredients.some((i) => i.section?.trim()) || edit.steps.some((x) => typeof x !== 'string' && x.section?.trim());
+        if (sectionsMissing.current && usedSections) {
+          sectionsMissing.current = false;
+          throw new Error('Receptet sparades, men delarna (t.ex. Frosting) kräver migreringen 20261107120000_recipe_sections.sql i Supabase.');
+        }
       },
       updateIngredient: async (id: number, patch: Partial<Pick<Ingredient, 'lv_food_id' | 'lv_food_name' | 'match_confidence' | 'grams' | 'lv_manual' | 'amount' | 'amount_max' | 'unit' | 'name'>>) => {
         setData((d) => ({ ...d, recipes: d.recipes.map((r) => ({ ...r, ingredients: r.ingredients.map((i) => (i.id === id ? { ...i, ...patch } : i)) })) }));

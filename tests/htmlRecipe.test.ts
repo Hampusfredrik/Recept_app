@@ -102,6 +102,7 @@ Servering
 150 g chèvre
 salt och peppar`);
   assert.deepEqual(ings.map((i) => i.name), ['olive oil', 'onion, chopped', 'chèvre', 'salt och peppar']);
+  assert.deepEqual(ings.map((i) => i.section), [null, null, 'Servering', 'Servering']);
   const steps = stepsFromText(`Gör så här
 Risotto
 1. Hacka löken och fräs den
@@ -109,5 +110,6 @@ i smöret.
 2. Tillsätt riset.
 
 Servera direkt.`);
-  assert.deepEqual(steps, ['Hacka löken och fräs den i smöret.', 'Tillsätt riset.', 'Servera direkt.']);
+  assert.deepEqual(steps.map((x) => x.text), ['Hacka löken och fräs den i smöret.', 'Tillsätt riset.', 'Servera direkt.']);
+  assert.deepEqual(steps.map((x) => x.section), ['Risotto', 'Risotto', 'Risotto']);
 });
