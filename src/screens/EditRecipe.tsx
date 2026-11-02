@@ -152,7 +152,7 @@ export function EditRecipe() {
           </div>
         ))}
         <button onClick={() => setParts((ps) => [...ps, { name: '', ingr: '', steps: [], stepsText: '' }])} className="btn btn-secondary" style={{ alignSelf: 'flex-start', height: 46, padding: '0 16px' }}>
-          <Ico icon={Plus} size={16} style={{ marginRight: 6 }} />Lägg till delrecept, t.ex. frosting
+          <Ico icon={Plus} size={16} style={{ marginRight: 6 }} />Lägg till delrecept
         </button>
 
         {err && <span className="err">{err}</span>}

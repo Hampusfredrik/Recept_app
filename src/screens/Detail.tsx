@@ -184,7 +184,7 @@ export function Detail() {
         {(tab === 'ingr' || tab === 'steps') && (
           <button onClick={() => setAddSub(true)} className="row hover-surface"
             style={{ alignSelf: 'flex-start', gap: 8, height: 44, padding: '0 16px', marginTop: 14, borderRadius: 22, border: '1.5px dashed var(--color-neutral-400)', background: 'transparent', cursor: 'pointer', font: '600 14px var(--font-body)', color: 'var(--color-neutral-700)' }}>
-            <Ico icon={Plus} size={16} />Lägg till delrecept, t.ex. frosting
+            <Ico icon={Plus} size={16} />Lägg till delrecept
           </button>
         )}
 
