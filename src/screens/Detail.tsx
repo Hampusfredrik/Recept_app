@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
 import { ArrowUpRight, Heart, UserRound, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Plus, Search, Sparkles, Users } from 'lucide-react';
-import { creditOf, searchImages, withCredit, type PexelsPhoto } from '../lib/images';
+import { creditOf, searchImages, trackChosen, withCredit, type StockPhoto } from '../lib/images';
 import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
 import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
@@ -431,23 +431,23 @@ function ImageButton({ r }: { r: Recipe }) {
   );
 }
 
-/** Fotografens namn och Pexels, som deras villkor kräver. */
+/** Fotografens namn och bildkällan (Unsplash, äldre bilder Pexels), som deras villkor kräver. */
 function PhotoCredit({ imageUrl }: { imageUrl: string | null }) {
   const c = creditOf(imageUrl);
   if (!c) return null;
   return (
     <span style={{ position: 'absolute', left: 16, bottom: 66, zIndex: 2, padding: '3px 10px', borderRadius: 999, background: 'color-mix(in srgb, var(--color-neutral-900) 55%, transparent)', color: 'var(--color-neutral-100)', fontSize: 11 }}>
-      Foto: <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>{c.name}</a> / <a href={c.photo} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>Pexels</a>
+      Foto: <a href={c.url} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>{c.name}</a> / <a href={c.photo} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>{c.source}</a>
     </span>
   );
 }
 
-/** Bildförslag från Pexels; användaren väljer en bild. */
+/** Bildförslag från Unsplash; användaren väljer en bild. */
 function ImageSearchSheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
   const { setRecipeImageUrl } = useStore();
   const toast = useToast();
   const [q, setQ] = useState(r.name);
-  const [photos, setPhotos] = useState<PexelsPhoto[] | null>(null);
+  const [photos, setPhotos] = useState<StockPhoto[] | null>(null);
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
   const search = async (query = q) => {
@@ -457,8 +457,8 @@ function ImageSearchSheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
     setLoading(false);
   };
   useEffect(() => { void search(r.name); }, []); // söker direkt på receptets namn
-  const choose = async (p: PexelsPhoto) => {
-    try { await setRecipeImageUrl(r.id, withCredit(p)); toast('Bilden är sparad'); onClose(); } catch { toast('Kunde inte spara bilden'); }
+  const choose = async (p: StockPhoto) => {
+    try { await setRecipeImageUrl(r.id, withCredit(p)); void trackChosen(p); toast('Bilden är sparad'); onClose(); } catch { toast('Kunde inte spara bilden'); }
   };
   return (
     <Sheet onClose={onClose} className="sheet-top" style={{ gap: 12 }}>
@@ -485,7 +485,7 @@ function ImageSearchSheet({ r, onClose }: { r: Recipe; onClose: () => void }) {
           ))}
         </div>
       )}
-      <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Bilder från Pexels</a>
+      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Bilder från <a href="https://unsplash.com/?utm_source=Receptappen&utm_medium=referral" target="_blank" rel="noopener noreferrer" style={{ color: 'inherit' }}>Unsplash</a></span>
     </Sheet>
   );
 }

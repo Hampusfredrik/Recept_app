@@ -290,6 +290,52 @@ function recipeFromLines(rows: string[]): HtmlRecipe {
   return { portions, ingredients: ingr.map(parseIngredientLine), steps };
 }
 
+// ── Inklistrade ingredienser och steg i var sin ruta ──
+
+const BULLET = /^[•·\-–*▢□☐✓✔]\s*/;
+
+/**
+ * En ingrediens per rad. Rubriker ("Ingredienser") hoppas över; delrubriker som
+ * "Frosting:" eller "Servering" blir en del av receptet för raderna under dem.
+ */
+export function ingredientsFromText(text: string): (ParsedIngredient & { section: string | null })[] {
+  const rows = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').replace(BULLET, '').trim()).filter(Boolean);
+  const out: (ParsedIngredient & { section: string | null })[] = [];
+  let section: string | null = null;
+  rows.forEach((t, k) => {
+    if (INGR_HEAD.test(t.replace(/:$/, '')) || portionsOf(t)) return;
+    if (isSubhead(t, rows[k + 1]) && !looksLikeIngredient(t)) { section = sectionName(t); return; }
+    out.push({ ...parseIngredientLine(t), section });
+  });
+  return out;
+}
+
+const sectionName = (t: string) => t.replace(/:$/, '').trim().replace(/^./, (c) => c.toUpperCase());
+
+/**
+ * Ett steg per stycke. Numrerade rader ("1. Skär …") börjar ett nytt steg; en rad utan
+ * avslutande punkt fortsätter i nästa (radbrytning mitt i en mening). Rubriker hoppas över,
+ * och korta delrubriker ("Frosting") blir en del av receptet för stegen under dem.
+ */
+export function stepsFromText(text: string): { text: string; section: string | null }[] {
+  const rows = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').replace(BULLET, '').trim());
+  const steps: { text: string; section: string | null }[] = [];
+  let open = false;
+  let section: string | null = null;
+  for (const t of rows) {
+    if (!t) { open = false; continue; }
+    if (STEP_HEAD.test(t) || /^(steg|step)\s*\d+\s*:?$/i.test(t)) { open = false; continue; }
+    const numbered = /^\d+[.)]\s+/.test(t);
+    const clean = t.replace(/^(?:steg|step)?\s*\d+[.):]\s*/i, '');
+    // Kort rad utan punkt: delrubrik ("Frosting").
+    if (!numbered && clean.length < 30 && !/[.!?]$/.test(clean) && !open) { section = sectionName(clean); continue; }
+    if (open && !numbered && steps.length) steps[steps.length - 1].text += ' ' + clean;
+    else steps.push({ text: clean, section });
+    open = !/[.!?)]$/.test(clean);
+  }
+  return steps.filter((x) => x.text);
+}
+
 // ── funktionen ──
 // Supabase Edge Function: hämtar en receptsida och plockar ut schema.org/Recipe.
 // Anrop: GET /functions/v1/import-recipe?url=…  eller  POST { "url": "…" }
