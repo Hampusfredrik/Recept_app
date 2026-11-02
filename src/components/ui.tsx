@@ -136,16 +136,20 @@ export function TopBar({ onClose, title, icon = 'x', dark }: { onClose: () => vo
   );
 }
 
-export function Stepper({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
+/** alert: rutan markeras röd, t.ex. när receptet inte är räknat för 4 portioner. */
+export function Stepper({ label, value, onChange, alert }: { label: string; value: number; onChange: (n: number) => void; alert?: string }) {
   const btn: CSSProperties = { width: 34, height: 34, border: 0, borderRadius: '50%', background: 'transparent', cursor: 'pointer', display: 'grid', placeItems: 'center' };
   return (
+    <div className="col" style={{ gap: 4 }}>
     <div className="row" style={{ justifyContent: 'space-between' }}>
-      <span style={{ fontSize: 14, color: 'var(--color-neutral-700)' }}>{label}</span>
-      <div className="row" style={{ gap: 4, padding: 3, borderRadius: 999, border: '1.5px solid var(--color-divider)' }}>
+      <span style={{ fontSize: 14, color: alert ? 'var(--color-alert)' : 'var(--color-neutral-700)', fontWeight: alert ? 700 : 400 }}>{label}</span>
+      <div className="row" style={{ gap: 4, padding: 3, borderRadius: 999, border: `1.5px solid ${alert ? 'var(--color-alert)' : 'var(--color-divider)'}`, background: alert ? 'var(--color-alert-bg)' : undefined, color: alert ? 'var(--color-alert)' : undefined }}>
         <button className="hover-surface" style={btn} onClick={() => onChange(Math.max(1, value - 1))} aria-label="Färre"><Ico icon={Minus} size={14} /></button>
         <span style={{ minWidth: 72, textAlign: 'center', fontWeight: 700, fontSize: 14 }}>{value === 1 ? '1 portion' : `${value} portioner`}</span>
         <button className="hover-surface" style={btn} onClick={() => onChange(Math.min(20, value + 1))} aria-label="Fler"><Ico icon={Plus} size={14} /></button>
       </div>
+    </div>
+    {alert && <span style={{ fontSize: 12, color: 'var(--color-alert)', textAlign: 'right' }}>{alert}</span>}
     </div>
   );
 }

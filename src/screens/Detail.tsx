@@ -24,6 +24,8 @@ export function Detail() {
   const [tab, setTab] = useState<Tab>('ingr');
   const [port, setPort] = useState<number | null>(null);
   const [writeIngr, setWriteIngr] = useState(false);
+  // Receptet är inte skrivet för 4 portioner: markeras rött så att det uppmärksammas.
+  const odd = r && r.portions !== 4 ? `Receptet är skrivet för ${r.portions} ${r.portions === 1 ? 'portion' : 'portioner'}` : undefined;
   const [addSub, setAddSub] = useState(false);
   const [pickDay, setPickDay] = useState(false);
   const back = useBack();
@@ -65,7 +67,7 @@ export function Detail() {
       <div className="detail-body" style={{ padding: '16px 20px 0' }}>
       <div className="col detail-meta" style={{ gap: 18 }}>
         <div className="row" style={{ gap: 16, fontSize: 14, color: 'var(--color-neutral-700)' }}>
-          <span className="row" style={{ gap: 6 }}><Ico icon={Users} size={16} />{r.portions} {r.portions === 1 ? 'portion' : 'portioner'}</span>
+          <span className="row" style={{ gap: 6, ...(r.portions !== 4 ? { color: 'var(--color-alert)', fontWeight: 700 } : {}) }}><Ico icon={Users} size={16} />{r.portions} {r.portions === 1 ? 'portion' : 'portioner'}</span>
           {memberName(r.created_by) && <span className="row" style={{ gap: 6 }}><Ico icon={UserRound} size={16} />Inlagt av {memberName(r.created_by)}</span>}
         </div>
 
@@ -139,7 +141,7 @@ export function Detail() {
 
         {tab === 'ingr' && (r.ingredients.length ? (
           <div className="col" style={{ gap: 6 }}>
-            <Stepper label="Räknat för" value={portions} onChange={setPort} />
+            <Stepper label="Räknat för" value={portions} onChange={setPort} alert={odd} />
             {bySection(r.ingredients).map((g) => (
             <div key={g.section ?? ''} className="col">
               {g.section && <SectionHeading name={g.section} />}
@@ -211,7 +213,7 @@ export function Detail() {
 function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; scale: number; setPort: (n: number) => void }) {
   return (
     <div className="col" style={{ gap: 18 }}>
-      {r.ingredients.length > 0 && <Stepper label="Mängder för" value={portions} onChange={setPort} />}
+      {r.ingredients.length > 0 && <Stepper label="Mängder för" value={portions} onChange={setPort} alert={r.portions !== 4 ? `Receptet är skrivet för ${r.portions} ${r.portions === 1 ? 'portion' : 'portioner'}` : undefined} />}
       {bySection(r.steps).map((g) => {
       // Stegen i en del använder i första hand delens egna ingredienser.
       const own = r.ingredients.filter((i) => (i.section?.trim() || null) === g.section);

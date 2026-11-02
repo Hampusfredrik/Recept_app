@@ -6,6 +6,9 @@
   --color-surface: #ebddc5;
   --color-text: #201e1d;
   --color-accent: #c67139;
+  /* Varning: t.ex. ett recept som inte är räknat för 4 portioner. */
+  --color-alert: #c0392b;
+  --color-alert-bg: #fbe9e7;
   --color-accent-2: #7a8a5e;
   --color-divider: color-mix(in srgb, #201e1d 16%, transparent);
 

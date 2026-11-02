@@ -201,7 +201,8 @@ export function AddLink() {
             {[['Ingredienser', `${data.ingredients.length} st`], ['Steg', `${data.steps.length} st`], ['Portioner', data.portions ? String(data.portions) : '–']].map(([label, val]) => (
               <div key={label} className="row" style={{ gap: 10, fontSize: 14 }}>
                 <span style={{ flex: 'none', width: 22, height: 22, borderRadius: '50%', background: 'var(--color-accent-2-600)', display: 'grid', placeItems: 'center' }}><Ico icon={Check} size={12} color="var(--color-bg)" /></span>
-                <span style={{ flex: 1 }}>{label}</span><b>{val}</b>
+                <span style={{ flex: 1 }}>{label}</span>
+                <b style={label === 'Portioner' && data.portions && data.portions !== 4 ? { color: 'var(--color-alert)', background: 'var(--color-alert-bg)', padding: '1px 8px', borderRadius: 999 } : undefined}>{val}</b>
               </div>
             ))}
           </div>
