@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -23,18 +23,32 @@ interface Imported {
 
 const URL_RE = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+/i;
 
+// iPhone stänger ofta appen när man byter till Safari för att kopiera. Det inklistrade
+// sparas därför löpande på enheten och tas fram igen när appen startar om.
+const PASTE_KEY = 'receptappen.pasteDraft';
+interface PasteDraft { url: string; name: string; ingr: string; steps: string; portions: number; at: number }
+function loadPaste(minutes: number): PasteDraft | null {
+  try {
+    const d = JSON.parse(localStorage.getItem(PASTE_KEY) ?? 'null') as PasteDraft | null;
+    return d && Date.now() - d.at < minutes * 60_000 ? d : null;
+  } catch { return null; }
+}
+export const hasFreshPasteDraft = (minutes: number) => !!loadPaste(minutes);
+const clearPaste = () => { try { localStorage.removeItem(PASTE_KEY); } catch { /* ingen lagring */ } };
+
 export function AddLink() {
   const nav = useNavigate();
   const toast = useToast();
   const { saveRecipe } = useStore();
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(() => loadPaste(120)?.url ?? '');
   const [err, setErr] = useState('');
   const [clip, setClip] = useState<string | null>(null);
-  const [phase, setPhase] = useState<'input' | 'loading' | 'review' | 'paste'>('input');
-  const [pName, setPName] = useState('');
-  const [pIngr, setPIngr] = useState('');
-  const [pSteps, setPSteps] = useState('');
-  const [pPortions, setPPortions] = useState(4);
+  const draft = useMemo(() => loadPaste(120), []);
+  const [phase, setPhase] = useState<'input' | 'loading' | 'review' | 'paste'>(draft ? 'paste' : 'input');
+  const [pName, setPName] = useState(draft?.name ?? '');
+  const [pIngr, setPIngr] = useState(draft?.ingr ?? '');
+  const [pSteps, setPSteps] = useState(draft?.steps ?? '');
+  const [pPortions, setPPortions] = useState(draft?.portions ?? 4);
   const [pasteErr, setPasteErr] = useState('');
   const [failed, setFailed] = useState(false);
   const [data, setData] = useState<Imported | null>(null);
@@ -67,6 +81,13 @@ export function AddLink() {
     setPhase('review');
   };
 
+  // Spara utkastet medan inklistringsrutorna är öppna.
+  useEffect(() => {
+    if (phase !== 'paste') return;
+    try { localStorage.setItem(PASTE_KEY, JSON.stringify({ url, name: pName, ingr: pIngr, steps: pSteps, portions: pPortions, at: Date.now() } satisfies PasteDraft)); }
+    catch { /* ingen lagring */ }
+  }, [phase, url, pName, pIngr, pSteps, pPortions]);
+
   const readPasted = () => {
     const ingredients = ingredientsFromText(pIngr);
     if (!ingredients.length) return setPasteErr('Klistra in minst en ingrediens.');
@@ -86,6 +107,7 @@ export function AddLink() {
         url: data.url || null, domain: data.domain || null, fetched_at: new Date().toISOString(), image_url: data.image,
         ingredients: data.ingredients, steps: data.steps, tagIds,
       });
+      clearPaste();
       nav(`/recept/${id}`, { replace: true });
       toast('Receptet är sparat');
     } catch (e) {
@@ -96,7 +118,7 @@ export function AddLink() {
 
   return (
     <div className="screen no-tabs narrow">
-      <TopBar onClose={back} title="Från webben" />
+      <TopBar onClose={() => { clearPaste(); back(); }} title="Från webben" />
 
       {phase === 'input' && (
         <>
@@ -145,7 +167,7 @@ export function AddLink() {
           {pasteErr && <span className="err">{pasteErr}</span>}
           <div className="row" style={{ gap: 8 }}>
             <button className="btn btn-primary" onClick={readPasted} disabled={!pIngr.trim()} style={{ height: 50, padding: '0 20px', fontSize: 16 }}>Fortsätt</button>
-            <button className="btn btn-ghost" onClick={() => setPhase('input')} style={{ height: 50 }}>Tillbaka</button>
+            <button className="btn btn-ghost" onClick={() => { clearPaste(); setPhase('input'); }} style={{ height: 50 }}>Tillbaka</button>
           </div>
         </div>
       )}

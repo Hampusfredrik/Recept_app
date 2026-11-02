@@ -14,7 +14,7 @@ import { Feedback } from './screens/Feedback';
 import { Pantry } from './screens/Pantry';
 import { Detail } from './screens/Detail';
 import { EditRecipe } from './screens/EditRecipe';
-import { AddLink } from './screens/AddLink';
+import { AddLink, hasFreshPasteDraft } from './screens/AddLink';
 import { AddBook } from './screens/AddBook';
 import { Scan, hasFreshScanDraft } from './screens/Scan';
 
@@ -61,6 +61,7 @@ function Gate() {
     if (resumed.current || !s.loaded) return;
     resumed.current = true;
     if (loc.pathname === '/' && hasFreshScanDraft(30)) nav('/ny/kokbok', { replace: true });
+    else if (loc.pathname === '/' && hasFreshPasteDraft(120)) nav('/ny/lank', { replace: true });
   }, [s.loaded]); // körs en gång när datan är laddad
 
   if (loc.pathname.startsWith('/join/')) return <Routes><Route path="/join/:code" element={<JoinRoute />} /></Routes>;
