@@ -13,6 +13,7 @@ create table if not exists public.shopping_checks (
 
 alter table public.shopping_checks enable row level security;
 
+drop policy if exists "medlemmar läser och skriver" on public.shopping_checks;
 create policy "medlemmar läser och skriver" on public.shopping_checks
   for all to authenticated
   using (public.is_household_member(household_id))
