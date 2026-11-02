@@ -12,7 +12,7 @@ import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
 // Inte ritad i designen; följer formspråket från "Bara bok och sida".
 export function EditRecipe() {
   const { id } = useParams();
-  const { recipes, tags, editRecipe, members } = useStore();
+  const { recipes, tags, editRecipe, members, addTag } = useStore();
   const named = members.filter((m) => m.display_name);
   const r = recipes.find((x) => x.id === id);
   const back = useBack(`/recept/${id}`);
@@ -87,7 +87,7 @@ export function EditRecipe() {
           <input className="input big" value={portions} onChange={(e) => setPortions(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" style={{ textAlign: 'center' }} />
         </div>
         <EffortField value={effort} onChange={setEffort} error={false} />
-        <TagChooser tags={tags} selected={tagIds} onToggle={(t) => setTagIds((x) => toggle(x, t))} />
+        <TagChooser tags={tags} selected={tagIds} onToggle={(t) => setTagIds((x) => toggle(x, t))} onCreate={async (n) => (await addTag(n)).id} />
         {named.length > 0 && (
           <div className="col" style={{ gap: 8 }}>
             <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Inlagt av</span>

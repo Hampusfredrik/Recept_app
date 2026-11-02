@@ -54,7 +54,31 @@ export function EffortField({ value, onChange, error }: { value: number; onChang
   );
 }
 
-export function TagChooser({ tags, selected, onToggle, label = 'Taggar' }: { tags: Tag[]; selected: string[]; onToggle: (id: string) => void; label?: string }) {
+export function TagChooser({ tags, selected, onToggle, label = 'Taggar', onCreate }: {
+  tags: Tag[]; selected: string[]; onToggle: (id: string) => void; label?: string;
+  /** Skapar en ny tagg och returnerar dess id; den nya taggen väljs direkt. */
+  onCreate?: (name: string) => Promise<string>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [v, setV] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const create = async () => {
+    const s = v.trim();
+    if (!s || !onCreate) return;
+    const existing = tags.find((t) => t.name.toLowerCase() === s.toLowerCase());
+    if (existing) {
+      if (!selected.includes(existing.id)) onToggle(existing.id);
+      setV(''); setAdding(false); return;
+    }
+    setBusy(true); setErr('');
+    try {
+      const id = await onCreate(s[0].toUpperCase() + s.slice(1));
+      onToggle(id);
+      setV(''); setAdding(false);
+    } catch (e) { setErr(e instanceof Error ? e.message : String(e)); }
+    setBusy(false);
+  };
   return (
     <div className="col" style={{ gap: 8 }}>
       <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{label}</span>
@@ -63,7 +87,22 @@ export function TagChooser({ tags, selected, onToggle, label = 'Taggar' }: { tag
           const on = selected.includes(t.id);
           return <button key={t.id} type="button" className={'chip' + (on ? ' on' : '')} onClick={() => onToggle(t.id)}>{on ? '✓ ' : ''}{t.name}</button>;
         })}
+        {onCreate && !adding && (
+          <button type="button" className="chip" onClick={() => setAdding(true)} style={{ borderStyle: 'dashed', color: 'var(--color-neutral-700)' }}>
+            <Ico icon={Plus} size={14} style={{ marginRight: 4 }} />Ny tagg
+          </button>
+        )}
       </div>
+      {onCreate && adding && (
+        <div className="row" style={{ gap: 8 }}>
+          <input className="input" autoFocus value={v} maxLength={40} onChange={(e) => { setV(e.target.value); setErr(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void create(); } if (e.key === 'Escape') setAdding(false); }}
+            placeholder="Ny tagg, t.ex. Vardag" enterKeyHint="done" style={{ height: 44, fontSize: 16 }} />
+          <button type="button" className="btn btn-primary" disabled={busy || !v.trim()} onClick={() => void create()} style={{ flex: 'none', height: 44, padding: '0 14px' }}>Lägg till</button>
+          <button type="button" className="btn btn-ghost" onClick={() => { setAdding(false); setV(''); setErr(''); }} style={{ flex: 'none', height: 44 }}>Avbryt</button>
+        </div>
+      )}
+      {err && <span className="err">{err}</span>}
     </div>
   );
 }

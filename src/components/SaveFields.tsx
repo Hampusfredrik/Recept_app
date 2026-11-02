@@ -10,11 +10,11 @@ export function useSaveFields() {
   const [effort, setEffort] = useState(0);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [effortErr, setEffortErr] = useState(false);
-  const { tags } = useStore();
+  const { tags, addTag } = useStore();
   const fields = (
     <>
       <EffortField value={effort} onChange={(n) => { setEffort(n); setEffortErr(false); }} error={effortErr} />
-      <TagChooser tags={tags} selected={tagIds} onToggle={(id) => setTagIds((t) => toggle(t, id))} />
+      <TagChooser tags={tags} selected={tagIds} onToggle={(id) => setTagIds((t) => toggle(t, id))} onCreate={async (n) => (await addTag(n)).id} />
     </>
   );
   const check = () => { if (!effort) { setEffortErr(true); return false; } return true; };
