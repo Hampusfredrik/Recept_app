@@ -191,10 +191,10 @@ export function htmlLines(html: string): string[] {
     .filter(Boolean);
 }
 
-const INGR_HEAD = /^(ingredienser|ingrediens|du behöver|det här behöver du|detta behöver du|till \d+ portioner)\b.{0,30}$/i;
-const STEP_HEAD = /^(gör så här|gör såhär|så här gör du|såhär gör du|så gör du|gör så|tillagning|instruktioner|instruktion|tillvägagångssätt)\s*:?$/i;
+const INGR_HEAD = /^(ingredienser|ingrediens|du behöver|det här behöver du|detta behöver du|till \d+ portioner|ingredients)\b.{0,30}$/i;
+const STEP_HEAD = /^(gör så här|gör såhär|så här gör du|såhär gör du|så gör du|gör så|tillagning|instruktioner|instruktion|tillvägagångssätt|instructions|directions|method|preparation|steps)\s*:?$/i;
 // Här slutar receptet på en bloggsida.
-const END = /^(dela|dela detta|gilla|kommentarer?|lämna en kommentar|skriv en kommentar|relaterade|relaterat|du kanske också gillar|publicerat|publicerad|taggar|kategorier|läs också|smaklig måltid!?|smaklig spis!?)\b/i;
+const END = /^(dela|dela detta|gilla|kommentarer?|lämna en kommentar|skriv en kommentar|relaterade|relaterat|du kanske också gillar|publicerat|publicerad|taggar|kategorier|läs också|smaklig måltid!?|smaklig spis!?|notes|recipe notes|nutrition|nutrition facts|comments|reviews|leave a comment|you may also like)\b/i;
 
 export interface HtmlRecipe { portions: number | null; ingredients: ParsedIngredient[]; steps: string[] }
 
@@ -226,13 +226,31 @@ function ingredientBlock(rows: string[], from: number): { lines: string[]; end: 
 
 /** Hittar ingredienser och steg i en bloggtext. Tomma listor om inget hittas. */
 export function recipeFromHtml(html: string): HtmlRecipe {
-  const rows = htmlLines(html);
+  return recipeFromLines(htmlLines(html));
+}
+
+/** Recept ur text som kopierats från en webbsida (när sidan inte går att hämta). */
+export function recipeFromText(text: string): HtmlRecipe & { name: string } {
+  const rows = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').replace(/^[•·\-–*▢□☐]\s*/, '').trim()).filter(Boolean);
+  const r = recipeFromLines(rows);
+  // Namnet: raden närmast före ingredienserna som ser ut som en rubrik, annars första korta raden.
+  const first = r.ingredients.length ? rows.findIndex((t) => parseIngredientLine(t).name === r.ingredients[0].name) : -1;
+  const before = first > 0 ? rows.slice(Math.max(0, first - 6), first).reverse() : [];
+  const title = [...before, ...rows].find((t) => t.length >= 3 && t.length <= 80 && !/[.!?:]$/.test(t) && !looksLikeIngredient(t)
+    && !INGR_HEAD.test(t.replace(/:$/, '')) && !STEP_HEAD.test(t) && !portionsOf(t));
+  return { ...r, name: title ?? '' };
+}
+
+const portionsOf = (t: string) =>
+  t.match(/^(?:till\s+)?(\d+)\s*(portioner|portion|personer|pers|servings?)\b/i) ?? t.match(/^(?:portioner|antal portioner|servings?|serves|yield|makes)\s*:?\s*(\d+)/i);
+
+function recipeFromLines(rows: string[]): HtmlRecipe {
   const ingr: string[] = [];
   const steps: string[] = [];
   let portions: number | null = null;
 
   for (const t of rows) {
-    const port = t.match(/^(?:till\s+)?(\d+)\s*(portioner|portion|personer|pers)\b/i) ?? t.match(/^(?:portioner|antal portioner)\s*:?\s*(\d+)/i);
+    const port = portionsOf(t);
     if (port && t.length < 40) { portions = parseInt(port[1], 10); break; }
   }
 
@@ -373,8 +391,8 @@ Deno.serve(async (req) => {
       redirect: 'follow',
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: {
-        // Vanlig webbläsare: en del sidor nekar okända program.
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        // Appen presenterar sig ärligt. Sidor som nekar den respekteras; då kan receptet klistras in som text.
+        'User-Agent': 'Mozilla/5.0 (compatible; Receptappen/1.0; +https://github.com/Hampusfredrik/Recept_app)',
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'sv-SE,sv;q=0.9,en;q=0.5',
       },

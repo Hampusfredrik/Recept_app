@@ -100,8 +100,8 @@ Deno.serve(async (req) => {
       redirect: 'follow',
       signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: {
-        // Vanlig webbläsare: en del sidor nekar okända program.
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+        // Appen presenterar sig ärligt. Sidor som nekar den respekteras; då kan receptet klistras in som text.
+        'User-Agent': 'Mozilla/5.0 (compatible; Receptappen/1.0; +https://github.com/Hampusfredrik/Recept_app)',
         'Accept': 'text/html,application/xhtml+xml',
         'Accept-Language': 'sv-SE,sv;q=0.9,en;q=0.5',
       },

@@ -69,3 +69,26 @@ test('långa rader bryter inte listan, "Servering" är en delrubrik', () => {
     'kokta bönor à 400 g, sköljda och avrunna', 'Salt och peppar', 'Valfritt ris, t ex basmatiris eller havreris', 'Ev. Koriander']);
   assert.equal(r.steps.length, 2);
 });
+
+// Text som kopierats från en webbsida i Safari (påhittad).
+test('inklistrad text från en engelsk sida', async () => {
+  const { recipeFromText } = await import('../supabase/functions/_shared/parse.ts');
+  const r = recipeFromText(`Home
+Recipes
+Creamy Tomato Pasta
+Servings: 4
+Ingredients
+12 oz penne
+2 tbsp olive oil
+1 cup heavy cream
+salt to taste
+Instructions
+Cook the pasta until al dente.
+Stir in the cream and serve.
+Notes
+Leftovers keep for 3 days.`);
+  assert.equal(r.name, 'Creamy Tomato Pasta');
+  assert.equal(r.portions, 4);
+  assert.deepEqual(r.ingredients.map((i) => i.name), ['penne', 'olive oil', 'heavy cream', 'salt to taste']);
+  assert.deepEqual(r.steps, ['Cook the pasta until al dente.', 'Stir in the cream and serve.']);
+});

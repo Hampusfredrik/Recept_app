@@ -8,10 +8,10 @@ import { Ico, Spinner, Thumb, TopBar, useToast } from '../components/ui';
 import { KcalEstimate, useSaveFields } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
 import { domainOf } from '../lib/format';
-import type { ParsedIngredient } from '../../supabase/functions/_shared/parse';
+import { recipeFromText, type ParsedIngredient } from '../../supabase/functions/_shared/parse';
 
 interface Imported {
-  found: 'recipe' | 'html' | 'opengraph';
+  found: 'recipe' | 'html' | 'opengraph' | 'text';
   url: string;
   domain: string;
   name: string;
@@ -30,7 +30,10 @@ export function AddLink() {
   const [url, setUrl] = useState('');
   const [err, setErr] = useState('');
   const [clip, setClip] = useState<string | null>(null);
-  const [phase, setPhase] = useState<'input' | 'loading' | 'review'>('input');
+  const [phase, setPhase] = useState<'input' | 'loading' | 'review' | 'paste'>('input');
+  const [pasted, setPasted] = useState('');
+  const [pasteErr, setPasteErr] = useState('');
+  const [failed, setFailed] = useState(false);
   const [data, setData] = useState<Imported | null>(null);
   const [name, setName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -53,10 +56,21 @@ export function AddLink() {
     if (error || !res || res.error) {
       setPhase('input');
       const why = res?.error ?? (error ? (await functionError(error, 'import-recipe')).message : 'inget svar');
+      setFailed(true);
       return setErr(`Kunde inte läsa sidan: ${why}`);
     }
     setData(res as Imported);
     setName((res as Imported).name);
+    setPhase('review');
+  };
+
+  const readPasted = () => {
+    const r = recipeFromText(pasted);
+    if (!r.ingredients.length) return setPasteErr('Hittade inga ingredienser i texten. Kontrollera att ingredienslistan kom med.');
+    const u = url.trim();
+    const full = u ? (/^https?:\/\//i.test(u) ? u : 'https://' + u) : '';
+    setData({ found: 'text', url: full, domain: u ? domainOf(u) : '', name: r.name, image: null, portions: r.portions, ingredients: r.ingredients, steps: r.steps });
+    setName(r.name);
     setPhase('review');
   };
 
@@ -66,7 +80,7 @@ export function AddLink() {
     try {
       const id = await saveRecipe({
         name: name.trim() || 'Namnlöst recept', effort, portions: data.portions ?? 4, source_type: 'web',
-        url: data.url, domain: data.domain, fetched_at: new Date().toISOString(), image_url: data.image,
+        url: data.url || null, domain: data.domain || null, fetched_at: new Date().toISOString(), image_url: data.image,
         ingredients: data.ingredients, steps: data.steps, tagIds,
       });
       nav(`/recept/${id}`, { replace: true });
@@ -99,7 +113,32 @@ export function AddLink() {
             </button>
           )}
           <button className="btn btn-primary btn-block" onClick={fetchLink} style={{ height: 54, marginTop: 26, fontSize: 17 }}>Hämta recept</button>
+          <button className="btn btn-ghost" onClick={() => { setPhase('paste'); setPasteErr(''); }} style={{ alignSelf: 'center', marginTop: 10, color: 'var(--color-neutral-700)' }}>Klistra in receptets text i stället</button>
+          {failed && (
+            <div className="col" style={{ gap: 8, marginTop: 10, padding: '14px 16px', borderRadius: 24, background: 'var(--color-accent-100)', color: 'var(--color-accent-900)' }}>
+              <span style={{ fontSize: 14 }}>Vissa sidor tillåter inte att appen hämtar dem. Kopiera då receptet från sidan och klistra in texten.</span>
+              <button className="btn btn-secondary" onClick={() => { setPhase('paste'); setPasteErr(''); }} style={{ alignSelf: 'flex-start', height: 44, padding: '0 16px' }}>Klistra in receptets text</button>
+            </div>
+          )}
         </>
+      )}
+
+      {phase === 'paste' && (
+        <div className="col" style={{ gap: 14 }}>
+          <h1 style={{ margin: 0, fontSize: 30 }}>Klistra in receptet</h1>
+          <ol style={{ margin: 0, paddingLeft: 20, color: 'var(--color-neutral-700)', fontSize: 14, lineHeight: 1.5 }}>
+            <li>Öppna receptet i Safari.</li>
+            <li>Håll fingret på receptets namn och dra markeringen till sista steget.</li>
+            <li>Tryck Kopiera och klistra in här.</li>
+          </ol>
+          <textarea className="input" value={pasted} onChange={(e) => { setPasted(e.target.value); setPasteErr(''); }} rows={10}
+            placeholder={'Receptets namn\nIngredienser\n400 g pasta\n…\nGör så här\n…'} style={{ borderRadius: 16, minHeight: 220, padding: '12px 14px', fontSize: 15, lineHeight: 1.45 }} />
+          {pasteErr && <span className="err">{pasteErr}</span>}
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn btn-primary" onClick={readPasted} disabled={!pasted.trim()} style={{ height: 50, padding: '0 20px', fontSize: 16 }}>Läs receptet</button>
+            <button className="btn btn-ghost" onClick={() => setPhase('input')} style={{ height: 50 }}>Tillbaka</button>
+          </div>
+        </div>
       )}
 
       {phase === 'loading' && (
@@ -118,13 +157,14 @@ export function AddLink() {
       {phase === 'review' && data && (
         <div className="col" style={{ gap: 18 }}>
           <div className="col" style={{ gap: 4 }}>
-            <span style={{ fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-accent-2-700)', fontWeight: 700 }}>Hittat på {data.domain}</span>
+            <span style={{ fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-accent-2-700)', fontWeight: 700 }}>{data.domain ? `Hittat på ${data.domain}` : 'Inklistrad text'}</span>
             <h1 style={{ margin: 0, fontSize: 30 }}>Granska och spara</h1>
           </div>
           <Thumb id={data.url} image={data.image} radius={30} stripeW={8} style={{ height: 170 }} />
           <div className="field"><label>Namn</label><input className="input big" value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="col" style={{ gap: 8, padding: '14px 16px', borderRadius: 24, background: data.found === 'recipe' ? 'var(--color-accent-2-100)' : 'var(--color-accent-100)', color: data.found === 'recipe' ? 'var(--color-accent-2-900)' : 'var(--color-accent-900)' }}>
             {data.found === 'opengraph' && <span style={{ fontSize: 14 }}>Sidan saknar receptdata. Bara titel och bild kunde läsas.</span>}
+            {data.found === 'text' && <span style={{ fontSize: 14 }}>Receptet lästes från texten du klistrade in. Kontrollera ingredienser och steg efter att det sparats.</span>}
             {data.found === 'html' && <span style={{ fontSize: 14 }}>Sidan saknar receptdata, så receptet lästes ur texten. Kontrollera ingredienser och steg efter att det sparats.</span>}
             {[['Ingredienser', `${data.ingredients.length} st`], ['Steg', `${data.steps.length} st`], ['Portioner', data.portions ? String(data.portions) : '–']].map(([label, val]) => (
               <div key={label} className="row" style={{ gap: 10, fontSize: 14 }}>
