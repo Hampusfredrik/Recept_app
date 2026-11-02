@@ -1,13 +1,13 @@
 import { Link, NavLink } from 'react-router-dom';
-import { BookMarked, CalendarDays, ChefHat, House, Plus, Tag } from 'lucide-react';
+import { BookMarked, CalendarDays, ChefHat, House, MessageSquare, Plus, Tag } from 'lucide-react';
 import { Ico } from './ui';
 import { useUi } from './uiState';
 
 /** Flikrad längst ner på mobil, sidomeny till vänster på dator (se app.css). */
 export function TabBar({ desktopOnly = false }: { desktopOnly?: boolean }) {
   const { setSheet } = useUi();
-  const tab = (to: string, icon: typeof House, label: string) => (
-    <NavLink to={to} end={to === '/'} className={({ isActive }) => 'tab' + (isActive ? ' on' : '')}>
+  const tab = (to: string, icon: typeof House, label: string, extra = '') => (
+    <NavLink to={to} end={to === '/'} className={({ isActive }) => 'tab' + extra + (isActive ? ' on' : '')}>
       <Ico icon={icon} size={20} /><span>{label}</span>
     </NavLink>
   );
@@ -21,6 +21,8 @@ export function TabBar({ desktopOnly = false }: { desktopOnly?: boolean }) {
       </button>
       {tab('/veckan', CalendarDays, 'Veckan')}
       {tab('/taggar', Tag, 'Taggar')}
+      {/* Bara i sidomenyn på dator; på mobil nås feedback från startsidan och Ert kök. */}
+      {tab('/feedback', MessageSquare, 'Feedback', ' desk')}
     </nav>
   );
 }

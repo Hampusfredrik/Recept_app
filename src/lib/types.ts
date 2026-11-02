@@ -69,6 +69,9 @@ export interface Household {
 
 export interface Member { user_id: string; display_name: string | null }
 
+export interface ShoppingExtra { id: number; name: string; checked: boolean; created_by: string | null; created_at: string }
+export interface Feedback { id: number; text: string; created_by: string | null; created_at: string; done_at: string | null }
+
 export interface PlanEntry { date: string; recipe_id: string }
 
 export interface NewRecipe {

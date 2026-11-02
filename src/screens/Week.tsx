@@ -6,7 +6,7 @@ import { EffortIcons, Ico, WeekToggle } from '../components/ui';
 import { iso, isoWeek, MONTHS_SHORT, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
 
 export function Week() {
-  const { recipes, plan, setPlan } = useStore();
+  const { recipes, plan, setPlan, extras } = useStore();
   const { setSheet, weekOffset, setWeekOffset } = useUi();
   const nav = useNavigate();
   const days = weekAt(weekOffset);
@@ -33,16 +33,14 @@ export function Week() {
       <h1 className="h1" style={{ margin: '2px 0 6px' }}>Veckan</h1>
       <p style={{ margin: '0 0 14px', color: 'var(--color-neutral-700)', fontSize: 14 }}>{summary}</p>
       <div style={{ marginBottom: 16 }}><WeekToggle value={weekOffset} onChange={setWeekOffset} /></div>
-      {planned.length > 0 && (
-        <button onClick={() => nav('/veckan/handla')} className="row"
-          style={{ width: '100%', gap: 12, padding: '12px 16px 12px 12px', marginBottom: 16, borderRadius: 24, border: 0, background: 'var(--color-accent-2-100)', color: 'var(--color-accent-2-900)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-          <span style={{ flex: 'none', width: 40, height: 40, borderRadius: '50%', background: 'var(--color-accent-2-600)', display: 'grid', placeItems: 'center' }}><Ico icon={ShoppingBasket} size={18} color="var(--color-bg)" /></span>
-          <span className="col" style={{ flex: 1 }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Inköpslista</span>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Allt ni behöver till veckans {planned.length === 1 ? 'middag' : `${planned.length} middagar`}</span>
-          </span>
-        </button>
-      )}
+      <button onClick={() => nav('/veckan/handla')} className="row"
+        style={{ width: '100%', gap: 12, padding: '12px 16px 12px 12px', marginBottom: 16, borderRadius: 24, border: 0, background: 'var(--color-accent-2-100)', color: 'var(--color-accent-2-900)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+        <span style={{ flex: 'none', width: 40, height: 40, borderRadius: '50%', background: 'var(--color-accent-2-600)', display: 'grid', placeItems: 'center' }}><Ico icon={ShoppingBasket} size={18} color="var(--color-bg)" /></span>
+        <span className="col" style={{ flex: 1 }}>
+          <span style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>Inköpslista</span>
+          <span style={{ fontSize: 12, fontWeight: 600 }}>{planned.length ? `Allt ni behöver till veckans ${planned.length === 1 ? 'middag' : `${planned.length} middagar`}` : 'Lägg till egna varor'}{extras.some((e) => !e.checked) ? ` · ${extras.filter((e) => !e.checked).length} egna` : ''}</span>
+        </span>
+      </button>
       <div className="col" style={{ gap: 8 }}>
         {rows.map(({ d, date, r }, i) => {
           const isToday = date === t, past = date < t;

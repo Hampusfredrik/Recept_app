@@ -72,6 +72,7 @@ a:hover { color: var(--color-accent-600); }
 .detail-main { margin-top: 18px; }
 .tabbar .brand, .tabbar .plus-label { display: none; }
 .tabbar.desktop-only { display: none; }
+.tabbar .tab.desk { display: none; }
 
 /* Ark med sökfält ligger överst på mobilen, så att tangentbordet inte täcker listan. */
 @media (max-width: 899px) {
@@ -110,6 +111,7 @@ a:hover { color: var(--color-accent-600); }
     flex: none; height: 46px; flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 14px;
     border-radius: 999px; font-size: 15px;
   }
+  .tabbar .tab.desk { display: flex; }
   .tabbar .tab:hover { background: color-mix(in srgb, var(--color-bg) 8%, transparent); color: var(--color-neutral-200); }
   .tabbar .tab.on { background: color-mix(in srgb, var(--color-bg) 10%, transparent); }
   .tabbar .plus {

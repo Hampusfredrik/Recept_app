@@ -10,6 +10,7 @@ import { Home } from './screens/Home';
 import { Library } from './screens/Library';
 import { Week } from './screens/Week';
 import { Shopping } from './screens/Shopping';
+import { Feedback } from './screens/Feedback';
 import { Tags } from './screens/Tags';
 import { Pantry } from './screens/Pantry';
 import { Detail } from './screens/Detail';
@@ -80,6 +81,7 @@ function Gate() {
         <Route path="/recept/:id/redigera" element={<EditRecipe />} />
         <Route path="/veckan" element={<Week />} />
         <Route path="/veckan/handla" element={<Shopping />} />
+        <Route path="/feedback" element={<Feedback />} />
         <Route path="/taggar" element={<Tags />} />
         <Route path="/laga" element={<Pantry />} />
         <Route path="/ny/lank" element={<AddLink />} />

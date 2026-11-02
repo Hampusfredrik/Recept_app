@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
 import { Sheet, useToast } from '../components/ui';
 
@@ -17,6 +18,7 @@ export function HouseholdSheet({ onClose }: { onClose: () => void }) {
   };
   const others = members.filter((m) => m.user_id !== session?.user.id);
   const toast = useToast();
+  const nav = useNavigate();
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState(household?.name ?? '');
   const [code, setCode] = useState('');
@@ -113,6 +115,7 @@ export function HouseholdSheet({ onClose }: { onClose: () => void }) {
         </div>
         {joinErr && <span className="err" style={{ display: 'block', marginTop: 6 }}>{joinErr}</span>}
       </div>
+      <button className="btn btn-secondary" onClick={() => { onClose(); nav('/feedback'); }} style={{ alignSelf: 'flex-start', height: 44, padding: '0 16px' }}>Feedback och förslag till appen</button>
       <div className="row" style={{ justifyContent: 'space-between', gap: 10, fontSize: 13, color: 'var(--color-neutral-700)' }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Inloggad som {session?.user.email}</span>
         <button className="btn btn-ghost" onClick={async () => { onClose(); await signOut(); }} style={{ color: 'var(--color-accent-700)', flex: 'none' }}>Logga ut</button>

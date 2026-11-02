@@ -4,7 +4,7 @@ import { supabase } from './supabase';
 import { today } from './dates';
 import { TONE_ORDER } from './format';
 import { shrinkImage } from './images';
-import type { Household, Ingredient, NewRecipe, PlanEntry, Recipe, Step, Tag, Tone, Member } from './types';
+import type { Household, Ingredient, NewRecipe, PlanEntry, Recipe, Step, Tag, Tone, Member, ShoppingExtra, Feedback } from './types';
 
 interface Data {
   recipes: Recipe[];
@@ -34,6 +34,17 @@ interface Store extends Data {
   /** Namnet på en person i köket, eller null. */
   memberName: (userId: string | null | undefined) => string | null;
   setMyName: (name: string) => Promise<void>;
+  // egna varor i inköpslistan
+  extras: ShoppingExtra[];
+  addExtra: (name: string) => Promise<void>;
+  toggleExtra: (id: number) => Promise<void>;
+  removeExtra: (id: number) => Promise<void>;
+  clearCheckedExtras: () => Promise<void>;
+  // förslag på ändringar i appen
+  feedback: Feedback[];
+  addFeedback: (text: string) => Promise<void>;
+  setFeedbackDone: (id: number, done: boolean) => Promise<void>;
+  removeFeedback: (id: number) => Promise<void>;
   // recept
   saveRecipe: (r: NewRecipe) => Promise<string>;
   deleteRecipe: (id: string) => Promise<void>;
@@ -84,6 +95,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+  const [extras, setExtras] = useState<ShoppingExtra[]>([]);
+  const [feedback, setFeedback] = useState<Feedback[]>([]);
   const hid = household?.id ?? null;
 
   // ── auth ──
@@ -171,6 +184,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     }
     setMembers(list);
+
+    // Tabellerna kan saknas om migreringen inte körts: då är listorna tomma.
+    const [ex, fb] = await Promise.all([
+      supabase.from('shopping_extras').select('id,name,checked,created_by,created_at').eq('household_id', hid).order('created_at'),
+      supabase.from('feedback').select('id,text,created_by,created_at,done_at').eq('household_id', hid).order('created_at', { ascending: false }),
+    ]);
+    setExtras(ex.error ? [] : (ex.data as ShoppingExtra[]));
+    setFeedback(fb.error ? [] : (fb.data as Feedback[]));
     setLoaded(true);
   }, [hid, myId, myEmail]);
 
@@ -181,7 +202,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setLoaded(false);
     reload();
     const schedule = () => { clearTimeout(timer.current); timer.current = window.setTimeout(reload, 250); };
-    const tables = ['recipes', 'recipe_ingredients', 'recipe_steps', 'tags', 'recipe_tags', 'notes', 'checked_items', 'week_plan', 'pantry_items', 'household_members'];
+    const tables = ['recipes', 'recipe_ingredients', 'recipe_steps', 'tags', 'recipe_tags', 'notes', 'checked_items', 'week_plan', 'pantry_items', 'household_members', 'shopping_extras', 'feedback'];
     const ch = supabase.channel(`hh-${hid}`);
     for (const table of tables) {
       ch.on('postgres_changes', { event: 'INSERT', schema: 'public', table, filter: `household_id=eq.${hid}` }, schedule);
@@ -203,6 +224,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return supabase.from('recipe_ingredients').insert(rows.map(({ amount_max: _m, ...r }) => r));
     }
     return res;
+  };
+
+  // Som must, men med en tydlig hänvisning om tabellen inte finns än.
+  const migrated = <T,>(r: { data: T; error: { message: string; code?: string } | null }, table: string): T => {
+    if (r.error && (r.error.code === '42P01' || r.error.code === 'PGRST205' || (r.error.message.includes(table) && /does not exist|could not find/i.test(r.error.message)))) {
+      throw new Error('Det här kräver migreringen 20261106120000_extras_and_feedback.sql i Supabase.');
+    }
+    return must(r);
   };
 
   const must = <T,>(r: { data: T; error: { message: string } | null }): T => {
@@ -255,6 +284,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setMembers((m) => m.map((x) => (x.user_id === uid ? { ...x, display_name: clean } : x)));
         const res = await supabase.from('household_members').update({ display_name: clean }).eq('household_id', id).eq('user_id', uid);
         if (res.error) throw new Error(/display_name/.test(res.error.message) ? 'Namn kräver migreringen 20261105120000_recipe_author.sql i Supabase.' : res.error.message);
+      },
+      addExtra: async (name: string) => {
+        const household_id = need();
+        const clean = name.trim().slice(0, 120);
+        if (!clean) return;
+        const row = migrated(await supabase.from('shopping_extras').insert({ household_id, name: clean }).select('id,name,checked,created_by,created_at').single(), 'shopping_extras') as ShoppingExtra;
+        setExtras((x) => [...x.filter((e) => e.id !== row.id), row]);
+      },
+      toggleExtra: async (id: number) => {
+        const on = !extras.find((e) => e.id === id)?.checked;
+        setExtras((x) => x.map((e) => (e.id === id ? { ...e, checked: on } : e)));
+        migrated(await supabase.from('shopping_extras').update({ checked: on }).eq('id', id), 'shopping_extras');
+      },
+      removeExtra: async (id: number) => {
+        setExtras((x) => x.filter((e) => e.id !== id));
+        migrated(await supabase.from('shopping_extras').delete().eq('id', id), 'shopping_extras');
+      },
+      clearCheckedExtras: async () => {
+        const household_id = need();
+        setExtras((x) => x.filter((e) => !e.checked));
+        migrated(await supabase.from('shopping_extras').delete().eq('household_id', household_id).eq('checked', true), 'shopping_extras');
+      },
+      addFeedback: async (text: string) => {
+        const household_id = need();
+        const clean = text.trim().slice(0, 2000);
+        if (!clean) return;
+        const row = migrated(await supabase.from('feedback').insert({ household_id, text: clean }).select('id,text,created_by,created_at,done_at').single(), 'feedback') as Feedback;
+        setFeedback((x) => [row, ...x.filter((f) => f.id !== row.id)]);
+      },
+      setFeedbackDone: async (id: number, done: boolean) => {
+        const done_at = done ? new Date().toISOString() : null;
+        setFeedback((x) => x.map((f) => (f.id === id ? { ...f, done_at } : f)));
+        migrated(await supabase.from('feedback').update({ done_at }).eq('id', id), 'feedback');
+      },
+      removeFeedback: async (id: number) => {
+        setFeedback((x) => x.filter((f) => f.id !== id));
+        migrated(await supabase.from('feedback').delete().eq('id', id), 'feedback');
       },
       signOut: async () => { await supabase.auth.signOut(); setData({ recipes: [], tags: [], plan: [], pantry: [] }); },
 
@@ -435,7 +501,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         must(await supabase.from('pantry_items').delete().eq('household_id', household_id).eq('name', name));
       },
     };
-  }, [hid, data.tags, data.recipes, loadHousehold, reload, session]);
+  }, [hid, data.tags, data.recipes, loadHousehold, reload, session, extras]);
 
   const selectHousehold = useCallback((id: string) => {
     const h = households.find((x) => x.id === id);
@@ -447,6 +513,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const memberName = useCallback((userId: string | null | undefined) =>
     (userId ? members.find((m) => m.user_id === userId)?.display_name ?? null : null), [members]);
 
-  const value: Store = { session, members, memberName, authReady, household, households, selectHousehold, householdLoading, loaded, error, reload, ...data, ...actions };
+  const value: Store = { extras, feedback, session, members, memberName, authReady, household, households, selectHousehold, householdLoading, loaded, error, reload, ...data, ...actions };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
