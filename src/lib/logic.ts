@@ -85,6 +85,6 @@ export function filterRecipes(recipes: Recipe[], tags: Tag[], f: LibFilter) {
     f.sort === 'low' ? a.effort - b.effort : f.sort === 'high' ? b.effort - a.effort : b.created_at.localeCompare(a.created_at));
 }
 
-export const filterCount = (f: LibFilter) => f.eff.length + f.tagSel.length + (f.src !== 'alla' ? 1 : 0) + (f.sort !== 'new' ? 1 : 0) + (f.by ? 1 : 0);
+export const filterCount = (f: LibFilter) => f.eff.length + f.tagSel.length + (f.src !== 'alla' ? 1 : 0) + (f.sort !== 'new' ? 1 : 0);
 
 export const toggle = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);

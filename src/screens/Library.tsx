@@ -2,7 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, LayoutGrid, List, Search, SlidersHorizontal, X } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { useUi } from '../components/uiState';
+import { LIB_BY_KEY, useUi } from '../components/uiState';
 import { EffortIcons, EffortPicker, Ico, Sheet, TagPill, Thumb } from '../components/ui';
 import { emptyFilter, FAV_CHIP, filterCount, filterRecipes, toggle, type LibFilter } from '../lib/logic';
 import { EFFORT, sourceLabel } from '../lib/format';
@@ -16,7 +16,8 @@ export function Library() {
   const [showFilter, setShowFilter] = useState(false);
   const [showTags, setShowTags] = useState(false);
   const nav = useNavigate();
-  const items = filterRecipes(recipes, tags, f);
+  // Sparad person som inte (längre) finns bland köket namn räknas inte, så att listan aldrig blir tom utan synlig orsak.
+  const items = filterRecipes(recipes, tags, f.by && !named.some((m) => m.user_id === f.by) ? { ...f, by: null } : f);
   const n = filterCount(f);
   const set = (p: Partial<LibFilter>) => setFilter((x) => ({ ...x, ...p }));
   const tagById = (id: string) => tags.find((t) => t.id === id);
@@ -52,6 +53,16 @@ export function Library() {
         </button>
       </div>
 
+      {named.length > 1 && (
+        <div className="seg2" role="group" aria-label="Visa recept inlagda av" style={{ gridTemplateColumns: `repeat(${named.length + 1}, 1fr)`, marginBottom: 12 }}>
+          {[{ user_id: null as string | null, display_name: 'Alla' }, ...named].map((m) => (
+            <button key={m.user_id ?? 'alla'} className={(f.by ?? null) === m.user_id ? 'on' : ''} aria-pressed={(f.by ?? null) === m.user_id}
+              onClick={() => { set({ by: m.user_id }); try { if (m.user_id) localStorage.setItem(LIB_BY_KEY, m.user_id); else localStorage.removeItem(LIB_BY_KEY); } catch { /* ingen lagring */ } }}
+              style={{ height: 38 }}>{m.display_name}</button>
+          ))}
+        </div>
+      )}
+
       <div className="hscroll" style={{ marginBottom: 20 }}>
         {[{ id: null as string | null, name: 'Alla' }, ...(recipes.some((r) => r.is_favorite) || f.chip === FAV_CHIP ? [{ id: FAV_CHIP, name: '♥ Favoriter' }] : []), ...tags].map((c) => (
           <button key={c.id ?? 'alla'} className={'chip' + (f.chip === c.id ? ' on' : '')} onClick={() => set({ chip: c.id })} style={{ padding: '0 16px' }}>{c.name}</button>
@@ -63,7 +74,7 @@ export function Library() {
         <div className="col" style={{ alignItems: 'flex-start', gap: 10, padding: '32px 4px' }}>
           <h3 style={{ margin: 0, fontSize: 22 }}>{recipes.length ? 'Inga recept matchar' : 'Inga recept än'}</h3>
           <p className="muted" style={{ margin: 0 }}>{recipes.length ? 'Prova en annan sökning eller rensa filtren.' : 'Tryck på plusknappen för att spara ert första recept.'}</p>
-          {recipes.length > 0 && <button className="btn btn-secondary" onClick={() => setFilter(emptyFilter)}>Rensa filter</button>}
+          {recipes.length > 0 && <button className="btn btn-secondary" onClick={() => { setFilter(emptyFilter); try { localStorage.removeItem(LIB_BY_KEY); } catch { /* ingen lagring */ } }}>Rensa filter</button>}
         </div>
       )}
 
@@ -128,14 +139,6 @@ export function Library() {
               ))}
             </div>
           </div>
-          {named.length > 1 && (
-            <div className="col" style={{ gap: 8 }}>
-              <span className="label">Inlagt av</span>
-              <div className="wrap">
-                {named.map((m) => <button key={m.user_id} className={'chip' + (f.by === m.user_id ? ' on' : '')} onClick={() => set({ by: f.by === m.user_id ? null : m.user_id })}>{m.display_name}</button>)}
-              </div>
-            </div>
-          )}
           <div className="col" style={{ gap: 8 }}>
             <span className="label">Taggar</span>
             <div className="wrap">{tags.map((t) => <button key={t.id} className={'chip' + (f.tagSel.includes(t.id) ? ' on' : '')} onClick={() => set({ tagSel: toggle(f.tagSel, t.id) })}>{t.name}</button>)}</div>

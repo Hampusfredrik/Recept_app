@@ -5,6 +5,8 @@ import { RandomSheet } from '../sheets/RandomSheet';
 import { PickSheet } from '../sheets/PickSheet';
 import { HouseholdSheet } from '../sheets/HouseholdSheet';
 
+export const LIB_BY_KEY = 'receptappen.libBy';
+
 export type SheetState =
   | { kind: 'add' }
   | { kind: 'random'; pickDate?: string; by?: string | null }
@@ -27,7 +29,8 @@ const Ctx = createContext<Ui | null>(null);
 export const useUi = () => useContext(Ctx)!;
 
 export function UiProvider({ children }: { children: ReactNode }) {
-  const [filter, setFilter] = useState<LibFilter>(emptyFilter);
+  // Vems recept receptlistan visar sparas på enheten.
+  const [filter, setFilter] = useState<LibFilter>(() => { try { return { ...emptyFilter, by: localStorage.getItem(LIB_BY_KEY) }; } catch { return emptyFilter; } });
   const [view, setView] = useState<'grid' | 'list'>('list');
   const [sheet, setSheet] = useState<SheetState>(null);
   const [weekOffset, setWeekOffset] = useState(0);
