@@ -103,7 +103,7 @@ export function Detail() {
             <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>Senast lagad</span>
             <span style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>{sinceLabel}</span>
           </span>
-          <button onClick={async () => { await cookedToday(r.id); toast('Markerad som lagad idag'); }}
+          <button onClick={async () => { await cookedToday(r.id); toast('Lagad idag · inlagd i veckan'); }}
             className="row" style={{ flex: 'none', gap: 6, height: 40, padding: '0 14px', borderRadius: 999, border: 0, cursor: 'pointer', font: '700 13px var(--font-body)',
               background: cooked ? 'var(--color-accent-2-600)' : 'var(--color-bg)', color: cooked ? 'var(--color-bg)' : 'var(--color-accent-2-900)' }}>
             <Ico icon={CircleCheck} size={16} />{cooked ? 'Lagad idag' : 'Lagade idag'}

@@ -367,9 +367,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       },
       cookedToday: async (id: string) => {
         const t = today();
+        const household_id = need();
         patchRecipe(id, (r) => ({ ...r, last_cooked_on: t, checked: [] }));
+        // Det som lagades läggs in på dagens datum i veckan (ersätter det som var planerat idag).
+        setData((d) => ({ ...d, plan: [...d.plan.filter((p) => p.date !== t), { date: t, recipe_id: id }] }));
         must(await supabase.from('recipes').update({ last_cooked_on: t }).eq('id', id));
         must(await supabase.from('checked_items').delete().eq('recipe_id', id));
+        must(await supabase.from('week_plan').upsert({ household_id, date: t, recipe_id: id }));
       },
       toggleChecked: async (recipeId: string, ingredientId: number) => {
         const household_id = need();

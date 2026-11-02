@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Plus, ShoppingBasket, X } from 'lucide-react';
+import { CircleCheck, Plus, ShoppingBasket, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { useUi } from '../components/uiState';
 import { EffortIcons, Ico, WeekToggle } from '../components/ui';
@@ -56,7 +56,9 @@ export function Week() {
                 <div className="row" style={{ flex: 1, minWidth: 0, gap: 10, padding: '10px 6px 10px 14px', borderRadius: 22, background: 'var(--color-surface)', opacity: op }}>
                   <div onClick={() => nav(`/recept/${r.id}`)} className="col" style={{ flex: 1, minWidth: 0, gap: 3, cursor: 'pointer' }}>
                     <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.15 }}>{r.name}</span>
-                    <EffortIcons n={r.effort} size={12} />
+                    {r.last_cooked_on === date
+                      ? <span className="row" style={{ gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--color-accent-2-700)' }}><Ico icon={CircleCheck} size={14} />Lagades den här dagen</span>
+                      : <EffortIcons n={r.effort} size={12} />}
                   </div>
                   <button className="hover-n300" onClick={() => setPlan(date, null)} aria-label="Ta bort"
                     style={{ flex: 'none', width: 36, height: 36, border: 0, borderRadius: '50%', background: 'transparent', cursor: 'pointer', color: 'var(--color-neutral-600)', display: 'grid', placeItems: 'center' }}>
