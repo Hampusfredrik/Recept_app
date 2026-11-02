@@ -1,5 +1,5 @@
 import { Link, NavLink } from 'react-router-dom';
-import { BookMarked, CalendarDays, ChefHat, House, MessageSquare, Plus, Tag } from 'lucide-react';
+import { BookMarked, CalendarDays, ChefHat, House, MessageSquare, Plus, ShoppingBasket, Tag } from 'lucide-react';
 import { Ico } from './ui';
 import { useUi } from './uiState';
 
@@ -7,7 +7,7 @@ import { useUi } from './uiState';
 export function TabBar({ desktopOnly = false }: { desktopOnly?: boolean }) {
   const { setSheet } = useUi();
   const tab = (to: string, icon: typeof House, label: string, extra = '') => (
-    <NavLink to={to} end={to === '/'} className={({ isActive }) => 'tab' + extra + (isActive ? ' on' : '')}>
+    <NavLink to={to} end={to === '/' || to === '/veckan'} className={({ isActive }) => 'tab' + extra + (isActive ? ' on' : '')}>
       <Ico icon={icon} size={20} /><span>{label}</span>
     </NavLink>
   );
@@ -20,7 +20,9 @@ export function TabBar({ desktopOnly = false }: { desktopOnly?: boolean }) {
         <Ico icon={Plus} size={24} /><span className="plus-label">Lägg till recept</span>
       </button>
       {tab('/veckan', CalendarDays, 'Veckan')}
-      {tab('/taggar', Tag, 'Taggar')}
+      {tab('/veckan/handla', ShoppingBasket, 'Inköp')}
+      {/* Taggar nås från receptlistan på mobil; i sidomenyn på dator finns de kvar. */}
+      {tab('/taggar', Tag, 'Taggar', ' desk')}
       {/* Bara i sidomenyn på dator; på mobil nås feedback från startsidan och Ert kök. */}
       {tab('/feedback', MessageSquare, 'Feedback', ' desk')}
     </nav>
