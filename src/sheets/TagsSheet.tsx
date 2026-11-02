@@ -6,7 +6,7 @@ import { TONES } from '../lib/format';
 
 /** Alla taggar: lägg till, byt färg, ta bort (bara taggar som inget recept har). */
 export function TagsSheet({ onClose, onPick }: { onClose: () => void; onPick: (tagId: string) => void }) {
-  const { tags, recipes, addTag, cycleTagTone, deleteTag } = useStore();
+  const { tags, recipes, addTag, cycleTagTone, deleteTag, setTagNoSuggest } = useStore();
   const toast = useToast();
   const [v, setV] = useState('');
   const [err, setErr] = useState('');
@@ -39,7 +39,7 @@ export function TagsSheet({ onClose, onPick }: { onClose: () => void; onPick: (t
         </div>
         {err && <span className="err">{err}</span>}
       </div>
-      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Tryck på färgen för att byta. Tryck på namnet för att se taggens recept. En tagg kan bara tas bort när inget recept har den.</span>
+      <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Tryck på färgen för att byta. Tryck på namnet för att se taggens recept. Kryssa i ”Inte i förslag” för taggar vars recept inte ska föreslås på startsidan eller komma med när ni slumpar, t.ex. efterrätter. En tagg kan bara tas bort när inget recept har den.</span>
       <div className="col" style={{ overflowY: 'auto', margin: '0 -4px', padding: '0 4px' }}>
         {tags.length === 0 && <span className="muted" style={{ padding: '8px 0' }}>Inga taggar än.</span>}
         {tags.map((t) => {
@@ -55,6 +55,11 @@ export function TagsSheet({ onClose, onPick }: { onClose: () => void; onPick: (t
                 <span style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>{t.name}</span>
                 <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>{n === 0 ? 'Inga recept' : n === 1 ? '1 recept' : `${n} recept`}</span>
               </button>
+              <label className="row" style={{ flex: 'none', gap: 6, fontSize: 12, color: 'var(--color-neutral-800)', cursor: 'pointer' }}>
+                <input type="checkbox" checked={!!t.no_suggest} onChange={(e) => setTagNoSuggest(t.id, e.target.checked).catch((er) => toast(er instanceof Error ? er.message : String(er)))}
+                  style={{ width: 20, height: 20, accentColor: 'var(--color-accent)', margin: 0 }} />
+                Inte i förslag
+              </label>
               <button className="hover-surface" disabled={n > 0} onClick={() => remove(t.id, t.name)}
                 aria-label={n > 0 ? `${t.name} används i ${n} recept och kan inte tas bort` : `Ta bort ${t.name}`}
                 title={n > 0 ? 'Används i recept. Ta bort taggen från recepten först.' : 'Ta bort'}

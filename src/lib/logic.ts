@@ -1,6 +1,12 @@
 import { daysSince, iso, weekDates, fromIso, today, WEEKDAYS } from './dates';
 import type { PlanEntry, Recipe, Tag } from './types';
 
+/** Recept som får föreslås: inga taggar markerade "Inte i förslag" (t.ex. Efterrätt). */
+export function suggestable(recipes: Recipe[], tags: Tag[], allowTags: string[] = []): Recipe[] {
+  const blocked = new Set(tags.filter((t) => t.no_suggest && !allowTags.includes(t.id)).map((t) => t.id));
+  return blocked.size ? recipes.filter((r) => !r.tagIds.some((t) => blocked.has(t))) : recipes;
+}
+
 /** Aldrig lagade räknas som längst sedan. */
 export const daysOf = (r: Recipe) => daysSince(r.last_cooked_on) ?? 99999;
 export const byLongestAgo = (a: Recipe, b: Recipe) => daysOf(b) - daysOf(a);

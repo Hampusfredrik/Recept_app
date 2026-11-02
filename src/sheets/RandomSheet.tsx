@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowUpRight, Shuffle } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { EffortPicker, Ico, Sheet, Thumb } from '../components/ui';
-import { dayName, toggle } from '../lib/logic';
+import { dayName, toggle, suggestable } from '../lib/logic';
 import { daysSince, lastLabel } from '../lib/dates';
 import { EFFORT } from '../lib/format';
 
@@ -18,7 +18,8 @@ export function RandomSheet({ onClose, pickDate, by }: { onClose: () => void; pi
   const [resultId, setResultId] = useState<string | null>(null);
   const [none, setNone] = useState(false);
 
-  const pool = recipes.filter((r) => (!eff.length || eff.includes(r.effort)) && (!tagSel.length || tagSel.some((t) => r.tagIds.includes(t))));
+  // Taggar markerade "Inte i förslag" utesluts, utom när man själv har valt taggen.
+  const pool = suggestable(recipes, tags, tagSel).filter((r) => (!eff.length || eff.includes(r.effort)) && (!tagSel.length || tagSel.some((t) => r.tagIds.includes(t))));
   const res = resultId ? recipes.find((r) => r.id === resultId) : undefined;
   const reset = () => { setResultId(null); setNone(false); };
 

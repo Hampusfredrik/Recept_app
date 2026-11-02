@@ -36,6 +36,8 @@ export interface Tag {
   name: string;
   tone: Tone;
   created_at: string;
+  /** Recept med taggen föreslås inte på startsidan och kommer inte med när man slumpar. */
+  no_suggest?: boolean;
 }
 
 export interface Recipe {

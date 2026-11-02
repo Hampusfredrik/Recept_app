@@ -4,14 +4,14 @@ import { CalendarDays, MessageSquare, Refrigerator, RotateCcw, Shuffle, Users } 
 import { useStore } from '../lib/store';
 import { useUi } from '../components/uiState';
 import { EffortIcons, Ico, Thumb, useToast } from '../components/ui';
-import { byLongestAgo, dayName, firstEmptyDay, heroRecipe } from '../lib/logic';
+import { byLongestAgo, dayName, firstEmptyDay, heroRecipe, suggestable } from '../lib/logic';
 import { daysSince, lastLabel, today, todayKicker } from '../lib/dates';
 import { EFFORT } from '../lib/format';
 
 const BY_KEY = 'receptappen.homeBy';
 
 export function Home() {
-  const { recipes: allRecipes, plan, setPlan, household, feedback, members, memberName } = useStore();
+  const { recipes: allRecipes, tags, plan, setPlan, household, feedback, members, memberName } = useStore();
   const named = members.filter((m) => m.display_name);
   // Vald person på startsidan (sparas på enheten). Bara den personens recept visas.
   const [byPick, setByPick] = useState<string | null>(() => { try { return localStorage.getItem(BY_KEY); } catch { return null; } });
@@ -20,7 +20,8 @@ export function Home() {
     setByPick(id);
     try { if (id) localStorage.setItem(BY_KEY, id); else localStorage.removeItem(BY_KEY); } catch { /* ingen lagring */ }
   };
-  const recipes = by ? allRecipes.filter((r) => r.created_by === by) : allRecipes;
+  // Förslagen: vald persons recept, utan taggar markerade "Inte i förslag".
+  const recipes = suggestable(by ? allRecipes.filter((r) => r.created_by === by) : allRecipes, tags);
   const openFeedback = feedback.filter((f) => !f.done_at).length;
   const { setSheet } = useUi();
   const nav = useNavigate();

@@ -62,6 +62,7 @@ interface Store extends Data {
   // taggar
   addTag: (name: string) => Promise<Tag>;
   cycleTagTone: (id: string) => Promise<void>;
+  setTagNoSuggest: (id: string, on: boolean) => Promise<void>;
   deleteTag: (id: string) => Promise<void>;
   // vecka
   toggleFavorite: (recipeId: string) => Promise<void>;
@@ -515,6 +516,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const tag = must(await supabase.from('tags').insert({ household_id, name, tone }).select('*').single()) as Tag;
         setData((d) => ({ ...d, tags: [...d.tags, tag] }));
         return tag;
+      },
+      setTagNoSuggest: async (id: string, on: boolean) => {
+        setData((d) => ({ ...d, tags: d.tags.map((x) => (x.id === id ? { ...x, no_suggest: on } : x)) }));
+        const res = await supabase.from('tags').update({ no_suggest: on }).eq('id', id);
+        if (res.error) {
+          setData((d) => ({ ...d, tags: d.tags.map((x) => (x.id === id ? { ...x, no_suggest: !on } : x)) }));
+          throw new Error(/no_suggest/.test(res.error.message) ? 'Det här kräver migreringen 20261108120000_tag_no_suggest.sql i Supabase.' : res.error.message);
+        }
       },
       cycleTagTone: async (id: string) => {
         const t = data.tags.find((x) => x.id === id);
