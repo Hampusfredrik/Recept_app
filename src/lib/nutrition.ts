@@ -5,6 +5,7 @@ import { matchFood } from './match';
 import { parseIngredientLine } from '../../supabase/functions/_shared/parse';
 import { isStockCube } from '../data/pieceWeights';
 import { computeNutrition, isSpice, weightUnit, type Per100 } from './nutritionCalc';
+import { forNutrition } from './english';
 const VOLUME = (u: string) => ML_PER_UNIT[u] != null;
 export * from './nutritionCalc';
 
@@ -69,10 +70,13 @@ export { matchFood };
 /** Matchar om alla ingredienser med nuvarande regler (utom livsmedel markerade som egna val). */
 export async function rematchAll(ingredients: Ingredient[], update: (id: number, p: Partial<Ingredient>) => Promise<void>) {
   const foods = await foodList();
+  // Engelska recept matchas med svenska namn (src/lib/english.ts).
+  const sv = new Map(forNutrition(ingredients).map((v) => [v.id, v]));
   let changed = 0;
   for (const i of ingredients) {
-    if (i.lv_manual || isStockCube(i.name, i.unit) || isSpice(i)) continue;
-    const m = matchFood(i.name, foods);
+    const v = sv.get(i.id) ?? i;
+    if (i.lv_manual || isStockCube(v.name, v.unit) || isSpice(v)) continue;
+    const m = matchFood(v.name, foods);
     const patch: Partial<Ingredient> = m
       ? { lv_food_id: m.food.id, lv_food_name: m.food.name, match_confidence: m.sure ? 'sure' : 'unsure' }
       : { lv_food_id: null, lv_food_name: null, match_confidence: 'unsure' };
@@ -84,6 +88,9 @@ export async function rematchAll(ingredients: Ingredient[], update: (id: number,
 }
 
 export async function matchMissing(ingredients: Ingredient[], update: (id: number, p: Partial<Ingredient>) => Promise<void>) {
+  // Engelska recept matchas med svenska namn (src/lib/english.ts); texten i receptet ändras inte.
+  const sv = new Map(forNutrition(ingredients).map((v) => [v.id, v]));
+  const view = (i: Ingredient) => { const v = sv.get(i.id); return v ? { ...i, name: v.name, unit: v.unit } : i; };
   const fixed = ingredients.map((i) => {
     if (i.unit || i.amount == null) return { i, patch: {} as Partial<Ingredient> };
     const p = parseIngredientLine(`${i.amount} ${i.name}`);
@@ -94,12 +101,12 @@ export async function matchMissing(ingredients: Ingredient[], update: (id: numbe
   const stale = (i: Ingredient) => i.lv_food_id != null && !i.lv_manual && i.match_confidence === 'unsure';
 
   // Buljongtärningar räknas bara som salt och kryddor inte alls, så de behöver inget livsmedel.
-  const todo = fixed.filter(({ i, patch }) => !isStockCube(i.name, i.unit) && !isSpice(i) && (i.lv_food_id == null || stale(i) || Object.keys(patch).length));
+  const todo = fixed.filter(({ i, patch }) => !isStockCube(view(i).name, view(i).unit) && !isSpice(view(i)) && (i.lv_food_id == null || stale(i) || Object.keys(patch).length));
   if (!todo.length) return;
   const foods = await foodList();
   await Promise.all(todo.map(({ i, patch }) => {
     if (i.lv_food_id != null && !stale(i)) return update(i.id, patch);
-    const m = matchFood(i.name, foods);
+    const m = matchFood(view(i).name, foods);
     // Samma livsmedel som redan är kopplat (t.ex. ingen kokt potatis i databasen): skriv inte igen.
     if (m && m.food.id === i.lv_food_id) return Object.keys(patch).length ? update(i.id, patch) : Promise.resolve();
     if (m) return update(i.id, { ...patch, lv_food_id: m.food.id, lv_food_name: m.food.name, match_confidence: m.sure ? 'sure' : 'unsure' });
@@ -147,7 +154,9 @@ export async function saveUnitWeight(householdId: string, lvFoodId: number, unit
 export async function estimateKcal(lines: { amount: number | null; amount_max?: number | null; unit: string; name: string }[], portions: number): Promise<number | null> {
   if (!lines.length) return null;
   const foods = await foodList();
-  const ings: Ingredient[] = lines.map((l, k) => {
+  const sv = forNutrition(lines.map((l, k) => ({ id: k, recipe_id: '', position: k, amount: l.amount, amount_max: l.amount_max ?? null, unit: l.unit, name: l.name,
+    grams: null, lv_food_id: null, lv_food_name: null, match_confidence: null }) as Ingredient));
+  const ings: Ingredient[] = sv.map((l, k) => {
     const m = matchFood(l.name, foods);
     return { id: k, recipe_id: '', position: k, amount: l.amount, amount_max: l.amount_max ?? null, unit: l.unit, name: l.name, grams: null,
       lv_food_id: m?.food.id ?? null, lv_food_name: m?.food.name ?? null, match_confidence: m ? (m.sure ? 'sure' : 'unsure') : null };

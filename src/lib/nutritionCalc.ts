@@ -30,7 +30,7 @@ export const isSpice = (i: Ingredient) => SPICE.test(coreName(i.name)) || HERB_B
 /** Kryddor, salt och vatten: försumbar näring, och appen frågar aldrig efter vikt för dem. */
 export function isNegligible(i: Ingredient): boolean {
   const core = coreName(i.name);
-  return ['tsk', 'krm', 'nypa'].includes(i.unit.toLowerCase()) || WATER.has(core) || SEASONING.has(core) || isSpice(i);
+  return ['tsk', 'krm', 'nypa', 'tsp'].includes(i.unit.toLowerCase()) || WATER.has(core) || SEASONING.has(core) || isSpice(i);
 }
 
 

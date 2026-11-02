@@ -20,7 +20,9 @@ export function json(body: unknown, status = 200): Response {
 // Ren TypeScript utan Deno- eller webbläsar-API:er. Importeras både av
 // Edge-funktionen (Deno) och av frontend (Vite) så att reglerna är identiska.
 
-export const UNITS = ['g', 'kg', 'dl', 'l', 'ml', 'cl', 'msk', 'tsk', 'krm', 'st', 'burk', 'paket', 'kruka'];
+export const UNITS = ['g', 'kg', 'dl', 'l', 'ml', 'cl', 'msk', 'tsk', 'krm', 'st', 'burk', 'paket', 'kruka',
+  // Engelska mått sparas som de skrevs; näringsberäkningen räknar om dem (src/lib/english.ts).
+  'cup', 'cups', 'tbsp', 'tablespoon', 'tablespoons', 'tsp', 'teaspoon', 'teaspoons', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds', 'cans', 'can', 'cloves', 'clove', 'pinch'];
 // Utskrivna former → förkortning. Längre ord först i regexen så att "liter" inte läses som "l".
 const UNIT_ALIASES: Record<string, string> = {
   gram: 'g', kilo: 'kg', kilogram: 'kg', liter: 'l', deciliter: 'dl', centiliter: 'cl', milliliter: 'ml',

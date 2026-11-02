@@ -5,6 +5,7 @@ import { Ico, Sheet, Spinner, useToast } from '../components/ui';
 import { ML_PER_UNIT } from '../data/units';
 import { STOCK_CUBE_SALT_G } from '../data/pieceWeights';
 import { computeNutrition, isNegligible, fetchNutrients, rematchAll, fetchUnitWeights, foodList, matchFood, matchMissing, saveUnitWeight, toGrams, weightUnit, type LvFood, type Per100 } from '../lib/nutrition';
+import { forNutrition } from '../lib/english';
 import { amountLabel, fmt } from '../lib/format';
 import { NNR } from '../data/nnr';
 import type { Ingredient, Recipe } from '../lib/types';
@@ -41,7 +42,10 @@ export function NutritionTab({ r }: { r: Recipe }) {
     setWeights(await fetchUnitWeights(ids, household?.id));
   };
 
-  const res = useMemo(() => (foods ? computeNutrition(r.ingredients, r.portions, foods, weights) : null), [foods, weights, r.ingredients, r.portions]);
+  // Engelska recept: svenska namn och mått för matchning och beräkning (receptet visas som det skrevs).
+  const sv = useMemo(() => forNutrition(r.ingredients), [r.ingredients]);
+  const english = sv !== r.ingredients;
+  const res = useMemo(() => (foods ? computeNutrition(sv, r.portions, foods, weights) : null), [foods, weights, sv, r.portions]);
 
   if (!r.ingredients.length) {
     return (
@@ -153,7 +157,8 @@ export function NutritionTab({ r }: { r: Recipe }) {
           <h4 style={{ margin: '8px 0 2px', fontSize: 19 }}>Matchat mot Livsmedelsverket</h4>
           <RematchButton r={r} />
         </div>
-        <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 6 }}>Varje ingrediens kopplas till ett livsmedel i databasen. Tryck för att byta.</span>
+        <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 6 }}>Varje ingrediens kopplas till ett livsmedel i databasen. Tryck för att byta.
+          {english && ' Receptet är på engelska: ingredienserna översätts till svenska för matchningen, och amerikanska mått (cup, tbsp, tsp, oz, lb) räknas om.'}</span>
         {r.ingredients.map((i) => {
           const sure = i.match_confidence === 'sure' && i.lv_food_id != null;
           const noWeight = res.noWeight.some((x) => x.id === i.id);
@@ -184,15 +189,15 @@ export function NutritionTab({ r }: { r: Recipe }) {
         {res.standard.length > 0 && ' Vikter per styck och per dl kommer från Livsmedelsverket (PM 2024) och Mattilsynet m.fl. (Mål, vekt og porsjonsstørrelser for matvarer, 2015), utom lök, morot, ägg, citron och burkar (krossade tomater 400 g, bönor 230 g, majs 200 g) som är era egna värden. Egna vikter går alltid före.'}
       </p>
 
-      {swap && <FoodSheet ing={swap} onClose={() => setSwap(null)} weights={weights} />}
+      {swap && <FoodSheet ing={swap} sv={sv.find((x) => x.id === swap.id)} onClose={() => setSwap(null)} weights={weights} />}
     </div>
   );
 }
 
-function FoodSheet({ ing, onClose, weights }: { ing: Ingredient; onClose: () => void; weights: Map<string, number> }) {
+function FoodSheet({ ing, sv, onClose, weights }: { ing: Ingredient; sv?: Ingredient; onClose: () => void; weights: Map<string, number> }) {
   const { updateIngredient } = useStore();
   const [list, setList] = useState<LvFood[] | null>(null);
-  const [q, setQ] = useState(ing.name);
+  const [q, setQ] = useState(sv?.name ?? ing.name);
   const [grams, setGrams] = useState(ing.grams != null ? String(ing.grams) : '');
   useEffect(() => { foodList().then(setList).catch(() => setList([])); }, []);
 
@@ -219,7 +224,7 @@ function FoodSheet({ ing, onClose, weights }: { ing: Ingredient; onClose: () => 
     const g = parseFloat(grams.replace(',', '.'));
     return run({ grams: Number.isFinite(g) && g > 0 ? g : null }, 'Vikten är sparad');
   };
-  const est = toGrams({ ...ing, grams: null }, weights).grams;
+  const est = toGrams({ ...(sv ?? ing), grams: null }, weights).grams;
 
   return (
     <Sheet onClose={onClose} className="sheet-top" style={{ gap: 12 }}>

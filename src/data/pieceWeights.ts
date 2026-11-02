@@ -81,7 +81,7 @@ export const DL_WEIGHTS: { grams: number; source: string; names: string[] }[] = 
   { grams: 108, source: LV, names: ['grekisk yoghurt'] },
   { grams: 105, source: LV, names: ['turkisk yoghurt'] },
   { grams: 69, source: LV, names: ['majs', 'majskorn'] },
-  { grams: 80, source: MT, names: ['ris', 'jasminris', 'basmatiris', 'långkornigt ris'] },
+  { grams: 80, source: MT, names: ['ris', 'jasminris', 'basmatiris', 'långkornigt ris', 'risottoris', 'arborioris'] },
   { grams: 75, source: MT, names: ['couscous'] },
   { grams: 90, source: MT, names: ['socker', 'strösocker'] },
   { grams: 70, source: MT, names: ['farinsocker', 'brunt socker'] },
