@@ -65,3 +65,9 @@ test('intervall sparas med övre värde', () => {
   assert.deepEqual(parseIngredientLine('2–3 tsk curry'), { amount: 2, amount_max: 3, unit: 'tsk', name: 'curry' });
   assert.deepEqual(parseIngredientLine('1,5-2 dl grädde'), { amount: 1.5, amount_max: 2, unit: 'dl', name: 'grädde' });
 });
+
+test('cup blir dl', () => {
+  assert.deepEqual(parseIngredientLine('1 cup heavy cream'), { amount: 2.37, unit: 'dl', name: 'heavy cream' });
+  assert.deepEqual(parseIngredientLine('1/2 cups sugar'), { amount: 1.18, unit: 'dl', name: 'sugar' });
+  assert.deepEqual(parseIngredientLine('1-2 cups water'), { amount: 2.37, amount_max: 4.73, unit: 'dl', name: 'water' });
+});

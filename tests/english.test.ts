@@ -29,9 +29,9 @@ test('amerikanska mått och burkvikter räknas om, texten i receptet ändras int
   const src = ings(['1 (28 oz) can crushed tomatoes', '2 cups all-purpose flour', '1 stick butter', '3 cloves garlic']);
   const [tom, flour, butter, garlic] = forNutrition(src);
   assert.deepEqual([tom.amount, tom.unit, tom.name], [28, 'oz', 'krossade tomater']);
-  assert.deepEqual([flour.amount, flour.unit, flour.name], [2, 'cup', 'vetemjöl']);
+  assert.deepEqual([flour.amount, flour.unit, flour.name], [4.73, 'dl', 'vetemjöl']);
   assert.deepEqual([butter.amount, butter.unit, butter.name], [4, 'oz', 'smör']);
   assert.deepEqual([garlic.amount, garlic.unit, garlic.name], [3, 'st', 'vitlöksklyfta']);
   assert.equal(src[1].name, 'all-purpose flour');
-  assert.equal(src[1].unit, 'cups');
+  assert.equal(src[1].unit, 'dl');
 });

@@ -43,6 +43,9 @@ export interface ParsedIngredient {
 const FRACTIONS: Record<string, number> = { '½': 0.5, '¼': 0.25, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3 };
 
 /** Övre värdet i ett intervall ("2-3" → 3), annars null. */
+/** 1 US cup i dl (236,5882365 ml). */
+export const CUP_DL = 2.365882365;
+
 export function amountMax(raw: string): number | null {
   const range = raw.trim().match(/^[\d.,]+\s*[-–]\s*([\d.,]+)$/);
   return range ? parseAmount(range[1]) : null;
@@ -73,9 +76,15 @@ export function parseIngredientLine(line: string): ParsedIngredient {
   const t = line.trim().replace(/\s+/g, ' ').replace(/^(ca\.?|cirka|ungefär)\s+(?=[\d½¼¾⅓⅔])/i, '');
   const m = t.match(INGR_LINE);
   if (!m) return { amount: null, unit: '', name: t };
-  const amount = parseAmount(m[1]);
-  const max = amountMax(m[1]);
-  return { amount, ...(max != null && amount != null && max > amount ? { amount_max: max } : {}), unit: unitOf(m[2]), name: m[3].trim() };
+  let amount = parseAmount(m[1]);
+  let max = amountMax(m[1]);
+  let unit = unitOf(m[2]);
+  // Engelska recept: cup räknas om till dl (1 US cup = 236,5882365 ml).
+  if (unit === 'cup' || unit === 'cups') {
+    const dl = (x: number | null) => (x == null ? null : Math.round(x * CUP_DL * 100) / 100);
+    amount = dl(amount); max = dl(max); unit = 'dl';
+  }
+  return { amount, ...(max != null && amount != null && max > amount ? { amount_max: max } : {}), unit, name: m[3].trim() };
 }
 
 /** Ser raden ut som en ingrediens enligt reglerna i handoffen? */
