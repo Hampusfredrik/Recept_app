@@ -3,7 +3,7 @@
 // Kräver inloggad användare (verify_jwt = true), så den kan inte användas som öppen proxy.
 
 import { corsHeaders, json } from '../_shared/cors.ts';
-import { decodeBody, decodeHtml, fixMojibake, parseIngredientLine, parseYield, recipeFromHtml } from '../_shared/parse.ts';
+import { decodeBody, decodeHtml, fixMojibake, groupKey, ingredientGroups, parseIngredientLine, parseYield, recipeFromHtml } from '../_shared/parse.ts';
 
 const MAX_BYTES = 3_000_000;
 const TIMEOUT_MS = 10_000;
@@ -56,15 +56,20 @@ function imageOf(img: unknown): string | null {
   return null;
 }
 
-function stepsOf(ins: unknown): string[] {
+type StepOut = { text: string; section: string | null };
+/** Stegen; avsnitt (HowToSection, t.ex. "Sås") blir delar av receptet. */
+function stepsOf(ins: unknown, section: string | null = null): StepOut[] {
   if (!ins) return [];
-  if (typeof ins === 'string') return clean(ins).split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ])/).filter(Boolean);
-  if (Array.isArray(ins)) return ins.flatMap(stepsOf);
+  if (typeof ins === 'string') return clean(ins).split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ])/).filter(Boolean).map((text) => ({ text, section }));
+  if (Array.isArray(ins)) return ins.flatMap((x) => stepsOf(x, section));
   if (typeof ins === 'object') {
     const n = ins as Json;
-    if (n['@type'] === 'HowToSection' || n.itemListElement) return stepsOf(n.itemListElement);
+    if (n['@type'] === 'HowToSection' || n.itemListElement) {
+      const name = clean(n.name);
+      return stepsOf(n.itemListElement, name && !/^(instructions|instruktioner|gör så här|method|directions)$/i.test(name) ? name : section);
+    }
     const t = clean(n.text ?? n.name);
-    return t ? [t] : [];
+    return t ? [{ text: t, section }] : [];
   }
   return [];
 }
@@ -126,8 +131,14 @@ Deno.serve(async (req) => {
   const resolve = (u: string | null) => { try { return u ? new URL(u, target).toString() : null; } catch { return null; } };
 
   if (recipe) {
+    // Ingredienserna kommer som en lista; grupper som "Sås" och "Sallad" läses från sidan.
+    const groups = ingredientGroups(html);
     const ingredients = (Array.isArray(recipe.recipeIngredient) ? recipe.recipeIngredient : [])
-      .map(clean).filter(Boolean).map(parseIngredientLine);
+      .map(clean).filter(Boolean).map((t) => ({ ...parseIngredientLine(t), section: groups.get(groupKey(t)) ?? null }));
+    // En enda grupp är ingen uppdelning: då hör allt till huvuddelen.
+    if (new Set(ingredients.map((i) => i.section)).size === 1) for (const i of ingredients) i.section = null;
+    const steps = stepsOf(recipe.recipeInstructions);
+    if (new Set(steps.map((x) => x.section)).size === 1) for (const x of steps) x.section = null;
     return json({
       found: 'recipe',
       url: target.toString(),
@@ -136,7 +147,7 @@ Deno.serve(async (req) => {
       image: resolve(imageOf(recipe.image)) ?? resolve(meta(html, 'og:image')),
       portions: parseYield(recipe.recipeYield),
       ingredients,
-      steps: stepsOf(recipe.recipeInstructions),
+      steps,
     });
   }
 

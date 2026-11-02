@@ -237,7 +237,8 @@ const STEP_HEAD = /^(gör så här|gör såhär|så här gör du|såhär gör du
 // Här slutar receptet på en bloggsida.
 const END = /^(dela|dela detta|gilla|kommentarer?|lämna en kommentar|skriv en kommentar|relaterade|relaterat|du kanske också gillar|publicerat|publicerad|taggar|kategorier|läs också|smaklig måltid!?|smaklig spis!?|notes|recipe notes|nutrition|nutrition facts|comments|reviews|leave a comment|you may also like)\b/i;
 
-export interface HtmlRecipe { portions: number | null; ingredients: ParsedIngredient[]; steps: string[] }
+export type Sectioned<T> = T & { section: string | null };
+export interface HtmlRecipe { portions: number | null; ingredients: Sectioned<ParsedIngredient>[]; steps: Sectioned<{ text: string }>[] }
 
 const sentence = (t: string) => /[.!?]$/.test(t);
 // Rader på webbsidor kan vara längre än i en kokbok ("1 msk buljongpulver, alternativt
@@ -251,16 +252,18 @@ const isSubhead = (t: string, next: string | undefined) =>
   t.length < 40 && (SUBHEADS.test(t) || /:$/.test(t) || (/^[A-ZÅÄÖ]/.test(t) && t.split(' ').length <= 4 && !!next && webIngredient(next)));
 
 /** Läser ingredienser från rad `from` tills listan tar slut. */
-function ingredientBlock(rows: string[], from: number): { lines: string[]; end: number } {
-  const lines: string[] = [];
+/** Läser ingredienser från rad `from` tills listan tar slut. Delrubriker ("Sås", "Sallad:") blir delar av receptet. */
+function ingredientBlock(rows: string[], from: number, start: string | null = null): { lines: { text: string; section: string | null }[]; end: number } {
+  const lines: { text: string; section: string | null }[] = [];
+  let section = start;
   let k = from;
   for (; k < rows.length; k++) {
     const t = rows[k];
     if (STEP_HEAD.test(t) || END.test(t) || INGR_HEAD.test(t.replace(/:$/, ''))) break;
-    if (webIngredient(t)) { lines.push(t); continue; }
+    if (webIngredient(t)) { lines.push({ text: t, section }); continue; }
     if (t.length > 90 || sentence(t) || /^\d+[.)]\s/.test(t)) break;
-    if (isSubhead(t, rows[k + 1])) continue;
-    lines.push(t);
+    if (isSubhead(t, rows[k + 1])) { section = sectionName(t); continue; }
+    lines.push({ text: t, section });
   }
   return { lines, end: k };
 }
@@ -285,9 +288,19 @@ export function recipeFromText(text: string): HtmlRecipe & { name: string } {
 const portionsOf = (t: string) =>
   t.match(/^(?:till\s+)?(\d+)\s*(portioner|portion|personer|pers|servings?)\b/i) ?? t.match(/^(?:portioner|antal portioner|servings?|serves|yield|makes)\s*:?\s*(\d+)/i);
 
+/**
+ * Stegens delar: delar som bara finns bland stegen och inte bland ingredienserna behålls,
+ * men om ingredienserna saknar delar helt och stegen bara har en del räknas den som huvuddelen.
+ */
+function alignSections(ingrSections: (string | null)[], steps: Sectioned<{ text: string }>[]) {
+  const stepSecs = new Set(steps.map((x) => x.section).filter(Boolean));
+  if (!ingrSections.some(Boolean) && stepSecs.size <= 1) return steps.map((x) => ({ ...x, section: null }));
+  return steps;
+}
+
 function recipeFromLines(rows: string[]): HtmlRecipe {
-  const ingr: string[] = [];
-  const steps: string[] = [];
+  const ingr: { text: string; section: string | null }[] = [];
+  const steps: { text: string; section: string | null }[] = [];
   let portions: number | null = null;
 
   for (const t of rows) {
@@ -300,7 +313,7 @@ function recipeFromLines(rows: string[]): HtmlRecipe {
   for (let k = 0; k < rows.length; k++) {
     if (!INGR_HEAD.test(rows[k].replace(/:$/, ''))) continue;
     const b = ingredientBlock(rows, k + 1);
-    ingr.push(...b.lines.filter((l) => !/^(till\s+)?\d+\s*(portioner|portion|personer|pers)\b/i.test(l)));
+    ingr.push(...b.lines.filter((l) => !portionsOf(l.text)));
     k = b.end - 1;
   }
   if (!ingr.length) {
@@ -315,20 +328,21 @@ function recipeFromLines(rows: string[]): HtmlRecipe {
     if (bestLen >= 3) ingr.push(...ingredientBlock(rows, bestStart).lines);
   }
 
-  // Steg under en rubrik ("Gör så här"); delrubriker som "Risotto" hoppas över.
+  // Steg under en rubrik ("Gör så här"); delrubriker som "Sås" blir delar av receptet.
   const head = rows.findIndex((t) => STEP_HEAD.test(t));
   if (head >= 0) {
+    let section: string | null = null;
     for (const t of rows.slice(head + 1)) {
       if (END.test(t) || INGR_HEAD.test(t.replace(/:$/, ''))) break;
-      if (!/^\d+[.)]\s/.test(t) && !sentence(t) && t.length < 40) continue;
-      steps.push(t.replace(/^\d+[.)]\s*/, ''));
+      if (!/^\d+[.)]\s/.test(t) && !sentence(t) && t.length < 40) { section = sectionName(t); continue; }
+      steps.push({ text: t.replace(/^\d+[.)]\s*/, ''), section });
       if (steps.length >= 40) break;
     }
   }
   // Inga steg under en rubrik: numrerade rader ("1. Skär …").
-  if (!steps.length) for (const t of rows) if (/^\d+[.)]\s+\S/.test(t) && t.length > 15) steps.push(t.replace(/^\d+[.)]\s*/, ''));
+  if (!steps.length) for (const t of rows) if (/^\d+[.)]\s+\S/.test(t) && t.length > 15) steps.push({ text: t.replace(/^\d+[.)]\s*/, ''), section: null });
 
-  return { portions, ingredients: ingr.map(parseIngredientLine), steps };
+  return { portions, ingredients: ingr.map((l) => ({ ...parseIngredientLine(l.text), section: l.section })), steps: alignSections(ingr.map((l) => l.section), steps) };
 }
 
 // ── Inklistrade ingredienser och steg i var sin ruta ──
@@ -376,6 +390,32 @@ export function stepsFromText(text: string): { text: string; section: string | n
   }
   return steps.filter((x) => x.text);
 }
+
+/**
+ * Ingrediensgrupper på sidan (t.ex. "Sås", "Sallad") för recept med schema.org-data, där
+ * ingredienserna kommer som en enda lista. Rubriker och listpunkter läses i sidans ordning;
+ * varje ingrediens får rubriken närmast före sig. Nyckeln är ingrediensens text, förenklad.
+ */
+export function ingredientGroups(html: string): Map<string, string> {
+  const map = new Map<string, string>();
+  const h = html.replace(/<(script|style|noscript|svg)\b[\s\S]*?<\/\1>/gi, ' ');
+  const re = /<(h[2-6])\b[^>]*>([\s\S]*?)<\/\1>|<(?:div|span|p|strong)\b[^>]*class=["'][^"']*(?:group-name|group-title|ingredient-group-name|ingredients-group-title|tasty-recipes-ingredients-header)[^"']*["'][^>]*>([\s\S]*?)<\/(?:div|span|p|strong)>|<li\b[^>]*>([\s\S]*?)<\/li>/gi;
+  let current: string | null = null;
+  const text = (x: string) => fixMojibake(decodeHtml(x.replace(/<[^>]+>/g, ' '))).replace(/\s+/g, ' ').trim();
+  for (const m of h.matchAll(re)) {
+    const head = m[2] ?? m[3];
+    if (head != null) {
+      const t = text(head).replace(/:$/, '');
+      // Rubriker som "Ingredienser" eller "Gör så här" är inga grupper.
+      current = !t || t.length > 40 || INGR_HEAD.test(t) || STEP_HEAD.test(t) || END.test(t) ? null : sectionName(t);
+      continue;
+    }
+    const li = text(m[4] ?? '');
+    if (current && li && li.length < 200) map.set(groupKey(li), current);
+  }
+  return map;
+}
+export const groupKey = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 
 // ── funktionen ──
 // Supabase Edge Function: hämtar en receptsida och plockar ut schema.org/Recipe.
@@ -434,15 +474,20 @@ function imageOf(img: unknown): string | null {
   return null;
 }
 
-function stepsOf(ins: unknown): string[] {
+type StepOut = { text: string; section: string | null };
+/** Stegen; avsnitt (HowToSection, t.ex. "Sås") blir delar av receptet. */
+function stepsOf(ins: unknown, section: string | null = null): StepOut[] {
   if (!ins) return [];
-  if (typeof ins === 'string') return clean(ins).split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ])/).filter(Boolean);
-  if (Array.isArray(ins)) return ins.flatMap(stepsOf);
+  if (typeof ins === 'string') return clean(ins).split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ])/).filter(Boolean).map((text) => ({ text, section }));
+  if (Array.isArray(ins)) return ins.flatMap((x) => stepsOf(x, section));
   if (typeof ins === 'object') {
     const n = ins as Json;
-    if (n['@type'] === 'HowToSection' || n.itemListElement) return stepsOf(n.itemListElement);
+    if (n['@type'] === 'HowToSection' || n.itemListElement) {
+      const name = clean(n.name);
+      return stepsOf(n.itemListElement, name && !/^(instructions|instruktioner|gör så här|method|directions)$/i.test(name) ? name : section);
+    }
     const t = clean(n.text ?? n.name);
-    return t ? [t] : [];
+    return t ? [{ text: t, section }] : [];
   }
   return [];
 }
@@ -504,8 +549,14 @@ Deno.serve(async (req) => {
   const resolve = (u: string | null) => { try { return u ? new URL(u, target).toString() : null; } catch { return null; } };
 
   if (recipe) {
+    // Ingredienserna kommer som en lista; grupper som "Sås" och "Sallad" läses från sidan.
+    const groups = ingredientGroups(html);
     const ingredients = (Array.isArray(recipe.recipeIngredient) ? recipe.recipeIngredient : [])
-      .map(clean).filter(Boolean).map(parseIngredientLine);
+      .map(clean).filter(Boolean).map((t) => ({ ...parseIngredientLine(t), section: groups.get(groupKey(t)) ?? null }));
+    // En enda grupp är ingen uppdelning: då hör allt till huvuddelen.
+    if (new Set(ingredients.map((i) => i.section)).size === 1) for (const i of ingredients) i.section = null;
+    const steps = stepsOf(recipe.recipeInstructions);
+    if (new Set(steps.map((x) => x.section)).size === 1) for (const x of steps) x.section = null;
     return json({
       found: 'recipe',
       url: target.toString(),
@@ -514,7 +565,7 @@ Deno.serve(async (req) => {
       image: resolve(imageOf(recipe.image)) ?? resolve(meta(html, 'og:image')),
       portions: parseYield(recipe.recipeYield),
       ingredients,
-      steps: stepsOf(recipe.recipeInstructions),
+      steps,
     });
   }
 

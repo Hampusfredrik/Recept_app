@@ -32,7 +32,7 @@ test('blogg utan receptdata: ingredienser, steg och portioner hittas', () => {
   const r = recipeFromHtml(BLOG);
   assert.equal(r.portions, 4);
   assert.deepEqual(r.ingredients.map((i) => i.name), ['gul lök', 'smör', 'risottoris', 'vitt vin', 'grönsaksbuljong', 'pumpa', 'salt och peppar', 'smör', 'salviablad', 'getost']);
-  assert.deepEqual(r.steps, [
+  assert.deepEqual(r.steps.map((x) => x.text), [
     'Hacka löken och fräs den i smöret.',
     'Tillsätt riset och vinet. Häll på buljongen lite i taget.',
     'Bryn smöret med salvian och servera med getost.',
@@ -43,7 +43,7 @@ test('utan rubriker: listan med mängder och numrerade steg', () => {
   const r = recipeFromHtml(`<article><p>Gott!</p><ul><li>400 g pasta</li><li>2 dl grädde</li><li>1 st citron</li></ul>
     <ol><li>1. Koka pastan enligt paketet.</li></ol><p>2. Blanda med grädden och citronen.</p></article>`);
   assert.deepEqual(r.ingredients.map((i) => i.name), ['pasta', 'grädde', 'citron']);
-  assert.deepEqual(r.steps, ['Koka pastan enligt paketet.', 'Blanda med grädden och citronen.']);
+  assert.deepEqual(r.steps.map((x) => x.text), ['Koka pastan enligt paketet.', 'Blanda med grädden och citronen.']);
 });
 
 // Samma uppbyggnad som en riktig blogg (tuvessonskan.se): ingen rubrik före
@@ -56,7 +56,7 @@ test('lista direkt efter titeln, delrubriker utan kolon', () => {
     <h3>Såhär gör du</h3><p><strong>Sås</strong></p><p>1. Koka pastan.</p><p>2. Blanda allt och gratinera.</p>
     <p>Relaterade</p><p>Köp mina böcker här</p></div>`);
   assert.deepEqual(r.ingredients.map((i) => i.name), ['tomater', 'pasta', 'grädde', 'salt och peppar', 'olja, till stekning', 'fetaost', 'basilika']);
-  assert.deepEqual(r.steps, ['Koka pastan.', 'Blanda allt och gratinera.']);
+  assert.deepEqual(r.steps.map((x) => x.text), ['Koka pastan.', 'Blanda allt och gratinera.']);
 });
 
 // Långa ingrediensrader och delrubriken "Servering" följd av rader utan mängd. Påhittad text.
@@ -90,7 +90,7 @@ Leftovers keep for 3 days.`);
   assert.equal(r.name, 'Creamy Tomato Pasta');
   assert.equal(r.portions, 4);
   assert.deepEqual(r.ingredients.map((i) => i.name), ['penne', 'olive oil', 'heavy cream', 'salt to taste']);
-  assert.deepEqual(r.steps, ['Cook the pasta until al dente.', 'Stir in the cream and serve.']);
+  assert.deepEqual(r.steps.map((x) => x.text), ['Cook the pasta until al dente.', 'Stir in the cream and serve.']);
 });
 
 test('ingredienser och steg i var sin ruta', async () => {
@@ -125,4 +125,16 @@ test('å, ä och ö: HTML-koder, dubbelkodning och teckenkodning', async () => {
   assert.equal(decodeBody(latin1, null), 'Grädde');
   const utf8 = new TextEncoder().encode('<meta charset="utf-8">Grädde');
   assert.equal(decodeBody(utf8, null), '<meta charset="utf-8">Grädde');
+});
+
+test('ingrediensgrupper på sidan (Sås, Sallad) blir delar', async () => {
+  const { ingredientGroups, groupKey } = await import('../supabase/functions/_shared/parse.ts');
+  // Påhittad sida med WP Recipe Maker-liknande struktur.
+  const g = ingredientGroups(`<h3>Ingredienser</h3>
+    <h4 class="wprm-recipe-group-name">Sås</h4><ul><li><span>2</span> <span>dl</span> gr&auml;ddfil</li></ul>
+    <h4 class="wprm-recipe-group-name">Sallad</h4><ul><li>1 gurka</li></ul>
+    <h3>Gör så här</h3><ol><li>Blanda såsen.</li></ol>`);
+  assert.equal(g.get(groupKey('2 dl gräddfil')), 'Sås');
+  assert.equal(g.get(groupKey('1 gurka')), 'Sallad');
+  assert.equal(g.get(groupKey('Blanda såsen.')), undefined);
 });
