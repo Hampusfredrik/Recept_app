@@ -34,7 +34,9 @@ export function domainOf(u: string): string {
 }
 
 export function sourceLabel(r: Recipe) {
-  return r.source_type === 'web' ? (r.domain || domainOf(r.url || '')) : `${r.book_title ?? ''}${r.page ? ` s. ${r.page}` : ''}`;
+  if (r.source_type === 'web') return r.domain || domainOf(r.url || '');
+  // Recept utan bok är inskrivna för hand.
+  return r.book_title ? `${r.book_title}${r.page ? ` s. ${r.page}` : ''}` : 'Eget recept';
 }
 
 /**

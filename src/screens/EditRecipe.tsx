@@ -46,14 +46,13 @@ export function EditRecipe() {
   const save = async () => {
     if (!name.trim()) return setErr('Receptet behöver ett namn.');
     if (parts.some((p, k) => k > 0 && !p.name.trim() && (p.ingr.trim() || p.stepsText.trim()))) return setErr('Ge varje del ett namn, t.ex. Frosting.');
-    if (r.source_type === 'book' && !book.trim()) return setErr('Fyll i vilken bok receptet står i.');
     const p = parseInt(portions, 10);
     setSaving(true); setErr('');
     try {
       await editRecipe(r.id, {
         fields: {
           name: name.trim(), effort, portions: Number.isFinite(p) && p > 0 ? Math.min(p, 100) : r.portions,
-          ...(r.source_type === 'book' ? { book_title: book.trim(), page: page || null } : {}),
+          ...(r.source_type === 'book' ? { book_title: book.trim() || null, page: page || null } : {}),
           ...(author !== (r.created_by ?? null) ? { created_by: author } : {}),
         },
         ingredients: parts.flatMap((p) => p.ingr.split('\n').map((x) => x.trim()).filter(Boolean)
@@ -82,8 +81,8 @@ export function EditRecipe() {
         {r.source_type === 'book' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 96px', gap: 10 }}>
-              <div className="field"><label>Bok</label><input className="input big" value={book} onChange={(e) => { setBook(e.target.value); setErr(''); }} placeholder="Bokens titel" /></div>
-              <div className="field"><label>Sida</label><input className="input big" value={page} onChange={(e) => setPage(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" style={{ textAlign: 'center' }} /></div>
+              <div className="field"><label>Bok (valfritt)</label><input className="input big" value={book} onChange={(e) => { setBook(e.target.value); setErr(''); }} placeholder="Bokens titel" /></div>
+              <div className="field"><label>Sida (valfritt)</label><input className="input big" value={page} onChange={(e) => setPage(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" style={{ textAlign: 'center' }} /></div>
             </div>
             <BookSuggestions onPick={setBook} />
           </>

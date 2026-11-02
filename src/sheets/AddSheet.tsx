@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Camera, Link } from 'lucide-react';
+import { Camera, Link, PencilLine } from 'lucide-react';
 import { Ico, Sheet } from '../components/ui';
 
 export function AddSheet({ onClose }: { onClose: () => void }) {
@@ -19,8 +19,8 @@ export function AddSheet({ onClose }: { onClose: () => void }) {
         <span className="col"><span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>Från en kokbokssida</span><span style={{ fontSize: 13 }}>Kopiera texten med kameran</span></span>
       </button>
       <button onClick={() => go('/ny/bok')} style={{ ...row, border: '1.5px solid var(--color-divider)', background: 'transparent', color: 'var(--color-text)' }}>
-        <span style={dot('var(--color-surface)')}><Ico icon={BookOpen} size={22} color="var(--color-neutral-800)" /></span>
-        <span className="col"><span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>Bara bok och sida</span><span style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>Snabbast, utan ingredienser</span></span>
+        <span style={dot('var(--color-surface)')}><Ico icon={PencilLine} size={22} color="var(--color-neutral-800)" /></span>
+        <span className="col"><span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>Skriv in själv</span><span style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>Ingredienser och steg, bok och sida om du vill</span></span>
       </button>
     </Sheet>
   );

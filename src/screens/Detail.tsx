@@ -87,7 +87,7 @@ export function Detail() {
             </span>
             <Ico icon={ArrowUpRight} color="var(--color-accent-700)" />
           </a>
-        ) : (
+        ) : r.book_title ? (
           <div className="row" style={{ gap: 12, padding: '12px 14px 12px 12px', borderRadius: 24, border: '1.5px solid var(--color-divider)' }}>
             <span style={{ flex: 'none', width: 40, height: 40, borderRadius: '50%', background: 'var(--color-accent-100)', color: 'var(--color-accent-800)', display: 'grid', placeItems: 'center' }}><Ico icon={BookOpen} /></span>
             <span className="col" style={{ flex: 1 }}><span style={{ fontWeight: 700, fontSize: 15 }}>{r.book_title}</span><span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Kokbok</span></span>
@@ -96,7 +96,7 @@ export function Detail() {
               <span style={{ fontFamily: 'var(--font-heading)', fontSize: 22, lineHeight: 1 }}>{r.page || '–'}</span>
             </span>
           </div>
-        )}
+        ) : null}
 
         <div className="row" style={{ gap: 12, padding: '12px 12px 12px 18px', borderRadius: 24, background: 'var(--color-accent-2-100)', color: 'var(--color-accent-2-900)' }}>
           <span className="col" style={{ flex: 1 }}>
@@ -166,9 +166,9 @@ export function Detail() {
           </div>
         ) : (
           <div className="col" style={{ alignItems: 'flex-start', gap: 10, padding: 18, borderRadius: 28, background: 'var(--color-surface)' }}>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>{r.source_type === 'book' ? 'Står i boken' : 'Inga ingredienser'}</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>{r.source_type === 'book' && r.book_title ? 'Står i boken' : 'Inga ingredienser'}</span>
             <p style={{ margin: 0, fontSize: 14, color: 'var(--color-neutral-800)' }}>
-              {r.source_type === 'book' ? `Slå upp sida ${r.page || '–'} i ${r.book_title}. ` : 'Sidan hade inga ingredienser vi kunde läsa. '}
+              {r.source_type === 'book' ? (r.book_title ? `Slå upp sida ${r.page || '–'} i ${r.book_title}. ` : '') : 'Sidan hade inga ingredienser vi kunde läsa. '}
               Skriv in ingredienserna om du vill skala portioner och se näringsvärde.
             </p>
             <button className="btn btn-secondary" style={{ padding: '9px 16px' }} onClick={() => setWriteIngr(true)}>Skriv in ingredienser</button>
@@ -177,7 +177,7 @@ export function Detail() {
 
         {tab === 'steps' && (r.steps.length ? <Steps r={r} portions={portions} scale={scale} setPort={setPort} /> : (
           <div style={{ padding: 18, borderRadius: 28, background: 'var(--color-surface)', fontSize: 14 }}>
-            {r.source_type === 'book' ? `Instruktionerna finns på sida ${r.page || '–'} i ${r.book_title}.` : 'Instruktionerna finns på originalsidan.'}
+            {r.source_type === 'book' ? (r.book_title ? `Instruktionerna finns på sida ${r.page || '–'} i ${r.book_title}.` : 'Inga steg än. Skriv in dem under Redigera.') : 'Instruktionerna finns på originalsidan.'}
           </div>
         ))}
 
