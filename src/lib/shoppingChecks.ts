@@ -49,6 +49,22 @@ export function useShoppingChecks(householdId: string | undefined, weekStart: st
     if (res.error) void load();
   }, [householdId, weekStart, load]);
 
+  /** Bockar av eller avmarkerar flera varor på en gång (samma vara i flera recept). */
+  const setMany = useCallback(async (keys: string[], on: boolean) => {
+    if (!householdId || !keys.length) return;
+    setChecked((s) => {
+      const n = new Set(s);
+      for (const k of keys) { if (on) n.add(k); else n.delete(k); }
+      if (local.current) localStorage.setItem(LOCAL(householdId, weekStart), JSON.stringify([...n]));
+      return n;
+    });
+    if (local.current) return;
+    const res = on
+      ? await supabase.from('shopping_checks').upsert(keys.map((item_key) => ({ household_id: householdId, week_start: weekStart, item_key })))
+      : await supabase.from('shopping_checks').delete().eq('household_id', householdId).eq('week_start', weekStart).in('item_key', keys);
+    if (res.error) void load();
+  }, [householdId, weekStart, load]);
+
   const clear = useCallback(async () => {
     if (!householdId) return;
     setChecked(new Set());
@@ -56,5 +72,5 @@ export function useShoppingChecks(householdId: string | undefined, weekStart: st
     await supabase.from('shopping_checks').delete().eq('household_id', householdId).eq('week_start', weekStart);
   }, [householdId, weekStart]);
 
-  return { checked, toggle, clear };
+  return { checked, toggle, setMany, clear };
 }
