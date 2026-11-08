@@ -1,5 +1,5 @@
 import type { Recipe, Tone } from './types.ts';
-import { US_TO_SV } from '../../supabase/functions/_shared/parse.ts';
+import { usToMetric } from '../../supabase/functions/_shared/parse.ts';
 
 export const EFFORT = ['', 'Superlätt', 'Lätt', 'Medel', 'Lite mer att göra', 'Helgprojekt'];
 export const TONE_ORDER: Tone[] = ['accent', 'sage', 'sand', 'clay'];
@@ -62,9 +62,9 @@ export const unitWord = (unit: string, n = 1) => {
 };
 
 // Recept som sparades innan amerikanska mått räknades om vid importen visas också i svenska mått.
-export const amountLabel = (amount: number | null, unit: string, scale = 1, max?: number | null) => {
+export const amountLabel = (amount: number | null, unit: string, scale = 1, max?: number | null, name = '') => {
   if (amount == null) return '';
-  const us = US_TO_SV[unit.trim().toLowerCase()];
+  const us = usToMetric(unit, name);
   if (us) { scale *= us.factor; unit = us.unit; }
   const top = (max != null && max > amount ? max : amount) * scale;
   return `${fmtAmount(amount * scale)}${max != null && max > amount ? `–${fmtAmount(max * scale)}` : ''}${unit ? ' ' + unitWord(unit, top) : ''}`;

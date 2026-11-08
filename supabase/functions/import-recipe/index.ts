@@ -3,7 +3,7 @@
 // Kräver inloggad användare (verify_jwt = true), så den kan inte användas som öppen proxy.
 
 import { corsHeaders, json } from '../_shared/cors.ts';
-import { decodeBody, decodeHtml, fixMojibake, parseIngredientLine, sectionsForIngredients, parseYield, recipeFromHtml } from '../_shared/parse.ts';
+import { decodeBody, decodeHtml, fixMojibake, parseIngredientLine, sectionsForIngredients, toCelsius, parseYield, recipeFromHtml } from '../_shared/parse.ts';
 
 const MAX_BYTES = 3_000_000;
 const TIMEOUT_MS = 10_000;
@@ -60,7 +60,7 @@ type StepOut = { text: string; section: string | null };
 /** Stegen; avsnitt (HowToSection, t.ex. "Sås") blir delar av receptet. */
 function stepsOf(ins: unknown, section: string | null = null): StepOut[] {
   if (!ins) return [];
-  if (typeof ins === 'string') return clean(ins).split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ])/).filter(Boolean).map((text) => ({ text, section }));
+  if (typeof ins === 'string') return toCelsius(clean(ins)).split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ])/).filter(Boolean).map((text) => ({ text, section }));
   if (Array.isArray(ins)) return ins.flatMap((x) => stepsOf(x, section));
   if (typeof ins === 'object') {
     const n = ins as Json;
@@ -68,7 +68,7 @@ function stepsOf(ins: unknown, section: string | null = null): StepOut[] {
       const name = clean(n.name);
       return stepsOf(n.itemListElement, name && !/^(instructions|instruktioner|gör så här|method|directions)$/i.test(name) ? name : section);
     }
-    const t = clean(n.text ?? n.name);
+    const t = toCelsius(clean(n.text ?? n.name));
     return t ? [{ text: t, section }] : [];
   }
   return [];

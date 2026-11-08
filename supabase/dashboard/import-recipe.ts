@@ -22,15 +22,15 @@ export function json(body: unknown, status = 200): Response {
 
 export const UNITS = ['g', 'kg', 'dl', 'l', 'ml', 'cl', 'msk', 'tsk', 'krm', 'st', 'burk', 'paket', 'kruka',
   // Engelska mått sparas som de skrevs; näringsberäkningen räknar om dem (src/lib/english.ts).
-  'cup', 'cups', 'tbsp', 'tbsps', 'tbps', 'tbs', 'tblsp', 'tablespoon', 'tablespoons', 'tsp', 'tsps', 'teaspoon', 'teaspoons', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds', 'cans', 'can', 'cloves', 'clove', 'pinch'];
+  'cup', 'cups', 'tbsp', 'tbsps', 'tbps', 'tbs', 'tblsp', 'tablespoon', 'tablespoons', 'tsp', 'tsps', 'teaspoon', 'teaspoons', 'fl oz', 'fl. oz', 'fluid ounces', 'fluid ounce', 'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds', 'cans', 'can', 'cloves', 'clove', 'pinch'];
 // Utskrivna former → förkortning. Längre ord först i regexen så att "liter" inte läses som "l".
 const UNIT_ALIASES: Record<string, string> = {
   gram: 'g', kilo: 'kg', kilogram: 'kg', liter: 'l', deciliter: 'dl', centiliter: 'cl', milliliter: 'ml',
   matsked: 'msk', matskedar: 'msk', tesked: 'tsk', teskedar: 'tsk', kryddmått: 'krm', styck: 'st', stycken: 'st',
   burkar: 'burk', paket: 'paket', förp: 'paket', förpackning: 'paket', förpackningar: 'paket', krukor: 'kruka',
 };
-const UNIT_RE = [...Object.keys(UNIT_ALIASES), ...UNITS].sort((a, b) => b.length - a.length).join('|');
-const unitOf = (u: string | undefined) => { const k = (u || '').toLowerCase(); return UNIT_ALIASES[k] ?? k; };
+const UNIT_RE = [...Object.keys(UNIT_ALIASES), ...UNITS].sort((a, b) => b.length - a.length).map((u) => u.replace(/[.]/g, '\\.').replace(/ /g, '\\s?')).join('|');
+const unitOf = (u: string | undefined) => { const k = (u || '').toLowerCase().replace(/\s+/g, ' ').replace(/^fl\.? ?oz$/, 'fl oz'); return UNIT_ALIASES[k] ?? k; };
 
 export interface ParsedIngredient {
   amount: number | null;
@@ -52,7 +52,40 @@ export const US_TO_SV: Record<string, { unit: string; factor: number }> = {
   tbsp: { unit: 'msk', factor: TBSP_MSK }, tbsps: { unit: 'msk', factor: TBSP_MSK }, tbps: { unit: 'msk', factor: TBSP_MSK },
   tbs: { unit: 'msk', factor: TBSP_MSK }, tblsp: { unit: 'msk', factor: TBSP_MSK }, tsps: { unit: 'tsk', factor: TSP_TSK }, tablespoon: { unit: 'msk', factor: TBSP_MSK }, tablespoons: { unit: 'msk', factor: TBSP_MSK },
   tsp: { unit: 'tsk', factor: TSP_TSK }, teaspoon: { unit: 'tsk', factor: TSP_TSK }, teaspoons: { unit: 'tsk', factor: TSP_TSK },
+  // 1 US fl oz = 29,5735295625 ml; 1 lb = 453,59237 g.
+  'fl oz': { unit: 'ml', factor: 29.5735295625 }, 'fluid ounce': { unit: 'ml', factor: 29.5735295625 }, 'fluid ounces': { unit: 'ml', factor: 29.5735295625 },
+  lb: { unit: 'g', factor: 453.59237 }, lbs: { unit: 'g', factor: 453.59237 }, pound: { unit: 'g', factor: 453.59237 }, pounds: { unit: 'g', factor: 453.59237 },
 };
+const OZ_G = 28.349523125, FL_OZ_ML = 29.5735295625;
+// Vätskor: "oz" utan "fl" räknas då som fluid ounces (ml), annars som vikt (gram).
+const LIQUID = /\b(water|milk|buttermilk|cream|half[- ]and[- ]half|broth|stock|juice|wine|beer|vinegar|oil|syrup|coffee|tea|liquor|rum|vodka|whiske?y|brandy|tequila|gin|sake|mirin|soda|coconut milk|vatten|mjölk|grädde|buljong|fond|juice|saft|vin|öl|olja|sirap|kaffe|te)\b/i;
+
+/** Amerikanskt mått → svenskt (cup → dl, tbsp → msk, tsp → tsk, oz → g eller ml, lb → g). null om måttet redan är svenskt. */
+export function usToMetric(unit: string, name = ''): { unit: string; factor: number } | null {
+  const u = unit.trim().toLowerCase().replace(/\s+/g, ' ');
+  if (u === 'oz' || u === 'ounce' || u === 'ounces') return LIQUID.test(name) ? { unit: 'ml', factor: FL_OZ_ML } : { unit: 'g', factor: OZ_G };
+  return US_TO_SV[u] ?? null;
+}
+
+/**
+ * Fahrenheit → Celsius i en text ("Preheat oven to 350°F" → "175 °C"). Står Celsius redan inom parentes
+ * används den. Ugnstemperaturer avrundas till närmaste 5 grader; lägre temperaturer till hela grader.
+ */
+export function toCelsius(text: string): string {
+  const c = (f: number) => { const x = (f - 32) * 5 / 9; return f >= 250 ? Math.round(x / 5) * 5 : Math.round(x); };
+  const F = '\\s*(?:°|º|˚|degrees?|grader)?\\s*(?:F|Fahrenheit)\\b';
+  return text
+    // "350°F (175°C)" → "175 °C"
+    .replace(new RegExp(`(\\d{2,3})${F}\\s*\\(\\s*(\\d{2,3})\\s*(?:°|º|˚|degrees?)?\\s*C(?:elsius)?\\s*\\)`, 'gi'), '$2 °C')
+    // "180°C (350°F)" → "180 °C"
+    .replace(new RegExp(`(\\d{2,3})\\s*(?:°|º|˚)\\s*C\\s*\\(\\s*\\d{2,3}${F}\\s*\\)`, 'gi'), '$1 °C')
+    // "325-350°F"
+    .replace(new RegExp(`(\\d{2,3})\\s*[-–]\\s*(\\d{2,3})${F}`, 'gi'), (_, a, b) => `${c(+a)}–${c(+b)} °C`)
+    // "350°F", "350 F", "350 degrees Fahrenheit"
+    .replace(new RegExp(`(\\d{2,3})${F}`, 'gi'), (_, a) => `${c(+a)} °C`)
+    // "oven to 350 degrees" (ugn utan enhet: alltid Fahrenheit i amerikanska recept)
+    .replace(/((?:oven|ugnen)[^.]{0,30}?\b)(\d{3})\s*degrees\b(?!\s*C)/gi, (_, pre, a) => `${pre}${c(+a)} °C`);
+}
 
 export function amountMax(raw: string): number | null {
   const range = raw.trim().match(/^[\d.,]+\s*[-–]\s*([\d.,]+)$/);
@@ -91,9 +124,9 @@ export function parseIngredientLine(line: string): ParsedIngredient {
   let max = amountMax(m[1]);
   let unit = unitOf(m[2]);
   // Engelska recept: amerikanska mått räknas om till svenska (cup → dl, tbsp → msk, tsp → tsk).
-  const us = US_TO_SV[unit];
+  const us = usToMetric(unit, m[3]);
   if (us) {
-    const conv = (x: number | null) => (x == null ? null : Math.round(x * us.factor * 100) / 100);
+    const conv = (x: number | null) => { if (x == null) return null; const v = x * us.factor; return v >= 10 ? Math.round(v) : Math.round(v * 100) / 100; };
     amount = conv(amount); max = conv(max); unit = us.unit;
   }
   return { amount, ...(max != null && amount != null && max > amount ? { amount_max: max } : {}), unit, name: m[3].trim() };
@@ -342,7 +375,7 @@ function recipeFromLines(rows: string[]): HtmlRecipe {
   // Inga steg under en rubrik: numrerade rader ("1. Skär …").
   if (!steps.length) for (const t of rows) if (/^\d+[.)]\s+\S/.test(t) && t.length > 15) steps.push({ text: t.replace(/^\d+[.)]\s*/, ''), section: null });
 
-  return { portions, ingredients: ingr.map((l) => ({ ...parseIngredientLine(l.text), section: l.section })), steps: alignSections(ingr.map((l) => l.section), steps) };
+  return { portions, ingredients: ingr.map((l) => ({ ...parseIngredientLine(l.text), section: l.section })), steps: alignSections(ingr.map((l) => l.section), steps).map((x) => ({ ...x, text: toCelsius(x.text) })) };
 }
 
 // ── Inklistrade ingredienser och steg i var sin ruta ──
@@ -388,7 +421,7 @@ export function stepsFromText(text: string): { text: string; section: string | n
     else steps.push({ text: clean, section });
     open = !/[.!?)]$/.test(clean);
   }
-  return steps.filter((x) => x.text);
+  return steps.filter((x) => x.text).map((x) => ({ ...x, text: toCelsius(x.text) }));
 }
 
 /**
@@ -515,7 +548,7 @@ type StepOut = { text: string; section: string | null };
 /** Stegen; avsnitt (HowToSection, t.ex. "Sås") blir delar av receptet. */
 function stepsOf(ins: unknown, section: string | null = null): StepOut[] {
   if (!ins) return [];
-  if (typeof ins === 'string') return clean(ins).split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ])/).filter(Boolean).map((text) => ({ text, section }));
+  if (typeof ins === 'string') return toCelsius(clean(ins)).split(/(?<=[.!?])\s+(?=[A-ZÅÄÖ])/).filter(Boolean).map((text) => ({ text, section }));
   if (Array.isArray(ins)) return ins.flatMap((x) => stepsOf(x, section));
   if (typeof ins === 'object') {
     const n = ins as Json;
@@ -523,7 +556,7 @@ function stepsOf(ins: unknown, section: string | null = null): StepOut[] {
       const name = clean(n.name);
       return stepsOf(n.itemListElement, name && !/^(instructions|instruktioner|gör så här|method|directions)$/i.test(name) ? name : section);
     }
-    const t = clean(n.text ?? n.name);
+    const t = toCelsius(clean(n.text ?? n.name));
     return t ? [{ text: t, section }] : [];
   }
   return [];

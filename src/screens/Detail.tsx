@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useBack } from '../components/useBack';
-import { ArrowUpRight, Heart, UserRound, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Plus, Search, Sparkles, Users } from 'lucide-react';
+import { ArrowUpRight, Heart, UserRound, BookOpen, CalendarDays, Camera, Check, ChevronLeft, CircleCheck, Globe, NotebookPen, Pencil, Plus, Search, ShoppingBasket, Sparkles, Users } from 'lucide-react';
 import { creditOf, searchImages, trackChosen, withCredit, type StockPhoto } from '../lib/images';
 import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
@@ -9,9 +9,9 @@ import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_
 import { dayName } from '../lib/logic';
 import { amountLabel, domainOf, EFFORT } from '../lib/format';
 import { bySection } from '../lib/sections';
-import { guessUse, ingredientsFromText, parseIngredientLine, stepsFromText } from '../../supabase/functions/_shared/parse';
+import { guessUse, ingredientsFromText, parseIngredientLine, stepsFromText, toCelsius } from '../../supabase/functions/_shared/parse';
 import { NutritionTab } from './NutritionTab';
-import type { Recipe } from '../lib/types';
+import type { Ingredient, Recipe } from '../lib/types';
 
 type Tab = 'ingr' | 'steps' | 'nut';
 
@@ -20,6 +20,7 @@ export function Detail() {
   const { recipes, tags, plan, cookedToday, toggleChecked, resetChecked, deleteRecipe, toggleFavorite, memberName } = useStore();
   const nav = useNavigate();
   const toast = useToast();
+  const addToList = useAddToList();
   const r = recipes.find((x) => x.id === id);
   const [tab, setTab] = useState<Tab>('ingr');
   const [port, setPort] = useState<number | null>(null);
@@ -148,14 +149,20 @@ export function Detail() {
               {g.items.map((i) => {
                 const c = r.checked.includes(i.id);
                 return (
-                  <button key={i.id} onClick={() => toggleChecked(r.id, i.id)} aria-pressed={c}
-                    style={{ display: 'grid', gridTemplateColumns: '26px 104px 1fr', alignItems: 'center', gap: 10, padding: '11px 0', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: '15px var(--font-body)', color: 'var(--color-text)', opacity: c ? 0.5 : 1 }}>
+                  <div key={i.id} className="row" style={{ gap: 4, borderBottom: '1px solid var(--color-divider)' }}>
+                  <button onClick={() => toggleChecked(r.id, i.id)} aria-pressed={c}
+                    style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: '26px 104px 1fr', alignItems: 'center', gap: 10, padding: '11px 0', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', font: '15px var(--font-body)', color: 'var(--color-text)', opacity: c ? 0.5 : 1 }}>
                     <span style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${c ? 'var(--color-accent-2-600)' : 'var(--color-neutral-400)'}`, background: c ? 'var(--color-accent-2-600)' : 'transparent', display: 'grid', placeItems: 'center' }}>
                       <Ico icon={Check} size={12} color="var(--color-bg)" />
                     </span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-accent-700)', textDecoration: c ? 'line-through' : 'none' }}>{amountLabel(i.amount, i.unit, scale, i.amount_max)}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-accent-700)', textDecoration: c ? 'line-through' : 'none' }}>{amountLabel(i.amount, i.unit, scale, i.amount_max, i.name)}</span>
                     <span style={{ textDecoration: c ? 'line-through' : 'none' }}>{i.name}</span>
                   </button>
+                  <button className="hover-surface" onClick={() => addToList(i, scale)} aria-label={`Lägg ${i.name} i inköpslistan`} title="Lägg i inköpslistan"
+                    style={{ flex: 'none', width: 38, height: 38, border: 0, borderRadius: '50%', background: 'transparent', cursor: 'pointer', color: 'var(--color-neutral-600)', display: 'grid', placeItems: 'center' }}>
+                    <Ico icon={ShoppingBasket} size={17} />
+                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -210,7 +217,18 @@ export function Detail() {
   );
 }
 
+/** Lägger en ingrediens (med mängd för valt antal portioner) i inköpslistans egna varor. */
+function useAddToList() {
+  const { addExtra } = useStore();
+  const toast = useToast();
+  return (i: Ingredient, scale: number) => {
+    const text = [amountLabel(i.amount, i.unit, scale, i.amount_max, i.name), i.name].filter(Boolean).join(' ');
+    addExtra(text).then(() => toast(`${i.name} ligger i inköpslistan`), (e) => toast(e instanceof Error ? e.message : String(e)));
+  };
+}
+
 function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; scale: number; setPort: (n: number) => void }) {
+  const addToList = useAddToList();
   return (
     <div className="col" style={{ gap: 18 }}>
       {r.ingredients.length > 0 && <Stepper label="Mängder för" value={portions} onChange={setPort} alert={r.portions !== 4 ? `Receptet är skrivet för ${r.portions} ${r.portions === 1 ? 'portion' : 'portioner'}` : undefined} />}
@@ -230,13 +248,15 @@ function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; s
           <div key={s.id} className="row" style={{ gap: 14, alignItems: 'flex-start' }}>
             <span style={{ flex: 'none', width: 32, height: 32, borderRadius: '50%', background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-heading)', fontSize: 15 }}>{k + 1}</span>
             <div className="col" style={{ flex: 1, minWidth: 0, gap: 8 }}>
-              <p style={{ margin: '4px 0 0', fontSize: 15, textWrap: 'pretty' }}>{s.text}</p>
+              <p style={{ margin: '4px 0 0', fontSize: 15, textWrap: 'pretty' }}>{toCelsius(s.text)}</p>
               {used.length > 0 && (
                 <div className="wrap">
                   {used.map((u) => (
-                    <span key={u.id} style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, padding: '4px 11px', borderRadius: 999, background: 'var(--color-surface)', fontSize: 13 }}>
-                      {u.amount != null && <b style={{ color: 'var(--color-accent-700)' }}>{amountLabel(u.amount, u.unit, scale, u.amount_max)}</b>}<span>{u.name}</span>
-                    </span>
+                    <button key={u.id} onClick={() => addToList(u, scale)} title="Lägg i inköpslistan" aria-label={`Lägg ${u.name} i inköpslistan`} className="hover-n300"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 11px', border: 0, borderRadius: 999, background: 'var(--color-surface)', fontSize: 13, cursor: 'pointer', color: 'var(--color-text)', font: 'inherit' }}>
+                      {u.amount != null && <b style={{ color: 'var(--color-accent-700)' }}>{amountLabel(u.amount, u.unit, scale, u.amount_max, u.name)}</b>}<span>{u.name}</span>
+                      <Ico icon={ShoppingBasket} size={13} color="var(--color-neutral-600)" />
+                    </button>
                   ))}
                 </div>
               )}

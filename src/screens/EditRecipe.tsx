@@ -166,7 +166,7 @@ interface Part { name: string; ingr: string; steps: string[]; stepsText: string 
 
 /** Receptets delar som redigerbara fält: huvuddelen först, sedan varje namngiven del. */
 function initialParts(r: Recipe): Part[] {
-  const line = (i: Recipe['ingredients'][number]) => [amountLabel(i.amount, i.unit, 1, i.amount_max), i.name].filter(Boolean).join(' ');
+  const line = (i: Recipe['ingredients'][number]) => [amountLabel(i.amount, i.unit, 1, i.amount_max, i.name), i.name].filter(Boolean).join(' ');
   const names = [...new Set([...r.ingredients, ...r.steps].map((x) => x.section?.trim() || '').filter(Boolean))];
   return ['', ...names].map((name) => {
     const steps = r.steps.filter((x) => (x.section?.trim() || '') === name).map((x) => x.text);

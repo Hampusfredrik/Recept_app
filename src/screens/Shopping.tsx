@@ -4,7 +4,7 @@ import { Check, ChevronLeft, Copy, Plus, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { useUi } from '../components/uiState';
 import { Ico, useToast, WeekToggle } from '../components/ui';
-import { fromIso, iso, isoWeek, weekAt } from '../lib/dates';
+import { fromIso, iso, isoWeek, today, weekAt } from '../lib/dates';
 import { shoppingList, type ShoppingItem } from '../lib/shopping';
 import { makeHas } from '../lib/logic';
 import { useShoppingChecks } from '../lib/shoppingChecks';
@@ -33,8 +33,12 @@ export function Shopping() {
   const [view, setView] = useState<'recipe' | 'all'>(() => { try { return localStorage.getItem(VIEW_KEY) === 'all' ? 'all' : 'recipe'; } catch { return 'recipe'; } });
   const pickView = (v: 'recipe' | 'all') => { setView(v); try { localStorage.setItem(VIEW_KEY, v); } catch { /* ingen lagring */ } };
 
-  const planned = days.map((d) => plan.find((p) => p.date === d)).filter((p) => !!p)
-    .map((p) => recipes.find((r) => r.id === p.recipe_id)).filter((r): r is Recipe => !!r);
+  // Dagar som har varit, och rätter som redan är lagade, behöver inga inköp.
+  const t = today();
+  const entries = days.map((d) => plan.find((p) => p.date === d)).filter((p) => !!p)
+    .map((p) => ({ date: p.date, r: recipes.find((r) => r.id === p.recipe_id) })).filter((x): x is { date: string; r: Recipe } => !!x.r);
+  const done = entries.filter((x) => x.date < t || x.r.last_cooked_on === x.date);
+  const planned = entries.filter((x) => !done.includes(x)).map((x) => x.r);
   const has = makeHas(pantry);
   const isHome = (i: ShoppingItem) => i.staple || has(i.name);
 
@@ -94,7 +98,9 @@ export function Shopping() {
       <span className="kicker">Vecka {isoWeek(fromIso(weekStart))}</span>
       <h1 className="h1" style={{ margin: '2px 0 6px' }}>Inköpslista</h1>
       <p style={{ margin: '0 0 14px', color: 'var(--color-neutral-700)', fontSize: 14 }}>
-        {planned.length ? `${planned.length} ${planned.length === 1 ? 'middag' : 'middagar'} · ${left + extras.length - extrasDone} ${left + extras.length - extrasDone === 1 ? 'vara' : 'varor'} kvar att köpa` : 'Inga middagar planerade den här veckan.'}
+        {planned.length ? `${planned.length} ${planned.length === 1 ? 'middag' : 'middagar'} · ${left + extras.length - extrasDone} ${left + extras.length - extrasDone === 1 ? 'vara' : 'varor'} kvar att köpa`
+          : done.length ? 'Veckans middagar är redan lagade eller har varit.' : 'Inga middagar planerade den här veckan.'}
+        {done.length > 0 && planned.length > 0 && ` · ${done.length} redan ${done.length === 1 ? 'lagad middag räknas' : 'lagade middagar räknas'} inte`}
       </p>
       <div style={{ marginBottom: 16 }}><WeekToggle value={weekOffset} onChange={setWeekOffset} /></div>
 

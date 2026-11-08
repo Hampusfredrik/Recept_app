@@ -86,3 +86,22 @@ test('blandade bråk som "1 1/2"', () => {
 test('felstavningar av tablespoon', () => {
   for (const u of ['tbps', 'Tbsp', 'tbsps', 'tbs', 'tblsp', 'tbsp.']) assert.equal(parseIngredientLine(`2 ${u} olive oil`).unit, 'msk', u);
 });
+
+test('ounces och pounds blir gram eller ml', () => {
+  assert.deepEqual(parseIngredientLine('8 oz dark chocolate'), { amount: 227, unit: 'g', name: 'dark chocolate' });
+  assert.deepEqual(parseIngredientLine('4 fl oz heavy cream'), { amount: 118, unit: 'ml', name: 'heavy cream' });
+  assert.deepEqual(parseIngredientLine('8 oz milk'), { amount: 237, unit: 'ml', name: 'milk' });
+  assert.deepEqual(parseIngredientLine('1 lb ground beef'), { amount: 454, unit: 'g', name: 'ground beef' });
+  assert.deepEqual(parseIngredientLine('1/2 oz yeast'), { amount: 14, unit: 'g', name: 'yeast' });
+});
+
+test('Fahrenheit blir Celsius', async () => {
+  const { toCelsius } = await import('../supabase/functions/_shared/parse.ts');
+  assert.equal(toCelsius('Preheat oven to 350°F.'), 'Preheat oven to 175 °C.');
+  assert.equal(toCelsius('Bake at 400 degrees F (200°C) for 20 min.'), 'Bake at 200 °C for 20 min.');
+  assert.equal(toCelsius('Ugn 180°C (350°F).'), 'Ugn 180 °C.');
+  assert.equal(toCelsius('Preheat the oven to 425 degrees.'), 'Preheat the oven to 220 °C.');
+  assert.equal(toCelsius('Cook until 165°F inside.'), 'Cook until 74 °C inside.');
+  assert.equal(toCelsius('Bake 325-350 F'), 'Bake 165–175 °C');
+  assert.equal(toCelsius('Grädda i 200 grader i 20 minuter.'), 'Grädda i 200 grader i 20 minuter.');
+});
