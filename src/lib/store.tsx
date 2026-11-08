@@ -378,10 +378,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cookedToday: async (id: string) => {
         const t = today();
         const household_id = need();
-        patchRecipe(id, (r) => ({ ...r, last_cooked_on: t, checked: [] }));
+        const uid = session?.user.id ?? null;
+        patchRecipe(id, (r) => ({ ...r, last_cooked_on: t, last_cooked_by: uid, checked: [] }));
         // Det som lagades läggs in på dagens datum i veckan (ersätter det som var planerat idag).
         setData((d) => ({ ...d, plan: [...d.plan.filter((p) => p.date !== t), { date: t, recipe_id: id }] }));
-        must(await supabase.from('recipes').update({ last_cooked_on: t }).eq('id', id));
+        // Kolumnen last_cooked_by kan saknas om migreringen inte körts: då sparas bara datumet.
+        const res = await supabase.from('recipes').update({ last_cooked_on: t, last_cooked_by: uid }).eq('id', id);
+        if (res.error && /last_cooked_by/.test(res.error.message)) must(await supabase.from('recipes').update({ last_cooked_on: t }).eq('id', id));
+        else must(res);
         must(await supabase.from('checked_items').delete().eq('recipe_id', id));
         must(await supabase.from('week_plan').upsert({ household_id, date: t, recipe_id: id }));
       },

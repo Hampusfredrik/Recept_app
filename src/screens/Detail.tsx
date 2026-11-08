@@ -104,7 +104,7 @@ export function Detail() {
         <div className="row" style={{ gap: 12, padding: '12px 12px 12px 18px', borderRadius: 24, background: 'var(--color-accent-2-100)', color: 'var(--color-accent-2-900)' }}>
           <span className="col" style={{ flex: 1 }}>
             <span style={{ fontSize: 11, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>Senast lagad</span>
-            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>{sinceLabel}</span>
+            <span style={{ fontFamily: 'var(--font-heading)', fontSize: 17 }}>{sinceLabel}{r.last_cooked_on && memberName(r.last_cooked_by) ? ` · av ${memberName(r.last_cooked_by)}` : ''}</span>
           </span>
           <button onClick={async () => { await cookedToday(r.id); toast('Lagad idag · inlagd i veckan'); }}
             className="row" style={{ flex: 'none', gap: 6, height: 40, padding: '0 14px', borderRadius: 999, border: 0, cursor: 'pointer', font: '700 13px var(--font-body)',

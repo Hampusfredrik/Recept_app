@@ -6,7 +6,7 @@ import { EffortIcons, Ico, WeekToggle } from '../components/ui';
 import { iso, isoWeek, MONTHS_SHORT, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
 
 export function Week() {
-  const { recipes, plan, setPlan, extras } = useStore();
+  const { recipes, plan, setPlan, extras, memberName } = useStore();
   const { setSheet, weekOffset, setWeekOffset } = useUi();
   const nav = useNavigate();
   const days = weekAt(weekOffset);
@@ -57,7 +57,7 @@ export function Week() {
                   <div onClick={() => nav(`/recept/${r.id}`)} className="col" style={{ flex: 1, minWidth: 0, gap: 3, cursor: 'pointer' }}>
                     <span style={{ fontFamily: 'var(--font-heading)', fontSize: 16, lineHeight: 1.15 }}>{r.name}</span>
                     {r.last_cooked_on === date
-                      ? <span className="row" style={{ gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--color-accent-2-700)' }}><Ico icon={CircleCheck} size={14} />Lagades den här dagen</span>
+                      ? <span className="row" style={{ gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--color-accent-2-700)' }}><Ico icon={CircleCheck} size={14} />Lagades den här dagen{memberName(r.last_cooked_by) ? ` av ${memberName(r.last_cooked_by)}` : ''}</span>
                       : <EffortIcons n={r.effort} size={12} />}
                   </div>
                   <button className="hover-n300" onClick={() => setPlan(date, null)} aria-label="Ta bort"

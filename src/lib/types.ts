@@ -55,6 +55,8 @@ export interface Recipe {
   image_url: string | null;
   created_at: string;
   last_cooked_on: string | null;
+  /** Vem som senast lagade receptet. Saknas om databasen inte har kolumnen. */
+  last_cooked_by?: string | null;
   ingredients: Ingredient[];
   steps: Step[];
   tagIds: string[];
