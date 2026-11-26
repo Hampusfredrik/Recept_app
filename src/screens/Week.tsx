@@ -1,12 +1,21 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CircleCheck, Plus, ShoppingBasket, X } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { useUi } from '../components/uiState';
-import { EffortIcons, Ico, WeekToggle } from '../components/ui';
+import { EffortIcons, Ico, Sheet, Stepper, useToast, WeekToggle } from '../components/ui';
 import { iso, isoWeek, MONTHS_SHORT, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
 
 export function Week() {
-  const { recipes, plan, setPlan, extras, memberName } = useStore();
+  const { recipes, plan, setPlan, setPlanPortions, extras, memberName } = useStore();
+  const toast = useToast();
+  // Eget antal portioner för en dag (t.ex. dubbelt recept); inköpslistan räknar med det.
+  const [editPortions, setEditPortions] = useState<{ date: string; name: string; base: number; value: number } | null>(null);
+  const savePortions = (v: number) => {
+    if (!editPortions) return;
+    setEditPortions({ ...editPortions, value: v });
+    setPlanPortions(editPortions.date, v === editPortions.base ? null : v).catch((e) => toast(e instanceof Error ? e.message : String(e)));
+  };
   const { setSheet, weekOffset, setWeekOffset } = useUi();
   const nav = useNavigate();
   const days = weekAt(weekOffset);
@@ -19,7 +28,7 @@ export function Week() {
   const rows = days.map((d) => {
     const date = iso(d);
     const entry = plan.find((p) => p.date === date);
-    return { d, date, r: entry ? recipes.find((x) => x.id === entry.recipe_id) : undefined };
+    return { d, date, r: entry ? recipes.find((x) => x.id === entry.recipe_id) : undefined, portions: entry?.portions ?? null };
   });
   const planned = rows.filter((x) => x.r);
   const heavy = planned.filter((x) => x.r!.effort >= 4).length;
@@ -42,7 +51,7 @@ export function Week() {
         </span>
       </button>
       <div className="col" style={{ gap: 8 }}>
-        {rows.map(({ d, date, r }, i) => {
+        {rows.map(({ d, date, r, portions }, i) => {
           const isToday = date === t, past = date < t;
           const op = past ? 0.55 : 1;
           return (
@@ -60,6 +69,17 @@ export function Week() {
                       ? <span className="row" style={{ gap: 5, fontSize: 12, fontWeight: 700, color: 'var(--color-accent-2-700)' }}><Ico icon={CircleCheck} size={14} />Lagades den här dagen{memberName(r.last_cooked_by) ? ` av ${memberName(r.last_cooked_by)}` : ''}</span>
                       : <EffortIcons n={r.effort} size={12} />}
                   </div>
+                  {(() => {
+                    const n = portions ?? r.portions;
+                    const changed = n !== r.portions;
+                    return (
+                      <button onClick={() => setEditPortions({ date, name: r.name, base: r.portions, value: n })} aria-label={`Antal portioner: ${n}. Ändra`}
+                        style={{ flex: 'none', height: 30, padding: '0 10px', borderRadius: 999, cursor: 'pointer', font: '700 12px var(--font-body)',
+                          border: `1.5px solid ${changed ? 'var(--color-alert)' : 'var(--color-divider)'}`, background: changed ? 'var(--color-alert-bg)' : 'transparent', color: changed ? 'var(--color-alert)' : 'var(--color-neutral-800)' }}>
+                        {n} port.
+                      </button>
+                    );
+                  })()}
                   <button className="hover-n300" onClick={() => setPlan(date, null)} aria-label="Ta bort"
                     style={{ flex: 'none', width: 36, height: 36, border: 0, borderRadius: '50%', background: 'transparent', cursor: 'pointer', color: 'var(--color-neutral-600)', display: 'grid', placeItems: 'center' }}>
                     <Ico icon={X} size={16} />
@@ -75,6 +95,15 @@ export function Week() {
           );
         })}
       </div>
+      {editPortions && (
+        <Sheet onClose={() => setEditPortions(null)} style={{ gap: 14 }}>
+          <h3>{editPortions.name}</h3>
+          <Stepper label="Portioner den här dagen" value={editPortions.value} onChange={savePortions}
+            alert={editPortions.value !== editPortions.base ? `Receptet är skrivet för ${editPortions.base}` : undefined} />
+          <span style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>Inköpslistan räknar med det här antalet, t.ex. dubbla mängder för dubbelt recept.</span>
+          <button className="btn btn-primary btn-block" onClick={() => setEditPortions(null)} style={{ height: 50 }}>Klar</button>
+        </Sheet>
+      )}
     </div>
   );
 }

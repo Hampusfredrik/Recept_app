@@ -80,10 +80,15 @@ export type StepInput = string | { text: string; section: string | null };
 
 export interface Member { user_id: string; display_name: string | null }
 
-export interface ShoppingExtra { id: number; name: string; checked: boolean; created_by: string | null; created_at: string }
+export interface ShoppingExtra {
+  id: number; name: string; checked: boolean; created_by: string | null; created_at: string;
+  /** Ikryssad ingrediens i ett recept: mängden räknas från ingrediensen och antal portioner. */
+  recipe_id?: string | null; ingredient_id?: number | null; portions?: number | null;
+}
 export interface Feedback { id: number; text: string; created_by: string | null; created_at: string; done_at: string | null }
 
-export interface PlanEntry { date: string; recipe_id: string }
+/** portions: eget antal portioner den dagen (annars receptets). */
+export interface PlanEntry { date: string; recipe_id: string; portions?: number | null }
 
 export interface NewRecipe {
   name: string;

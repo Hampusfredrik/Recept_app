@@ -69,6 +69,10 @@ interface Store extends Data {
   // vecka
   toggleFavorite: (recipeId: string) => Promise<void>;
   setPlan: (date: string, recipeId: string | null) => Promise<void>;
+  setPlanPortions: (date: string, portions: number | null) => Promise<void>;
+  toggleIngredientInList: (recipeId: string, ingredient: Ingredient, portions: number) => Promise<void>;
+  setRecipeListPortions: (recipeId: string, portions: number) => Promise<void>;
+  removeRecipeFromList: (recipeId: string) => Promise<void>;
   // skafferi
   addPantry: (name: string) => Promise<void>;
   removePantry: (name: string) => Promise<void>;
@@ -163,7 +167,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         ].join(','))
         .eq('household_id', hid).order('created_at', { ascending: false }),
       supabase.from('tags').select('*').eq('household_id', hid).order('created_at'),
-      supabase.from('week_plan').select('date,recipe_id').eq('household_id', hid),
+      // portions kan saknas om migreringen inte körts.
+      supabase.from('week_plan').select('date,recipe_id,portions').eq('household_id', hid)
+        .then((r) => (r.error ? supabase.from('week_plan').select('date,recipe_id').eq('household_id', hid) : r)),
       supabase.from('pantry_items').select('name').eq('household_id', hid).order('created_at'),
     ]);
     const err = rec.error || tags.error || plan.error || pantry.error;
@@ -200,7 +206,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     // Tabellerna kan saknas om migreringen inte körts: då är listorna tomma.
     const [ex, fb] = await Promise.all([
-      supabase.from('shopping_extras').select('id,name,checked,created_by,created_at').eq('household_id', hid).order('created_at'),
+      supabase.from('shopping_extras').select('id,name,checked,created_by,created_at,recipe_id,ingredient_id,portions').eq('household_id', hid).order('created_at')
+        .then((r) => (r.error ? supabase.from('shopping_extras').select('id,name,checked,created_by,created_at').eq('household_id', hid).order('created_at') : r)),
       supabase.from('feedback').select('id,text,created_by,created_at,done_at').eq('household_id', hid).order('created_at', { ascending: false }),
     ]);
     setExtras(ex.error ? [] : (ex.data as ShoppingExtra[]));
@@ -314,6 +321,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         if (!clean) return;
         const row = migrated(await supabase.from('shopping_extras').insert({ household_id, name: clean }).select('id,name,checked,created_by,created_at').single(), 'shopping_extras') as ShoppingExtra;
         setExtras((x) => [...x.filter((e) => e.id !== row.id), row]);
+      },
+      // Ikryssade ingredienser i ett recept: läggs i eller tas ur inköpslistan.
+      toggleIngredientInList: async (recipeId: string, ingredient: Ingredient, portions: number) => {
+        const household_id = need();
+        const existing = extras.find((e) => e.ingredient_id === ingredient.id);
+        if (existing) {
+          setExtras((x) => x.filter((e) => e.id !== existing.id));
+          migrated(await supabase.from('shopping_extras').delete().eq('id', existing.id), 'shopping_extras');
+          return;
+        }
+        const res = await supabase.from('shopping_extras')
+          .insert({ household_id, name: ingredient.name.slice(0, 120), recipe_id: recipeId, ingredient_id: ingredient.id, portions })
+          .select('id,name,checked,created_by,created_at,recipe_id,ingredient_id,portions').single();
+        if (res.error && /recipe_id|ingredient_id|portions/.test(res.error.message)) {
+          throw new Error('Det här kräver migreringen 20261110120000_list_from_recipe.sql i Supabase.');
+        }
+        const row = migrated(res, 'shopping_extras') as ShoppingExtra;
+        setExtras((x) => [...x.filter((e) => e.id !== row.id), row]);
+      },
+      setRecipeListPortions: async (recipeId: string, portions: number) => {
+        if (!extras.some((e) => e.recipe_id === recipeId)) return;
+        setExtras((x) => x.map((e) => (e.recipe_id === recipeId ? { ...e, portions } : e)));
+        must(await supabase.from('shopping_extras').update({ portions }).eq('recipe_id', recipeId));
+      },
+      removeRecipeFromList: async (recipeId: string) => {
+        setExtras((x) => x.filter((e) => e.recipe_id !== recipeId));
+        must(await supabase.from('shopping_extras').delete().eq('recipe_id', recipeId));
       },
       toggleExtra: async (id: number) => {
         const on = !extras.find((e) => e.id === id)?.checked;
@@ -570,9 +604,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       setPlan: async (date: string, recipeId: string | null) => {
         const household_id = need();
-        setData((d) => ({ ...d, plan: [...d.plan.filter((p) => p.date !== date), ...(recipeId ? [{ date, recipe_id: recipeId }] : [])] }));
-        if (recipeId) must(await supabase.from('week_plan').upsert({ household_id, date, recipe_id: recipeId }));
+        setData((d) => ({ ...d, plan: [...d.plan.filter((p) => p.date !== date), ...(recipeId ? [{ date, recipe_id: recipeId, portions: null }] : [])] }));
+        if (recipeId) {
+          // Nytt recept på dagen: receptets eget antal portioner gäller igen.
+          const res = await supabase.from('week_plan').upsert({ household_id, date, recipe_id: recipeId, portions: null });
+          if (res.error && /portions/.test(res.error.message)) must(await supabase.from('week_plan').upsert({ household_id, date, recipe_id: recipeId }));
+          else must(res);
+        }
         else must(await supabase.from('week_plan').delete().eq('household_id', household_id).eq('date', date));
+      },
+
+      setPlanPortions: async (date: string, portions: number | null) => {
+        const household_id = need();
+        setData((d) => ({ ...d, plan: d.plan.map((p) => (p.date === date ? { ...p, portions } : p)) }));
+        const res = await supabase.from('week_plan').update({ portions }).eq('household_id', household_id).eq('date', date);
+        if (res.error) throw new Error(/portions/.test(res.error.message) ? 'Det här kräver migreringen 20261110120000_list_from_recipe.sql i Supabase.' : res.error.message);
       },
 
       addPantry: async (name: string) => {

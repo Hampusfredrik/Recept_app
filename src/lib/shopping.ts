@@ -109,3 +109,9 @@ export function shoppingList(recipes: Recipe[]): ShoppingItem[] {
     staple: g.staple,
   }));
 }
+
+/** Receptet med alla mängder gångrade med `f` (t.ex. 2 för dubbelt recept). */
+export function scaleRecipe(r: Recipe, f: number): Recipe {
+  if (f === 1) return r;
+  return { ...r, ingredients: r.ingredients.map((i) => ({ ...i, amount: i.amount == null ? null : i.amount * f, amount_max: i.amount_max == null ? i.amount_max : i.amount_max * f })) };
+}

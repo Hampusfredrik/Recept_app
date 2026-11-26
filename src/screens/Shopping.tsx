@@ -5,7 +5,8 @@ import { useStore } from '../lib/store';
 import { useUi } from '../components/uiState';
 import { Ico, useToast, WeekToggle } from '../components/ui';
 import { fromIso, iso, isoWeek, today, weekAt } from '../lib/dates';
-import { shoppingList, type ShoppingItem } from '../lib/shopping';
+import { scaleRecipe, shoppingList, type ShoppingItem } from '../lib/shopping';
+import { amountLabel } from '../lib/format';
 import { makeHas } from '../lib/logic';
 import { useShoppingChecks } from '../lib/shoppingChecks';
 import type { Recipe } from '../lib/types';
@@ -35,21 +36,38 @@ export function Shopping() {
 
   // Dagar som har varit, och rätter som redan är lagade, behöver inga inköp.
   const t = today();
+  type Entry = { date: string; r: Recipe; portions: number };
   const entries = days.map((d) => plan.find((p) => p.date === d)).filter((p) => !!p)
-    .map((p) => ({ date: p.date, r: recipes.find((r) => r.id === p.recipe_id) })).filter((x): x is { date: string; r: Recipe } => !!x.r);
+    .map((p) => { const r = recipes.find((x) => x.id === p.recipe_id); return r ? { date: p.date, r, portions: p.portions ?? r.portions } : null; })
+    .filter((x): x is Entry => !!x);
   const done = entries.filter((x) => x.date < t || x.r.last_cooked_on === x.date);
-  const planned = entries.filter((x) => !done.includes(x)).map((x) => x.r);
+  const active = entries.filter((x) => !done.includes(x));
+  const planned = active.map((x) => x.r);
   const has = makeHas(pantry);
   const isHome = (i: ShoppingItem) => i.staple || has(i.name);
 
   // Per recept: varje planerat recept med sina varor (ett recept som planeras två gånger räknas dubbelt).
   // Avbockningar sparas per recept och vara ("recept-id|vara"), så att båda vyerna visar samma sak.
+  // Mängderna följer antal portioner per dag (dubbelt recept = dubbla mängder).
   const groups = [...new Map(planned.map((r) => [r.id, r])).values()].map((r) => {
-    const n = planned.filter((x) => x.id === r.id).length;
-    return { r, n, items: shoppingList(Array(n).fill(r)).map((i) => ({ ...i, keys: [`${r.id}|${i.key}`] })) };
+    const mine = active.filter((x) => x.r.id === r.id);
+    const f = mine.reduce((sum, x) => sum + x.portions / r.portions, 0);
+    const total = mine.reduce((sum, x) => sum + x.portions, 0);
+    return { r, n: mine.length, total, f, items: shoppingList([scaleRecipe(r, f)]).map((i) => ({ ...i, keys: [`${r.id}|${i.key}`] })) };
   });
   // Sammanslaget: samma vara från flera recept på en rad.
-  const merged = shoppingList(planned).map((i) => ({ ...i, keys: groups.filter((g) => g.items.some((x) => x.key === i.key)).map((g) => `${g.r.id}|${i.key}`) }));
+  const merged = shoppingList(groups.map((g) => scaleRecipe(g.r, g.f))).map((i) => ({ ...i, keys: groups.filter((g) => g.items.some((x) => x.key === i.key)).map((g) => `${g.r.id}|${i.key}`) }));
+
+  // Ingredienser som kryssats i ett recept, med mängd för valt antal portioner.
+  const own = extras.filter((e) => !e.ingredient_id);
+  const linked = extras.filter((e) => e.ingredient_id).map((e) => {
+    const r = recipes.find((x) => x.id === e.recipe_id);
+    const i = r?.ingredients.find((x) => x.id === e.ingredient_id);
+    const p = e.portions ?? r?.portions ?? 4;
+    const label = i && r ? [amountLabel(i.amount, i.unit, p / r.portions, i.amount_max, i.name), i.name].filter(Boolean).join(' ') : e.name;
+    return { e, r, label, portions: p };
+  });
+  const linkedGroups = [...new Map(linked.map((x) => [x.e.recipe_id ?? '', x])).keys()].map((rid) => ({ rid, rows: linked.filter((x) => (x.e.recipe_id ?? '') === rid) }));
   const isOn = (keys: string[]) => keys.length > 0 && keys.every((k) => checked.has(k));
   const items = merged;
   const buy = merged.filter((i) => !isHome(i));
@@ -63,7 +81,7 @@ export function Shopping() {
       ? groups.flatMap((g) => { const l = g.items.filter((i) => !isHome(i) && open(i)).map(line); return l.length ? [`${g.r.name}${g.n > 1 ? ` (×${g.n})` : ''}:`, ...l, ''] : []; })
         .concat(home.filter(open).length ? ['Har ni hemma?', ...home.filter(open).map(line), ''] : [])
       : [...buy, ...home].filter(open).map(line);
-    const ex = extras.filter((e) => !e.checked).map((e) => `- ${e.name}`);
+    const ex = [...linked.filter((x) => !x.e.checked).map((x) => `- ${x.label}`), ...own.filter((e) => !e.checked).map((e) => `- ${e.name}`)];
     const all = ex.length ? [...lines, ...(view === 'recipe' ? ['Övrigt:'] : []), ...ex] : lines;
     try { await navigator.clipboard.writeText(`Inköpslista vecka ${isoWeek(fromIso(weekStart))}\n${all.join('\n').trim()}`); toast('Listan är kopierad'); }
     catch { toast('Kunde inte kopiera'); }
@@ -126,14 +144,42 @@ export function Shopping() {
           <div key={g.r.id} className="col" style={{ marginBottom: 14 }}>
             <button onClick={() => nav(`/recept/${g.r.id}`)} className="row"
               style={{ gap: 6, border: 0, background: 'transparent', padding: 0, margin: '0 0 2px', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)' }}>
-              <h3 style={{ margin: 0, fontSize: 18 }}>{g.r.name}{g.n > 1 ? ` ×${g.n}` : ''}</h3>
+              <h3 style={{ margin: 0, fontSize: 18 }}>{g.r.name}<span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: g.f !== 1 ? 'var(--color-alert)' : 'var(--color-neutral-700)' }}> · {g.total} portioner{g.n > 1 ? ` (${g.n} dagar)` : ''}</span></h3>
             </button>
             <div className="col" style={{ margin: '0 -8px' }}>{rows.map((i) => row(i, false))}</div>
           </div>
         );
       })}
 
-      <div className="col" style={{ marginTop: buy.length ? 22 : 4 }}>
+      {linkedGroups.map(({ rid, rows }) => {
+        const vis = rows.filter((x) => showDone || !x.e.checked);
+        return (
+          <div key={rid} className="col" style={{ marginTop: 14 }}>
+            <h3 style={{ margin: '0 0 2px', fontSize: 18 }}>{rows[0].r?.name ?? 'Från recept'}
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: rows[0].r && rows[0].portions !== rows[0].r.portions ? 'var(--color-alert)' : 'var(--color-neutral-700)' }}> · {rows[0].portions} portioner · ikryssat i receptet</span></h3>
+            <div className="col" style={{ margin: '0 -8px' }}>
+              {vis.map(({ e, label }) => (
+                <div key={e.id} className="row" style={{ gap: 4 }}>
+                  <button onClick={() => run(toggleExtra(e.id))} aria-pressed={e.checked} className="hover-surface"
+                    style={{ display: 'flex', flex: 1, minWidth: 0, alignItems: 'center', gap: 12, padding: '10px 8px', border: 0, borderRadius: 18, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--color-text)' }}>
+                    <span style={{ flex: 'none', width: 26, height: 26, borderRadius: 9, display: 'grid', placeItems: 'center',
+                      border: e.checked ? 0 : '2px solid var(--color-neutral-400)', background: e.checked ? 'var(--color-accent-2-600)' : 'transparent', color: 'var(--color-bg)' }}>
+                      {e.checked && <Ico icon={Check} size={15} />}
+                    </span>
+                    <span style={{ fontSize: 15, fontWeight: 600, opacity: e.checked ? 0.5 : 1, textDecoration: e.checked ? 'line-through' : undefined }}>{label.replace(/^./, (c) => c.toUpperCase())}</span>
+                  </button>
+                  <button className="hover-n300" onClick={() => run(removeExtra(e.id))} aria-label={`Ta bort ${label}`}
+                    style={{ flex: 'none', width: 36, height: 36, border: 0, borderRadius: '50%', background: 'transparent', cursor: 'pointer', color: 'var(--color-neutral-600)', display: 'grid', placeItems: 'center' }}>
+                    <Ico icon={X} size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      <div className="col" style={{ marginTop: buy.length || linked.length ? 22 : 4 }}>
         <h3 style={{ margin: '0 0 2px', fontSize: 18 }}>Övrigt att köpa</h3>
         <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 8 }}>Egna varor, oberoende av recepten. Ligger kvar tills ni tar bort dem.</span>
         <div className="row" style={{ gap: 8, marginBottom: 6 }}>
@@ -142,7 +188,7 @@ export function Shopping() {
           <button className="btn btn-primary" onClick={add} disabled={!newItem.trim()} aria-label="Lägg till vara" style={{ flex: 'none', width: 48, height: 48, padding: 0 }}><Ico icon={Plus} size={20} /></button>
         </div>
         <div className="col" style={{ margin: '0 -8px' }}>
-          {extras.filter((e) => showDone || !e.checked).map((e) => (
+          {own.filter((e) => showDone || !e.checked).map((e) => (
             <div key={e.id} className="row" style={{ gap: 4 }}>
               <button onClick={() => run(toggleExtra(e.id))} aria-pressed={e.checked} className="hover-surface"
                 style={{ display: 'flex', flex: 1, minWidth: 0, alignItems: 'center', gap: 12, padding: '10px 8px', border: 0, borderRadius: 18, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--color-text)' }}>

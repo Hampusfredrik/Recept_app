@@ -17,10 +17,10 @@ type Tab = 'ingr' | 'steps' | 'nut';
 
 export function Detail() {
   const { id } = useParams();
-  const { recipes, tags, plan, cookedToday, toggleChecked, resetChecked, deleteRecipe, toggleFavorite, memberName } = useStore();
+  const { recipes, tags, plan, cookedToday, deleteRecipe, toggleFavorite, memberName, extras, setRecipeListPortions, removeRecipeFromList } = useStore();
   const nav = useNavigate();
   const toast = useToast();
-  const addToList = useAddToList();
+  const list = useList();
   const r = recipes.find((x) => x.id === id);
   const [tab, setTab] = useState<Tab>('ingr');
   const [port, setPort] = useState<number | null>(null);
@@ -33,7 +33,10 @@ export function Detail() {
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
   if (!r) return <Navigate to="/recept" replace />;
-  const portions = port ?? r.portions;
+  // Ingredienser i inköpslistan följer antal portioner: öppna receptet med det antal de lades till för.
+  const listPortions = extras.find((e) => e.recipe_id === r.id && e.portions)?.portions ?? null;
+  const portions = port ?? listPortions ?? r.portions;
+  const changePort = (n: number) => { setPort(n); void setRecipeListPortions(r.id, n); };
   const scale = portions / r.portions;
   const days = daysSince(r.last_cooked_on);
   const cooked = days === 0;
@@ -142,34 +145,30 @@ export function Detail() {
 
         {tab === 'ingr' && (r.ingredients.length ? (
           <div className="col" style={{ gap: 6 }}>
-            <Stepper label="Räknat för" value={portions} onChange={setPort} alert={odd} />
+            <Stepper label="Räknat för" value={portions} onChange={changePort} alert={odd} />
             {bySection(r.ingredients).map((g) => (
             <div key={g.section ?? ''} className="col">
               {g.section && <SectionHeading name={g.section} />}
               {g.items.map((i) => {
-                const c = r.checked.includes(i.id);
+                // Ikryssad = ligger i inköpslistan.
+                const c = list.has(i);
                 return (
-                  <div key={i.id} className="row" style={{ gap: 4, borderBottom: '1px solid var(--color-divider)' }}>
-                  <button onClick={() => toggleChecked(r.id, i.id)} aria-pressed={c}
-                    style={{ flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: '26px 104px 1fr', alignItems: 'center', gap: 10, padding: '11px 0', border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left', font: '15px var(--font-body)', color: 'var(--color-text)', opacity: c ? 0.5 : 1 }}>
+                  <button key={i.id} onClick={() => list.toggle(r, i, portions)} aria-pressed={c} aria-label={`${i.name}: ${c ? 'ta bort ur' : 'lägg i'} inköpslistan`}
+                    style={{ display: 'grid', gridTemplateColumns: '26px 104px 1fr', alignItems: 'center', gap: 10, padding: '11px 0', border: 0, borderBottom: '1px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', textAlign: 'left', font: '15px var(--font-body)', color: 'var(--color-text)' }}>
                     <span style={{ width: 24, height: 24, borderRadius: '50%', border: `2px solid ${c ? 'var(--color-accent-2-600)' : 'var(--color-neutral-400)'}`, background: c ? 'var(--color-accent-2-600)' : 'transparent', display: 'grid', placeItems: 'center' }}>
-                      <Ico icon={Check} size={12} color="var(--color-bg)" />
+                      {c && <Ico icon={ShoppingBasket} size={12} color="var(--color-bg)" />}
                     </span>
-                    <span style={{ fontWeight: 700, color: 'var(--color-accent-700)', textDecoration: c ? 'line-through' : 'none' }}>{amountLabel(i.amount, i.unit, scale, i.amount_max, i.name)}</span>
-                    <span style={{ textDecoration: c ? 'line-through' : 'none' }}>{i.name}</span>
+                    <span style={{ fontWeight: 700, color: 'var(--color-accent-700)' }}>{amountLabel(i.amount, i.unit, scale, i.amount_max, i.name)}</span>
+                    <span>{i.name}</span>
                   </button>
-                  <button className="hover-surface" onClick={() => addToList(i, scale)} aria-label={`Lägg ${i.name} i inköpslistan`} title="Lägg i inköpslistan"
-                    style={{ flex: 'none', width: 38, height: 38, border: 0, borderRadius: '50%', background: 'transparent', cursor: 'pointer', color: 'var(--color-neutral-600)', display: 'grid', placeItems: 'center' }}>
-                    <Ico icon={ShoppingBasket} size={17} />
-                  </button>
-                  </div>
                 );
               })}
             </div>
             ))}
-            {r.checked.length > 0 && (
-              <button className="btn btn-ghost" onClick={() => resetChecked(r.id)} style={{ alignSelf: 'flex-start', color: 'var(--color-accent-700)', marginTop: 4 }}>
-                {r.checked.length} av {r.ingredients.length} avbockade · Återställ
+            <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>Kryssa i det du behöver köpa, så hamnar det i inköpslistan med mängder för valt antal portioner.</span>
+            {list.count(r) > 0 && (
+              <button className="btn btn-ghost" onClick={() => void removeRecipeFromList(r.id)} style={{ alignSelf: 'flex-start', color: 'var(--color-accent-700)' }}>
+                {list.count(r)} av {r.ingredients.length} i inköpslistan · Ta bort alla
               </button>
             )}
           </div>
@@ -184,7 +183,7 @@ export function Detail() {
           </div>
         ))}
 
-        {tab === 'steps' && (r.steps.length ? <Steps r={r} portions={portions} scale={scale} setPort={setPort} /> : (
+        {tab === 'steps' && (r.steps.length ? <Steps r={r} portions={portions} scale={scale} setPort={changePort} /> : (
           <div style={{ padding: 18, borderRadius: 28, background: 'var(--color-surface)', fontSize: 14 }}>
             {r.source_type === 'book' ? (r.book_title ? `Instruktionerna finns på sida ${r.page || '–'} i ${r.book_title}.` : 'Inga steg än. Skriv in dem under Redigera.') : 'Instruktionerna finns på originalsidan.'}
           </div>
@@ -217,18 +216,25 @@ export function Detail() {
   );
 }
 
-/** Lägger en ingrediens (med mängd för valt antal portioner) i inköpslistans egna varor. */
-function useAddToList() {
-  const { addExtra } = useStore();
+/** Ingredienser i inköpslistan: om de ligger där, och lägg i eller ta ur (med antal portioner). */
+function useList() {
+  const { extras, toggleIngredientInList } = useStore();
   const toast = useToast();
-  return (i: Ingredient, scale: number) => {
-    const text = [amountLabel(i.amount, i.unit, scale, i.amount_max, i.name), i.name].filter(Boolean).join(' ');
-    addExtra(text).then(() => toast(`${i.name} ligger i inköpslistan`), (e) => toast(e instanceof Error ? e.message : String(e)));
+  const ids = new Set(extras.map((e) => e.ingredient_id).filter((x): x is number => x != null));
+  return {
+    has: (i: Ingredient) => ids.has(i.id),
+    count: (r: Recipe) => r.ingredients.filter((i) => ids.has(i.id)).length,
+    toggle: (r: Recipe, i: Ingredient, portions: number) => {
+      const was = ids.has(i.id);
+      toggleIngredientInList(r.id, i, portions).then(
+        () => toast(was ? `${i.name} är borttagen ur inköpslistan` : `${i.name} ligger i inköpslistan`),
+        (e) => toast(e instanceof Error ? e.message : String(e)));
+    },
   };
 }
 
 function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; scale: number; setPort: (n: number) => void }) {
-  const addToList = useAddToList();
+  const list = useList();
   return (
     <div className="col" style={{ gap: 18 }}>
       {r.ingredients.length > 0 && <Stepper label="Mängder för" value={portions} onChange={setPort} alert={r.portions !== 4 ? `Receptet är skrivet för ${r.portions} ${r.portions === 1 ? 'portion' : 'portioner'}` : undefined} />}
@@ -252,10 +258,11 @@ function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; s
               {used.length > 0 && (
                 <div className="wrap">
                   {used.map((u) => (
-                    <button key={u.id} onClick={() => addToList(u, scale)} title="Lägg i inköpslistan" aria-label={`Lägg ${u.name} i inköpslistan`} className="hover-n300"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 11px', border: 0, borderRadius: 999, background: 'var(--color-surface)', fontSize: 13, cursor: 'pointer', color: 'var(--color-text)', font: 'inherit' }}>
+                    <button key={u.id} onClick={() => list.toggle(r, u, portions)} aria-pressed={list.has(u)} title={list.has(u) ? 'Ta bort ur inköpslistan' : 'Lägg i inköpslistan'} className="hover-n300"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 11px', border: 0, borderRadius: 999, fontSize: 13, cursor: 'pointer', font: 'inherit',
+                        background: list.has(u) ? 'var(--color-accent-2-100)' : 'var(--color-surface)', color: list.has(u) ? 'var(--color-accent-2-900)' : 'var(--color-text)' }}>
                       {u.amount != null && <b style={{ color: 'var(--color-accent-700)' }}>{amountLabel(u.amount, u.unit, scale, u.amount_max, u.name)}</b>}<span>{u.name}</span>
-                      <Ico icon={ShoppingBasket} size={13} color="var(--color-neutral-600)" />
+                      <Ico icon={list.has(u) ? Check : ShoppingBasket} size={13} color="var(--color-neutral-600)" />
                     </button>
                   ))}
                 </div>

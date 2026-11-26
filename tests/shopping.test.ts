@@ -63,3 +63,11 @@ test('intervall räknas med det större värdet i inköpslistan', () => {
   const [s] = shoppingList([recipe('A', [{ ...ing(1, 'msk', 'jordnötssmör'), amount_max: 2 }])]);
   assert.equal(s.amount, '2 matskedar');
 });
+
+test('dubbelt recept ger dubbla mängder i inköpslistan', async () => {
+  const { scaleRecipe } = await import('../src/lib/shopping.ts');
+  const r = recipe('Gryta', [ing(400, 'g', 'nötfärs'), { ...ing(1, 'dl', 'grädde'), amount_max: 2 }]);
+  const [a, b] = shoppingList([scaleRecipe(r, 2)]);
+  assert.equal(a.amount, '800 g');
+  assert.equal(b.amount, '4 dl');
+});
