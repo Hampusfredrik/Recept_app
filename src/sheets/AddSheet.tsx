@@ -16,7 +16,7 @@ export function AddSheet({ onClose }: { onClose: () => void }) {
       </button>
       <button onClick={() => go('/ny/kokbok')} style={{ ...row, border: 0, background: 'var(--color-accent-100)', color: 'var(--color-accent-900)' }}>
         <span style={dot('var(--color-accent)')}><Ico icon={Camera} size={22} color="var(--color-bg)" /></span>
-        <span className="col"><span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>Från en kokbokssida</span><span style={{ fontSize: 13 }}>Kopiera texten med kameran</span></span>
+        <span className="col"><span style={{ fontFamily: 'var(--font-heading)', fontSize: 18 }}>Från en kokbokssida</span><span style={{ fontSize: 13 }}>Ingredienser och steg var för sig, med kameran</span></span>
       </button>
       <button onClick={() => go('/ny/bok')} style={{ ...row, border: '1.5px solid var(--color-divider)', background: 'transparent', color: 'var(--color-text)' }}>
         <span style={dot('var(--color-surface)')}><Ico icon={PencilLine} size={22} color="var(--color-neutral-800)" /></span>

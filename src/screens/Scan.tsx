@@ -2,33 +2,27 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { Ico, Spinner, TopBar, useToast } from '../components/ui';
+import { Ico, Spinner, Stepper, TopBar, useToast } from '../components/ui';
 import { BookSuggestions, useSaveFields } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
-import { parseIngredientLine, parseRaw, type LineKind, type RawLine } from '../../supabase/functions/_shared/parse';
+import { ingredientsFromText, stepsFromText } from '../../supabase/functions/_shared/parse';
 
-const KIND_CYCLE: LineKind[] = ['ingr', 'step', 'skip'];
-const KIND_META: Record<LineKind, { label: string; pillBg: string; pillFg: string; bg: string; border: string }> = {
-  ingr: { label: 'Ingrediens', pillBg: 'var(--color-accent-2-200)', pillFg: 'var(--color-accent-2-900)', bg: 'var(--color-accent-2-100)', border: 'transparent' },
-  step: { label: 'Steg', pillBg: 'var(--color-accent-200)', pillFg: 'var(--color-accent-900)', bg: 'var(--color-accent-100)', border: 'transparent' },
-  skip: { label: 'Ignoreras', pillBg: 'var(--color-neutral-200)', pillFg: 'var(--color-neutral-700)', bg: 'transparent', border: 'var(--color-divider)' },
-};
-const PASTE_STEPS = ['Öppna Kamera och rikta den mot receptet.', 'Tryck på textikonen nere till höger och välj Kopiera allt.', 'Kom tillbaka hit och klistra in.'];
+const PASTE_STEPS = ['Öppna Kamera och rikta den mot ingredienserna (eller stegen).', 'Tryck på textikonen nere till höger och välj Kopiera allt.', 'Kom tillbaka hit och klistra in i rätt ruta.'];
 
-type Phase = 'paste' | 'camera' | 'reading' | 'sort';
+type Box = 'ingr' | 'steps';
+type Phase = 'form' | 'camera' | 'reading';
 
 // ── Utkast ──
 // En app på iPhones hemskärm stängs ofta när man växlar till Kameran för Live Text.
 // Utkastet sparas därför på telefonen och läses tillbaka när appen startar igen.
 const DRAFT_KEY = 'receptappen.scanDraft';
-interface Draft {
-  raw: string; clips: number; phase: 'paste' | 'sort'; name: string; book: string; page: string;
-  pageFound: boolean; portions: number; lines: RawLine[]; savedAt: number;
-}
+interface Draft { name: string; book: string; page: string; portions: number; ingr: string; steps: string; savedAt: number; raw?: string }
 function loadDraft(maxMinutes = 12 * 60): Draft | null {
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as Draft | null;
-    return d && Date.now() - d.savedAt < maxMinutes * 60_000 ? d : null;
+    if (!d || Date.now() - d.savedAt >= maxMinutes * 60_000) return null;
+    // Äldre utkast hade all text i en ruta.
+    return { name: d.name ?? '', book: d.book ?? '', page: d.page ?? '', portions: d.portions ?? 4, ingr: d.ingr ?? d.raw ?? '', steps: d.steps ?? '', savedAt: d.savedAt };
   } catch { return null; }
 }
 export const hasFreshScanDraft = (minutes: number) => !!loadDraft(minutes);
@@ -48,73 +42,34 @@ export function Scan() {
   const toast = useToast();
   const { saveRecipe, takeSaveWarning } = useStore();
   const [draft] = useState(() => loadDraft());
-  const [phase, setPhase] = useState<Phase>(draft?.phase ?? 'paste');
-  const [raw, setRaw] = useState(draft?.raw ?? '');
-  const [clips, setClips] = useState(draft?.clips ?? 0);
+  const [phase, setPhase] = useState<Phase>('form');
+  const [target, setTarget] = useState<Box>('ingr');
   const [name, setName] = useState(draft?.name === 'Namnlöst recept' ? '' : draft?.name ?? '');
   const [book, setBook] = useState(draft?.book ?? '');
   const [page, setPage] = useState(draft?.page ?? '');
-  const [pageFound, setPageFound] = useState(draft?.pageFound ?? false);
   const [portions, setPortions] = useState(draft?.portions ?? 4);
-  const [lines, setLines] = useState<RawLine[]>(draft?.lines ?? []);
+  const [ingr, setIngr] = useState(draft?.ingr ?? '');
+  const [steps, setSteps] = useState(draft?.steps ?? '');
   const [progress, setProgress] = useState<{ status: string; pct: number } | null>(null);
-  const [bookErr, setBookErr] = useState(false);
+  const [nameErr, setNameErr] = useState(false);
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const areaRef = useRef<HTMLTextAreaElement>(null);
   const { effort, tagIds, fields, check } = useSaveFields();
 
   // Spara utkastet vid varje ändring.
   useEffect(() => {
     try {
-      if (!raw.trim() && !lines.length) { clearDraft(); return; }
-      const d: Draft = { raw, clips, phase: phase === 'sort' ? 'sort' : 'paste', name, book, page, pageFound, portions, lines, savedAt: Date.now() };
+      if (!ingr.trim() && !steps.trim() && !name.trim()) { clearDraft(); return; }
+      const d: Draft = { name, book, page, portions, ingr, steps, savedAt: Date.now() };
       localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
     } catch { /* utan lagring fungerar sidan ändå */ }
-  }, [raw, clips, phase, name, book, page, pageFound, portions, lines]);
+  }, [name, book, page, portions, ingr, steps]);
   const close = () => { clearDraft(); back(); };
 
-  const append = (t: string) => { setRaw((r) => (r.trim() ? r.trim() + '\n' : '') + t.trim()); setClips((c) => c + 1); };
-
-  const [pasteHint, setPasteHint] = useState('');
-
-  /** Markören sist i rutan, på en ny rad om det redan finns text. */
-  const focusAtEnd = () => {
-    const ta = areaRef.current;
-    if (!ta) return;
-    ta.focus();
-    const end = ta.value.length;
-    ta.setSelectionRange(end, end);
-  };
-
-  const pasteClip = async () => {
-    setPasteHint('');
-    if (raw.trim() && !raw.endsWith('\n')) setRaw((r) => r.trimEnd() + '\n');
-    // Fokus direkt i trycket: då kan iPhone öppna tangentbordet och visa "Klistra in"
-    // även om urklippsfunktionen nedan nekas (vanligt i appar på hemskärmen).
-    focusAtEnd();
-    try {
-      if (!navigator.clipboard?.readText) throw new Error('saknas');
-      const t = await navigator.clipboard.readText();
-      if (!t.trim()) throw new Error('tomt');
-      append(t);
-      areaRef.current?.blur();
-    } catch {
-      setPasteHint('Tryck och håll i rutan och välj Klistra in.');
-      requestAnimationFrame(focusAtEnd);
-    }
-  };
-
-  const sort = (text: string) => {
-    if (!text.trim()) return;
-    const p = parseRaw(text);
-    setName(p.name);
-    setLines(p.lines);
-    setPage(p.page);
-    setPageFound(!!p.page);
-    setPortions(p.portions ?? 4);
-    setPhase('sort');
+  const append = (box: Box, t: string) => {
+    const set = box === 'ingr' ? setIngr : setSteps;
+    set((r) => (r.trim() ? r.trimEnd() + '\n' : '') + t.trim());
   };
 
   const readImage = async (img: File | HTMLCanvasElement) => {
@@ -133,25 +88,28 @@ export function Scan() {
       const { data } = await worker.recognize(img);
       await worker.terminate();
       if (!data.text.trim()) throw new Error('Ingen text hittades i bilden. Försök med bättre ljus och håll sidan plant.');
-      setRaw(data.text);
-      sort(data.text);
+      append(target, data.text);
     } catch (e) {
       setErr('Kunde inte läsa texten: ' + (e instanceof Error ? e.message : String(e)));
-      setPhase('paste');
     }
     setProgress(null);
+    setPhase('form');
   };
   const onPhoto = (file: File | undefined) => { if (file) void readImage(file); };
+  const openCamera = (box: Box) => { setTarget(box); setPhase('camera'); };
+
+  const ingredients = ingredientsFromText(ingr);
+  const stepList = stepsFromText(steps);
 
   const save = async () => {
-    if (!book.trim()) return setBookErr(true);
+    if (!name.trim()) { setNameErr(true); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     if (!check()) return;
     setSaving(true);
     try {
       const id = await saveRecipe({
-        name: name.trim() || 'Namnlöst recept', effort, portions, source_type: 'book', book_title: book.trim(), page: page || null,
-        ingredients: lines.filter((l) => l.kind === 'ingr').map((l) => parseIngredientLine(l.text)),
-        steps: lines.filter((l) => l.kind === 'step').map((l) => l.text), tagIds,
+        name: name.trim(), effort, portions, source_type: 'book', book_title: book.trim() || null, page: page || null,
+        // Delrubriker som "Sås:" blir delar av receptet.
+        ingredients, steps: stepList, tagIds,
       });
       clearDraft();
       nav(`/recept/${id}`, { replace: true });
@@ -162,12 +120,10 @@ export function Scan() {
     }
   };
 
-  const nI = lines.filter((l) => l.kind === 'ingr').length;
-  const nS = lines.filter((l) => l.kind === 'step').length;
   const fileInput = <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ''; }} />;
 
   if (phase === 'camera') {
-    return <CameraView fileInput={fileInput} onPickFile={() => fileRef.current?.click()} onClose={() => setPhase('paste')} onCapture={(c) => void readImage(c)} />;
+    return <CameraView fileInput={fileInput} onPickFile={() => fileRef.current?.click()} onClose={() => setPhase('form')} onCapture={(c) => void readImage(c)} />;
   }
 
   if (phase === 'reading') {
@@ -180,88 +136,98 @@ export function Scan() {
     );
   }
 
-  if (phase === 'sort') {
-    return (
-      <div className="screen no-tabs narrow">
-        <TopBar icon="back" onClose={() => setPhase('paste')} title="Från kokbok" />
-        <div className="col" style={{ gap: 18 }}>
-          <div className="col" style={{ gap: 4 }}>
-            <span style={{ fontSize: 12, letterSpacing: '.1em', textTransform: 'uppercase', color: 'var(--color-accent-2-700)', fontWeight: 700 }}>{lines.length} rader hittades</span>
-            <h1 style={{ margin: 0, fontSize: 30 }}>Sortera texten</h1>
-            <p style={{ margin: '2px 0 0', fontSize: 14, color: 'var(--color-neutral-700)', textWrap: 'pretty' }}>Vi har gissat vad som är ingredienser och steg. Tryck på en rad för att ändra.</p>
-          </div>
-          <div className="field"><label>Namn</label><input className="input big" value={name} onChange={(e) => setName(e.target.value)} placeholder="Skriv receptets namn" /></div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 96px', gap: 10 }}>
-            <div className="field"><label>Bok</label>
-              <input className="input big" value={book} onChange={(e) => { setBook(e.target.value); setBookErr(false); }} placeholder="Bokens titel" style={{ borderColor: bookErr ? 'var(--color-accent)' : 'var(--color-divider)' }} />
-            </div>
-            <div className="field"><label>Sida</label>
-              <input className="input big" value={page} onChange={(e) => { setPage(e.target.value.replace(/\D/g, '').slice(0, 4)); setPageFound(false); }} inputMode="numeric" style={{ textAlign: 'center' }} />
-            </div>
-          </div>
-          <BookSuggestions onPick={(b) => { setBook(b); setBookErr(false); }} />
-          {bookErr && <span className="err" style={{ marginTop: -8 }}>Fyll i vilken bok receptet står i.</span>}
-          {pageFound && <span style={{ fontSize: 12, color: 'var(--color-accent-2-700)', marginTop: -8, fontWeight: 600 }}>Sidnumret hittades nederst på sidan.</span>}
-          <div className="row" style={{ gap: 8 }}>
-            {[[`${nI} ingredienser`, KIND_META.ingr], [`${nS} steg`, KIND_META.step]].map(([label, m]) => {
-              const meta = m as typeof KIND_META.ingr;
-              return <span key={label as string} className="tag" style={{ background: meta.pillBg, color: meta.pillFg, fontWeight: 700, fontSize: 12, padding: '4px 10px' }}>{label as string}</span>;
-            })}
-          </div>
-          <div className="col" style={{ gap: 6, marginTop: -6 }}>
-            {lines.map((l, i) => {
-              const m = KIND_META[l.kind];
-              return (
-                <button key={i} onClick={() => setLines((ls) => ls.map((x, j) => (j === i ? { ...x, kind: KIND_CYCLE[(KIND_CYCLE.indexOf(x.kind) + 1) % 3] } : x)))}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, width: '100%', padding: '10px 12px', borderRadius: 20, border: `1.5px solid ${m.border}`, background: m.bg, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--color-text)' }}>
-                  <span style={{ flex: 'none', width: 82, padding: '2px 0', borderRadius: 999, background: m.pillBg, color: m.pillFg, fontSize: 11, fontWeight: 700, textAlign: 'center' }}>{m.label}</span>
-                  <span style={{ flex: 1, fontSize: 14, lineHeight: 1.35, textDecoration: l.kind === 'skip' ? 'line-through' : 'none', color: l.kind === 'skip' ? 'var(--color-neutral-600)' : 'var(--color-text)' }}>{l.text}</span>
-                </button>
-              );
-            })}
-          </div>
-          {fields}
-          {err && <span className="err">{err}</span>}
-          <div className="row" style={{ gap: 8 }}>
-            <button className="btn btn-secondary" onClick={() => setPhase('paste')} style={{ height: 54, flex: 'none', padding: '0 18px', fontSize: 16 }}>Fota igen</button>
-            <button className="btn btn-primary" disabled={saving} onClick={save} style={{ height: 54, flex: 1, fontSize: 17 }}>{saving ? <Spinner /> : 'Spara recept'}</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="screen no-tabs narrow" style={{ paddingBottom: 60 }}>
       <TopBar onClose={close} title="Från kokbok" />
-      <h1 style={{ margin: '0 0 16px', fontSize: 32 }}>Kopiera texten med kameran</h1>
-      <div className="col" style={{ gap: 10, marginBottom: 20 }}>
-        {PASTE_STEPS.map((t, i) => (
-          <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
-            <span style={{ flex: 'none', width: 28, height: 28, borderRadius: '50%', background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-heading)', fontSize: 14 }}>{i + 1}</span>
-            <span style={{ fontSize: 15, paddingTop: 3, textWrap: 'pretty' }}>{t}</span>
-          </div>
-        ))}
-      </div>
-      <div className="col" style={{ gap: 8 }}>
-        <textarea ref={areaRef} className="input" value={raw} onChange={(e) => { setRaw(e.target.value); if (!clips && e.target.value) setClips(1); }}
-          onPaste={() => { setPasteHint(''); setClips((c) => c + 1); }}
-          placeholder="Tryck och håll här och välj Klistra in"
-          style={{ borderRadius: 26, minHeight: 200, padding: '14px 16px', fontSize: 16, lineHeight: 1.45 }} />
-        <div className="wrap" style={{ gap: 8 }}>
-          <button onClick={pasteClip} className="row" style={{ gap: 6, height: 40, padding: '0 16px', borderRadius: 999, border: 0, background: 'var(--color-text)', color: 'var(--color-bg)', cursor: 'pointer', font: '700 14px var(--font-body)' }}>
-            {clips === 0 ? 'Klistra in' : 'Klistra in en spalt till'}
-          </button>
-          {raw.trim() && <button onClick={() => { setRaw(''); setClips(0); }} style={{ height: 40, padding: '0 14px', borderRadius: 999, border: '1.5px solid var(--color-divider)', background: 'transparent', cursor: 'pointer', font: '600 14px var(--font-body)', color: 'var(--color-text)' }}>Rensa</button>}
+      <h1 style={{ margin: '0 0 16px', fontSize: 32 }}>Recept ur en kokbok</h1>
+      <div className="col" style={{ gap: 16 }}>
+        <div className="field"><label>Namn på receptet</label>
+          <input className="input big" value={name} onChange={(e) => { setName(e.target.value); setNameErr(false); }} placeholder="t.ex. Kycklinggryta"
+            style={{ borderColor: nameErr ? 'var(--color-accent)' : 'var(--color-divider)' }} />
+          {nameErr && <div className="err" style={{ marginTop: 6 }}>Receptet behöver ett namn.</div>}
         </div>
-        {pasteHint && <span className="err" style={{ fontWeight: 600 }}>{pasteHint}</span>}
-        <span style={{ fontSize: 12, color: 'var(--color-neutral-700)' }}>Två spalter? Kopiera en i taget och klistra in båda. Texten läggs till efter den förra.</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 96px', gap: 10 }}>
+          <div className="field"><label>Bok</label>
+            <input className="input big" value={book} onChange={(e) => setBook(e.target.value)} placeholder="Bokens titel" />
+          </div>
+          <div className="field"><label>Sida</label>
+            <input className="input big" value={page} onChange={(e) => setPage(e.target.value.replace(/\D/g, '').slice(0, 4))} inputMode="numeric" placeholder="123" style={{ textAlign: 'center' }} />
+          </div>
+        </div>
+        <BookSuggestions onPick={setBook} />
+        <Stepper label="Antal portioner" value={portions} onChange={setPortions} alert={portions !== 4 ? `Receptet är skrivet för ${portions} portioner` : undefined} />
+
+        <details style={{ fontSize: 14, color: 'var(--color-neutral-800)' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Så kopierar du texten med kameran</summary>
+          <div className="col" style={{ gap: 8, marginTop: 10 }}>
+            {PASTE_STEPS.map((t, i) => (
+              <div key={i} className="row" style={{ gap: 12, alignItems: 'flex-start' }}>
+                <span style={{ flex: 'none', width: 26, height: 26, borderRadius: '50%', background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)', display: 'grid', placeItems: 'center', fontFamily: 'var(--font-heading)', fontSize: 13 }}>{i + 1}</span>
+                <span style={{ paddingTop: 3, textWrap: 'pretty' }}>{t}</span>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <PasteBox label="Ingredienser" count={ingredients.length ? `${ingredients.length} st` : ''} value={ingr} onChange={setIngr} onAppend={(t) => append('ingr', t)}
+          onCamera={() => openCamera('ingr')} placeholder={'400 g kycklingfilé\n1 gul lök\n4 dl kokosmjölk'} />
+        <PasteBox label="Gör så här" count={stepList.length ? `${stepList.length} steg` : ''} value={steps} onChange={setSteps} onAppend={(t) => append('steps', t)}
+          onCamera={() => openCamera('steps')} placeholder={'1. Skär kycklingen i bitar.\n2. Fräs löken.'} />
+        <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: -8 }}>Två spalter? Klistra in en i taget, texten läggs till efter den förra. Delrubriker som ”Sås:” blir delar av receptet.</span>
+
+        {fields}
+        {err && <span className="err">{err}</span>}
+        <button className="btn btn-primary btn-block" disabled={saving || (!ingredients.length && !stepList.length)} onClick={save} style={{ height: 54, fontSize: 17 }}>{saving ? <Spinner /> : 'Spara recept'}</button>
       </div>
-      {err && <div className="err" style={{ marginTop: 12 }}>{err}</div>}
-      <button className="btn btn-primary btn-block" onClick={() => sort(raw)} disabled={!raw.trim()} style={{ height: 54, marginTop: 22, fontSize: 17 }}>Sortera texten</button>
-      <button onClick={() => setPhase('camera')} className="row" style={{ justifyContent: 'center', gap: 8, width: '100%', height: 44, marginTop: 8, border: 0, background: 'transparent', cursor: 'pointer', font: '600 14px var(--font-body)', color: 'var(--color-accent-700)' }}>
-        <Ico icon={Camera} size={16} />Fota i appen istället (sämre på svår text)
-      </button>
+    </div>
+  );
+}
+
+/** En ruta (ingredienser eller steg) som fylls genom att klistra in text från Kameran, eller genom att fota. */
+function PasteBox({ label, count, value, onChange, onAppend, onCamera, placeholder }: {
+  label: string; count: string; value: string; onChange: (v: string) => void; onAppend: (t: string) => void; onCamera: () => void; placeholder: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  const [hint, setHint] = useState('');
+  /** Markören sist i rutan, på en ny rad om det redan finns text. */
+  const focusAtEnd = () => {
+    const ta = ref.current;
+    if (!ta) return;
+    ta.focus();
+    const end = ta.value.length;
+    ta.setSelectionRange(end, end);
+  };
+  const paste = async () => {
+    setHint('');
+    if (value.trim() && !value.endsWith('\n')) onChange(value.trimEnd() + '\n');
+    // Fokus direkt i trycket: då kan iPhone öppna tangentbordet och visa "Klistra in"
+    // även om urklippsfunktionen nedan nekas (vanligt i appar på hemskärmen).
+    focusAtEnd();
+    try {
+      if (!navigator.clipboard?.readText) throw new Error('saknas');
+      const t = await navigator.clipboard.readText();
+      if (!t.trim()) throw new Error('tomt');
+      onAppend(t);
+      ref.current?.blur();
+    } catch {
+      setHint('Tryck och håll i rutan och välj Klistra in.');
+      requestAnimationFrame(focusAtEnd);
+    }
+  };
+  const btn = { height: 36, padding: '0 14px', borderRadius: 999, cursor: 'pointer', font: '700 13px var(--font-body)' } as const;
+  return (
+    <div className="col" style={{ gap: 8 }}>
+      <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
+        <span style={{ fontFamily: 'var(--font-heading)', fontSize: 19 }}>{label}{count && <span style={{ fontFamily: 'var(--font-body)', fontSize: 12, fontWeight: 700, color: 'var(--color-accent-2-700)' }}> · {count}</span>}</span>
+        <div className="row" style={{ gap: 6 }}>
+          <button onClick={paste} style={{ ...btn, border: 0, background: 'var(--color-text)', color: 'var(--color-bg)' }}>Klistra in</button>
+          <button onClick={onCamera} aria-label={`Fota ${label.toLowerCase()}`} className="row" style={{ ...btn, gap: 6, border: '1.5px solid var(--color-divider)', background: 'transparent', color: 'var(--color-text)' }}><Ico icon={Camera} size={15} />Fota</button>
+        </div>
+      </div>
+      <textarea ref={ref} className="input" value={value} onChange={(e) => { onChange(e.target.value); setHint(''); }} placeholder={placeholder}
+        style={{ borderRadius: 22, minHeight: 150, padding: '12px 16px', fontSize: 16, lineHeight: 1.45 }} />
+      {hint && <span className="err" style={{ fontWeight: 600 }}>{hint}</span>}
+      {value.trim() && <button onClick={() => onChange('')} style={{ alignSelf: 'flex-start', border: 0, background: 'transparent', padding: 0, cursor: 'pointer', font: '600 13px var(--font-body)', color: 'var(--color-neutral-700)' }}>Rensa</button>}
     </div>
   );
 }
