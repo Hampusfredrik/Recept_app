@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { Ico, Spinner, Stepper, TopBar, useToast } from '../components/ui';
+import { Ico, Spinner, TopBar, useToast, YieldField } from '../components/ui';
+import type { YieldUnit } from '../lib/types';
 import { BookSuggestions, useSaveFields } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
 import { ingredientsFromText, stepsFromText } from '../../supabase/functions/_shared/parse';
@@ -16,13 +17,13 @@ type Phase = 'form' | 'camera' | 'reading';
 // En app på iPhones hemskärm stängs ofta när man växlar till Kameran för Live Text.
 // Utkastet sparas därför på telefonen och läses tillbaka när appen startar igen.
 const DRAFT_KEY = 'receptappen.scanDraft';
-interface Draft { name: string; book: string; page: string; portions: number; ingr: string; steps: string; savedAt: number; raw?: string }
+interface Draft { name: string; book: string; page: string; portions: number; unit?: YieldUnit; ingr: string; steps: string; savedAt: number; raw?: string }
 function loadDraft(maxMinutes = 12 * 60): Draft | null {
   try {
     const d = JSON.parse(localStorage.getItem(DRAFT_KEY) ?? 'null') as Draft | null;
     if (!d || Date.now() - d.savedAt >= maxMinutes * 60_000) return null;
     // Äldre utkast hade all text i en ruta.
-    return { name: d.name ?? '', book: d.book ?? '', page: d.page ?? '', portions: d.portions ?? 4, ingr: d.ingr ?? d.raw ?? '', steps: d.steps ?? '', savedAt: d.savedAt };
+    return { name: d.name ?? '', book: d.book ?? '', page: d.page ?? '', portions: d.portions ?? 4, unit: d.unit ?? 'portion', ingr: d.ingr ?? d.raw ?? '', steps: d.steps ?? '', savedAt: d.savedAt };
   } catch { return null; }
 }
 export const hasFreshScanDraft = (minutes: number) => !!loadDraft(minutes);
@@ -48,6 +49,7 @@ export function Scan() {
   const [book, setBook] = useState(draft?.book ?? '');
   const [page, setPage] = useState(draft?.page ?? '');
   const [portions, setPortions] = useState(draft?.portions ?? 4);
+  const [unit, setUnit] = useState<YieldUnit>(draft?.unit ?? 'portion');
   const [ingr, setIngr] = useState(draft?.ingr ?? '');
   const [steps, setSteps] = useState(draft?.steps ?? '');
   const [progress, setProgress] = useState<{ status: string; pct: number } | null>(null);
@@ -61,10 +63,10 @@ export function Scan() {
   useEffect(() => {
     try {
       if (!ingr.trim() && !steps.trim() && !name.trim()) { clearDraft(); return; }
-      const d: Draft = { name, book, page, portions, ingr, steps, savedAt: Date.now() };
+      const d: Draft = { name, book, page, portions, unit, ingr, steps, savedAt: Date.now() };
       localStorage.setItem(DRAFT_KEY, JSON.stringify(d));
     } catch { /* utan lagring fungerar sidan ändå */ }
-  }, [name, book, page, portions, ingr, steps]);
+  }, [name, book, page, portions, unit, ingr, steps]);
   const close = () => { clearDraft(); back(); };
 
   const append = (box: Box, t: string) => {
@@ -107,7 +109,7 @@ export function Scan() {
     setSaving(true);
     try {
       const id = await saveRecipe({
-        name: name.trim(), effort, portions, source_type: 'book', book_title: book.trim() || null, page: page || null,
+        name: name.trim(), effort, portions, yield_unit: unit, source_type: 'book', book_title: book.trim() || null, page: page || null,
         // Delrubriker som "Sås:" blir delar av receptet.
         ingredients, steps: stepList, tagIds,
       });
@@ -155,7 +157,7 @@ export function Scan() {
           </div>
         </div>
         <BookSuggestions onPick={setBook} />
-        <Stepper label="Antal portioner" value={portions} onChange={setPortions} alert={portions !== 4 ? `Receptet är skrivet för ${portions} portioner` : undefined} />
+        <YieldField portions={portions} unit={unit} onPortions={setPortions} onUnit={setUnit} />
 
         <details style={{ fontSize: 14, color: 'var(--color-neutral-800)' }}>
           <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Så kopierar du texten med kameran</summary>

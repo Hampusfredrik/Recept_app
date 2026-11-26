@@ -106,7 +106,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
       {res.counted > 0 && (<>
       <div className="row" style={{ alignItems: 'flex-end', justifyContent: 'space-between', padding: '18px 20px', borderRadius: 30, background: 'var(--color-accent-2-200)', color: 'var(--color-accent-2-900)' }}>
         <div className="col">
-          <span style={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>Per portion</span>
+          <span style={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', fontWeight: 700 }}>{r.yield_unit === 'st' ? 'Per st' : 'Per portion'}</span>
           <span style={{ fontFamily: 'var(--font-heading)', fontSize: 46, lineHeight: 1 }}>{Math.round(kcal)}<span style={{ fontSize: 20 }}> kcal</span></span>
         </div>
         <span style={{ fontSize: 13, fontWeight: 600, textAlign: 'right' }}>{Math.round(kcal * 4.184)} kJ</span>
@@ -125,7 +125,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
 
       <div className="col" style={{ gap: 2 }}>
         <h4 style={{ margin: '8px 0 2px', fontSize: 19 }}>Vitaminer och mineraler</h4>
-        <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 6 }}>Andel av dagligt referensintag (NNR) per portion</span>
+        <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginBottom: 6 }}>Andel av dagligt referensintag (NNR) {r.yield_unit === 'st' ? 'per st' : 'per portion'}</span>
         {NNR.map((m) => {
           const v = n[m.key as keyof Per100];
           const p = v == null ? null : Math.round(v / m.ref * 100);
@@ -146,7 +146,7 @@ export function NutritionTab({ r }: { r: Recipe }) {
         </div>
         {res.saltBy.length > 0 && (
           <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 8 }}>
-            Saltet per portion kommer från: {res.saltBy.map((x) => `${x.name} ${fmt(x.grams)} g`).join(' · ')}
+            Saltet {r.yield_unit === 'st' ? 'per st' : 'per portion'} kommer från: {res.saltBy.map((x) => `${x.name} ${fmt(x.grams)} g`).join(' · ')}
           </span>
         )}
       </div>

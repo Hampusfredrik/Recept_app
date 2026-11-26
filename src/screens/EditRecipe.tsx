@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { useStore } from '../lib/store';
-import { EffortField, Ico, Spinner, TagChooser, TopBar, useToast } from '../components/ui';
+import { EffortField, Ico, Spinner, TagChooser, TopBar, useToast, YieldField } from '../components/ui';
 import { BookSuggestions } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
 import { amountLabel } from '../lib/format';
 import { toggle } from '../lib/logic';
 import { parseIngredientLine, stepsFromText } from '../../supabase/functions/_shared/parse';
-import type { Recipe } from '../lib/types';
+import type { Recipe, YieldUnit } from '../lib/types';
 
 // Inte ritad i designen; följer formspråket från "Bara bok och sida".
 export function EditRecipe() {
@@ -21,7 +21,8 @@ export function EditRecipe() {
   const toast = useToast();
 
   const [name, setName] = useState(r?.name ?? '');
-  const [portions, setPortions] = useState(String(r?.portions ?? 4));
+  const [portions, setPortions] = useState(r?.portions ?? 4);
+  const [unit, setUnit] = useState<YieldUnit>(r?.yield_unit ?? 'portion');
   const [effort, setEffort] = useState(r?.effort ?? 0);
   const [tagIds, setTagIds] = useState<string[]>(r?.tagIds ?? []);
   const [author, setAuthor] = useState<string | null>(r?.created_by ?? null);
@@ -46,12 +47,11 @@ export function EditRecipe() {
   const save = async () => {
     if (!name.trim()) return setErr('Receptet behöver ett namn.');
     if (parts.some((p, k) => k > 0 && !p.name.trim() && (p.ingr.trim() || p.stepsText.trim()))) return setErr('Ge varje del ett namn, t.ex. Frosting.');
-    const p = parseInt(portions, 10);
     setSaving(true); setErr('');
     try {
       await editRecipe(r.id, {
         fields: {
-          name: name.trim(), effort, portions: Number.isFinite(p) && p > 0 ? Math.min(p, 100) : r.portions,
+          name: name.trim(), effort, portions, ...(unit !== (r.yield_unit ?? 'portion') ? { yield_unit: unit } : {}),
           ...(r.source_type === 'book' ? { book_title: book.trim() || null, page: page || null } : {}),
           ...(author !== (r.created_by ?? null) ? { created_by: author } : {}),
         },
@@ -87,9 +87,7 @@ export function EditRecipe() {
             <BookSuggestions onPick={setBook} />
           </>
         )}
-        <div className="field" style={{ maxWidth: 160 }}><label>Portioner</label>
-          <input className="input big" value={portions} onChange={(e) => setPortions(e.target.value.replace(/\D/g, '').slice(0, 3))} inputMode="numeric" style={{ textAlign: 'center' }} />
-        </div>
+        <YieldField portions={portions} unit={unit} onPortions={setPortions} onUnit={setUnit} />
         <EffortField value={effort} onChange={setEffort} error={false} />
         <TagChooser tags={tags} selected={tagIds} onToggle={(t) => setTagIds((x) => toggle(x, t))} onCreate={async (n) => (await addTag(n)).id} />
         {named.length > 0 && (

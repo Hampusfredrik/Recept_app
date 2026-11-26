@@ -7,7 +7,7 @@ import { useStore } from '../lib/store';
 import { EffortIcons, Ico, Sheet, Spinner, Stepper, TagPill, Thumb, useToast, WeekToggle } from '../components/ui';
 import { daysSince, iso, isoWeek, lastLabel, shortDate, today, weekAt, WEEKDAYS_SHORT } from '../lib/dates';
 import { dayName } from '../lib/logic';
-import { amountLabel, domainOf, EFFORT } from '../lib/format';
+import { amountLabel, domainOf, EFFORT, oddYield, yieldText } from '../lib/format';
 import { bySection } from '../lib/sections';
 import { guessUse, ingredientsFromText, parseIngredientLine, stepsFromText, toCelsius } from '../../supabase/functions/_shared/parse';
 import { NutritionTab } from './NutritionTab';
@@ -26,7 +26,7 @@ export function Detail() {
   const [port, setPort] = useState<number | null>(null);
   const [writeIngr, setWriteIngr] = useState(false);
   // Receptet är inte skrivet för 4 portioner: markeras rött så att det uppmärksammas.
-  const odd = r && r.portions !== 4 ? `Receptet är skrivet för ${r.portions} ${r.portions === 1 ? 'portion' : 'portioner'}` : undefined;
+  const odd = r ? oddYield(r) : undefined;
   const [addSub, setAddSub] = useState(false);
   const [pickDay, setPickDay] = useState(false);
   const back = useBack();
@@ -71,7 +71,7 @@ export function Detail() {
       <div className="detail-body" style={{ padding: '16px 20px 0' }}>
       <div className="col detail-meta" style={{ gap: 18 }}>
         <div className="row" style={{ gap: 16, fontSize: 14, color: 'var(--color-neutral-700)' }}>
-          <span className="row" style={{ gap: 6, ...(r.portions !== 4 ? { color: 'var(--color-alert)', fontWeight: 700 } : {}) }}><Ico icon={Users} size={16} />{r.portions} {r.portions === 1 ? 'portion' : 'portioner'}</span>
+          <span className="row" style={{ gap: 6, ...(odd ? { color: 'var(--color-alert)', fontWeight: 700 } : {}) }}><Ico icon={Users} size={16} />{yieldText(r.portions, r.yield_unit)}</span>
           {memberName(r.created_by) && <span className="row" style={{ gap: 6 }}><Ico icon={UserRound} size={16} />Inlagt av {memberName(r.created_by)}</span>}
         </div>
 
@@ -145,7 +145,7 @@ export function Detail() {
 
         {tab === 'ingr' && (r.ingredients.length ? (
           <div className="col" style={{ gap: 6 }}>
-            <Stepper label="Räknat för" value={portions} onChange={changePort} alert={odd} />
+            <Stepper label="Räknat för" value={portions} onChange={changePort} alert={odd} unit={r.yield_unit} />
             {bySection(r.ingredients).map((g) => (
             <div key={g.section ?? ''} className="col">
               {g.section && <SectionHeading name={g.section} />}
@@ -165,7 +165,7 @@ export function Detail() {
               })}
             </div>
             ))}
-            <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>Kryssa i det du behöver köpa, så hamnar det i inköpslistan med mängder för valt antal portioner.</span>
+            <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: 4 }}>Kryssa i det du behöver köpa, så hamnar det i inköpslistan med mängder för valt antal.</span>
             {list.count(r) > 0 && (
               <button className="btn btn-ghost" onClick={() => void removeRecipeFromList(r.id)} style={{ alignSelf: 'flex-start', color: 'var(--color-accent-700)' }}>
                 {list.count(r)} av {r.ingredients.length} i inköpslistan · Ta bort alla
@@ -237,7 +237,7 @@ function Steps({ r, portions, scale, setPort }: { r: Recipe; portions: number; s
   const list = useList();
   return (
     <div className="col" style={{ gap: 18 }}>
-      {r.ingredients.length > 0 && <Stepper label="Mängder för" value={portions} onChange={setPort} alert={r.portions !== 4 ? `Receptet är skrivet för ${r.portions} ${r.portions === 1 ? 'portion' : 'portioner'}` : undefined} />}
+      {r.ingredients.length > 0 && <Stepper label="Mängder för" value={portions} onChange={setPort} alert={oddYield(r)} unit={r.yield_unit} />}
       {bySection(r.steps).map((g) => {
       // Stegen i en del använder i första hand delens egna ingredienser.
       const own = r.ingredients.filter((i) => (i.section?.trim() || null) === g.section);

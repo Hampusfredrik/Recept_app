@@ -79,7 +79,7 @@ interface Store extends Data {
 }
 
 export interface RecipeEdit {
-  fields: Partial<Pick<Recipe, 'name' | 'portions' | 'effort' | 'book_title' | 'page' | 'created_by'>>;
+  fields: Partial<Pick<Recipe, 'name' | 'portions' | 'yield_unit' | 'effort' | 'book_title' | 'page' | 'created_by'>>;
   ingredients: { amount: number | null; amount_max?: number | null; unit: string; name: string; section?: string | null }[];
   steps: StepInput[];
   tagIds: string[];
@@ -385,7 +385,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const household_id = need();
         const { ingredients, steps, tagIds, ...rest } = r;
         sectionsMissing.current = false;
-        const rec = must(await supabase.from('recipes').insert({ ...rest, household_id }).select('id').single()) as { id: string };
+        let ins = await supabase.from('recipes').insert({ ...rest, household_id }).select('id').single();
+        // Kolumnen yield_unit (portioner eller antal) kan saknas om migreringen inte körts.
+        if (ins.error && /yield_unit/.test(ins.error.message)) {
+          const { yield_unit: _y, ...plain } = rest;
+          ins = await supabase.from('recipes').insert({ ...plain, household_id }).select('id').single();
+          if (!ins.error && _y === 'st') saveWarning.current = 'Receptet är sparat, men "Antal" kräver migreringen 20261111120000_yield_unit.sql i Supabase.';
+        }
+        const rec = must(ins) as { id: string };
         if (ingredients.length) {
           must(await insertIngredients(ingredients.map((i, position) => ({ ...i, position, household_id, recipe_id: rec.id }))));
         }
@@ -499,7 +506,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         sectionsMissing.current = false;
         const r = data.recipes.find((x) => x.id === recipeId);
         if (!r) throw new Error('Receptet finns inte');
-        must(await supabase.from('recipes').update(edit.fields).eq('id', recipeId));
+        const upd = await supabase.from('recipes').update(edit.fields).eq('id', recipeId);
+        if (upd.error && /yield_unit/.test(upd.error.message)) {
+          const { yield_unit: _y, ...plain } = edit.fields;
+          must(await supabase.from('recipes').update(plain).eq('id', recipeId));
+        } else must(upd);
 
         // Ingredienser: oförändrade rader behåller sitt livsmedel, sin vikt och avbockning.
         const key = (i: { amount: number | null; amount_max?: number | null; unit: string; name: string }) => `${i.amount ?? ''}|${i.amount_max ?? ''}|${i.unit}|${i.name.trim().toLowerCase()}`;

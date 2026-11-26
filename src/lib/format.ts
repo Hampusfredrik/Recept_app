@@ -1,4 +1,4 @@
-import type { Recipe, Tone } from './types.ts';
+import type { Recipe, Tone, YieldUnit } from './types.ts';
 import { usToMetric } from '../../supabase/functions/_shared/parse.ts';
 
 export const EFFORT = ['', 'Superlätt', 'Lätt', 'Medel', 'Lite mer att göra', 'Helgprojekt'];
@@ -22,6 +22,14 @@ export function stripe(id: string, a: number) {
   const t = TONES[recipeTone(id)];
   return `repeating-linear-gradient(135deg, ${t.s1} 0 ${a}px, ${t.s2} ${a}px ${a * 2}px)`;
 }
+
+/** "4 portioner", "1 portion" eller "12 st". */
+export const yieldText = (n: number, u: YieldUnit = 'portion') => (u === 'st' ? `${n} st` : n === 1 ? '1 portion' : `${n} portioner`);
+/** Kort form för små knappar: "4 port." eller "12 st". */
+export const yieldShort = (n: number, u: YieldUnit = 'portion') => (u === 'st' ? `${n} st` : `${n} port.`);
+/** Recept i portioner som inte är skrivna för 4 markeras (antal, t.ex. 12 bullar, markeras inte). */
+export const oddYield = (r: Pick<Recipe, 'portions' | 'yield_unit'>) =>
+  (r.yield_unit ?? 'portion') === 'portion' && r.portions !== 4 ? `Receptet är skrivet för ${yieldText(r.portions)}` : undefined;
 
 export function fmt(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return '';

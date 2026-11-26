@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Check, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { functionError } from '../lib/nutrition';
-import type { StepInput } from '../lib/types';
+import type { StepInput, YieldUnit } from '../lib/types';
 import { useStore } from '../lib/store';
-import { Ico, Spinner, Stepper, Thumb, TopBar, useToast } from '../components/ui';
+import { Ico, Spinner, Thumb, TopBar, useToast, YieldField } from '../components/ui';
 import { KcalEstimate, useSaveFields } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
 import { domainOf } from '../lib/format';
@@ -50,6 +50,8 @@ export function AddLink() {
   const [pIngr, setPIngr] = useState(draft?.ingr ?? '');
   const [pSteps, setPSteps] = useState(draft?.steps ?? '');
   const [pPortions, setPPortions] = useState(draft?.portions ?? 4);
+  const [unit, setUnit] = useState<YieldUnit>('portion');
+  const [rPortions, setRPortions] = useState(4);
   const [pasteErr, setPasteErr] = useState('');
   const [failed, setFailed] = useState(false);
   const [data, setData] = useState<Imported | null>(null);
@@ -78,6 +80,7 @@ export function AddLink() {
       return setErr(`Kunde inte läsa sidan: ${why}`);
     }
     setData(res as Imported);
+    setRPortions((res as Imported).portions ?? 4);
     setName((res as Imported).name);
     setPhase('review');
   };
@@ -95,6 +98,7 @@ export function AddLink() {
     const u = url.trim();
     const full = u ? (/^https?:\/\//i.test(u) ? u : 'https://' + u) : '';
     setData({ found: 'text', url: full, domain: u ? domainOf(u) : '', name: pName.trim(), image: null, portions: pPortions, ingredients, steps: stepsFromText(pSteps) });
+    setRPortions(pPortions);
     setName(pName.trim());
     setPhase('review');
   };
@@ -104,7 +108,7 @@ export function AddLink() {
     setSaving(true);
     try {
       const id = await saveRecipe({
-        name: name.trim() || 'Namnlöst recept', effort, portions: data.portions ?? 4, source_type: 'web',
+        name: name.trim() || 'Namnlöst recept', effort, portions: rPortions, yield_unit: unit, source_type: 'web',
         url: data.url || null, domain: data.domain || null, fetched_at: new Date().toISOString(), image_url: data.image,
         ingredients: data.ingredients, steps: data.steps, tagIds,
       });
@@ -156,7 +160,7 @@ export function AddLink() {
           <div className="field"><label>Namn</label>
             <input className="input big" value={pName} onChange={(e) => setPName(e.target.value)} placeholder="t.ex. Pumparisotto" />
           </div>
-          <Stepper label="Antal portioner" value={pPortions} onChange={setPPortions} />
+          <YieldField portions={pPortions} unit={unit} onPortions={setPPortions} onUnit={setUnit} />
           <div className="field"><label>Ingredienser · en per rad</label>
             <textarea className="input" value={pIngr} onChange={(e) => { setPIngr(e.target.value); setPasteErr(''); }} rows={7}
               placeholder={'400 g pasta\n2 msk olivolja\n1 gul lök'} style={{ borderRadius: 16, minHeight: 150, padding: '12px 14px', fontSize: 15, lineHeight: 1.45 }} />
@@ -198,7 +202,7 @@ export function AddLink() {
             {data.found === 'opengraph' && <span style={{ fontSize: 14 }}>Sidan saknar receptdata. Bara titel och bild kunde läsas.</span>}
             {data.found === 'text' && <span style={{ fontSize: 14 }}>Från texten du klistrade in. Kontrollera ingredienser och steg efter att det sparats.</span>}
             {data.found === 'html' && <span style={{ fontSize: 14 }}>Sidan saknar receptdata, så receptet lästes ur texten. Kontrollera ingredienser och steg efter att det sparats.</span>}
-            {[['Ingredienser', `${data.ingredients.length} st`], ['Steg', `${data.steps.length} st`], ['Portioner', data.portions ? String(data.portions) : '–']].map(([label, val]) => (
+            {[['Ingredienser', `${data.ingredients.length} st`], ['Steg', `${data.steps.length} st`]].map(([label, val]) => (
               <div key={label} className="row" style={{ gap: 10, fontSize: 14 }}>
                 <span style={{ flex: 'none', width: 22, height: 22, borderRadius: '50%', background: 'var(--color-accent-2-600)', display: 'grid', placeItems: 'center' }}><Ico icon={Check} size={12} color="var(--color-bg)" /></span>
                 <span style={{ flex: 1 }}>{label}</span>
@@ -207,7 +211,8 @@ export function AddLink() {
             ))}
           </div>
           {fields}
-          {data.ingredients.length > 0 && <KcalEstimate lines={data.ingredients} portions={data.portions ?? 4} />}
+          <YieldField portions={rPortions} unit={unit} onPortions={setRPortions} onUnit={setUnit} />
+          {data.ingredients.length > 0 && <KcalEstimate lines={data.ingredients} portions={rPortions} />}
           {err && <span className="err">{err}</span>}
           <button className="btn btn-primary btn-block" disabled={saving} onClick={save} style={{ height: 54, fontSize: 17 }}>{saving ? <Spinner /> : 'Spara recept'}</button>
         </div>

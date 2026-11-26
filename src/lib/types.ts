@@ -1,5 +1,6 @@
 export type Tone = 'accent' | 'sage' | 'sand' | 'clay';
 export type SourceType = 'web' | 'book';
+export type YieldUnit = 'portion' | 'st';
 
 export interface Ingredient {
   id: number;
@@ -46,6 +47,8 @@ export interface Recipe {
   name: string;
   effort: number;
   portions: number;
+  /** Portioner (standard) eller antal, t.ex. 12 st bullar. Saknas om databasen inte har kolumnen. */
+  yield_unit?: YieldUnit;
   source_type: SourceType;
   url: string | null;
   domain: string | null;
@@ -94,6 +97,7 @@ export interface NewRecipe {
   name: string;
   effort: number;
   portions: number;
+  yield_unit?: YieldUnit;
   source_type: SourceType;
   url?: string | null;
   domain?: string | null;

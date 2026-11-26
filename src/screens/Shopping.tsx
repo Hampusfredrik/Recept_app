@@ -6,7 +6,7 @@ import { useUi } from '../components/uiState';
 import { Ico, useToast, WeekToggle } from '../components/ui';
 import { fromIso, iso, isoWeek, today, weekAt } from '../lib/dates';
 import { scaleRecipe, shoppingList, type ShoppingItem } from '../lib/shopping';
-import { amountLabel } from '../lib/format';
+import { amountLabel, yieldText } from '../lib/format';
 import { makeHas } from '../lib/logic';
 import { useShoppingChecks } from '../lib/shoppingChecks';
 import type { Recipe } from '../lib/types';
@@ -144,7 +144,7 @@ export function Shopping() {
           <div key={g.r.id} className="col" style={{ marginBottom: 14 }}>
             <button onClick={() => nav(`/recept/${g.r.id}`)} className="row"
               style={{ gap: 6, border: 0, background: 'transparent', padding: 0, margin: '0 0 2px', cursor: 'pointer', textAlign: 'left', color: 'var(--color-text)' }}>
-              <h3 style={{ margin: 0, fontSize: 18 }}>{g.r.name}<span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: g.f !== 1 ? 'var(--color-alert)' : 'var(--color-neutral-700)' }}> · {g.total} portioner{g.n > 1 ? ` (${g.n} dagar)` : ''}</span></h3>
+              <h3 style={{ margin: 0, fontSize: 18 }}>{g.r.name}<span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: g.f !== 1 ? 'var(--color-alert)' : 'var(--color-neutral-700)' }}> · {yieldText(g.total, g.r.yield_unit)}{g.n > 1 ? ` (${g.n} dagar)` : ''}</span></h3>
             </button>
             <div className="col" style={{ margin: '0 -8px' }}>{rows.map((i) => row(i, false))}</div>
           </div>
@@ -156,7 +156,7 @@ export function Shopping() {
         return (
           <div key={rid} className="col" style={{ marginTop: 14 }}>
             <h3 style={{ margin: '0 0 2px', fontSize: 18 }}>{rows[0].r?.name ?? 'Från recept'}
-              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: rows[0].r && rows[0].portions !== rows[0].r.portions ? 'var(--color-alert)' : 'var(--color-neutral-700)' }}> · {rows[0].portions} portioner · ikryssat i receptet</span></h3>
+              <span style={{ fontFamily: 'var(--font-body)', fontSize: 13, fontWeight: 600, color: rows[0].r && rows[0].portions !== rows[0].r.portions ? 'var(--color-alert)' : 'var(--color-neutral-700)' }}> · {yieldText(rows[0].portions, rows[0].r?.yield_unit)} · ikryssat i receptet</span></h3>
             <div className="col" style={{ margin: '0 -8px' }}>
               {vis.map(({ e, label }) => (
                 <div key={e.id} className="row" style={{ gap: 4 }}>

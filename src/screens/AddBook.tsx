@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../lib/store';
-import { Spinner, Stepper, TopBar, useToast } from '../components/ui';
+import { Spinner, TopBar, useToast, YieldField } from '../components/ui';
+import type { YieldUnit } from '../lib/types';
 import { BookSuggestions, useSaveFields } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
 import { ingredientsFromText, stepsFromText } from '../../supabase/functions/_shared/parse';
@@ -14,6 +15,7 @@ export function AddBook() {
   const { saveRecipe, takeSaveWarning } = useStore();
   const [name, setName] = useState('');
   const [portions, setPortions] = useState(4);
+  const [unit, setUnit] = useState<YieldUnit>('portion');
   const [book, setBook] = useState('');
   const [page, setPage] = useState('');
   const [ingr, setIngr] = useState('');
@@ -29,7 +31,7 @@ export function AddBook() {
     setSaving(true);
     try {
       const id = await saveRecipe({
-        name: name.trim(), effort, portions, source_type: 'book', book_title: book.trim() || null, page: page || null,
+        name: name.trim(), effort, portions, yield_unit: unit, source_type: 'book', book_title: book.trim() || null, page: page || null,
         // Delrubriker som "Frosting:" blir delar av receptet.
         ingredients: ingredientsFromText(ingr), steps: stepsFromText(steps), tagIds,
       });
@@ -53,7 +55,7 @@ export function AddBook() {
             style={{ borderColor: err && !name.trim() ? 'var(--color-accent)' : 'var(--color-divider)' }} />
           {err && <div className="err" style={{ marginTop: 6 }}>Receptet behöver ett namn.</div>}
         </div>
-        <Stepper label="Antal portioner" value={portions} onChange={setPortions} />
+        <YieldField portions={portions} unit={unit} onPortions={setPortions} onUnit={setUnit} />
         {fields}
         <div className="field"><label>Ingredienser · en per rad</label>
           <textarea className="input" value={ingr} onChange={(e) => setIngr(e.target.value)} placeholder={'400 g kycklingfilé\n1 gul lök\n4 dl kokosmjölk'} style={box} />

@@ -1,3 +1,5 @@
+import { yieldShort, yieldText } from '../lib/format';
+import type { YieldUnit } from '../lib/types';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CircleCheck, Plus, ShoppingBasket, X } from 'lucide-react';
@@ -10,7 +12,7 @@ export function Week() {
   const { recipes, plan, setPlan, setPlanPortions, extras, memberName } = useStore();
   const toast = useToast();
   // Eget antal portioner för en dag (t.ex. dubbelt recept); inköpslistan räknar med det.
-  const [editPortions, setEditPortions] = useState<{ date: string; name: string; base: number; value: number } | null>(null);
+  const [editPortions, setEditPortions] = useState<{ date: string; name: string; base: number; value: number; unit: YieldUnit } | null>(null);
   const savePortions = (v: number) => {
     if (!editPortions) return;
     setEditPortions({ ...editPortions, value: v });
@@ -72,11 +74,12 @@ export function Week() {
                   {(() => {
                     const n = portions ?? r.portions;
                     const changed = n !== r.portions;
+                    const u = r.yield_unit ?? 'portion';
                     return (
-                      <button onClick={() => setEditPortions({ date, name: r.name, base: r.portions, value: n })} aria-label={`Antal portioner: ${n}. Ändra`}
+                      <button onClick={() => setEditPortions({ date, name: r.name, base: r.portions, value: n, unit: u })} aria-label={`${yieldText(n, u)}. Ändra`}
                         style={{ flex: 'none', height: 30, padding: '0 10px', borderRadius: 999, cursor: 'pointer', font: '700 12px var(--font-body)',
                           border: `1.5px solid ${changed ? 'var(--color-alert)' : 'var(--color-divider)'}`, background: changed ? 'var(--color-alert-bg)' : 'transparent', color: changed ? 'var(--color-alert)' : 'var(--color-neutral-800)' }}>
-                        {n} port.
+                        {yieldShort(n, u)}
                       </button>
                     );
                   })()}
@@ -98,8 +101,8 @@ export function Week() {
       {editPortions && (
         <Sheet onClose={() => setEditPortions(null)} style={{ gap: 14 }}>
           <h3>{editPortions.name}</h3>
-          <Stepper label="Portioner den här dagen" value={editPortions.value} onChange={savePortions}
-            alert={editPortions.value !== editPortions.base ? `Receptet är skrivet för ${editPortions.base}` : undefined} />
+          <Stepper label={editPortions.unit === 'st' ? 'Antal den här dagen' : 'Portioner den här dagen'} value={editPortions.value} onChange={savePortions} unit={editPortions.unit}
+            alert={editPortions.value !== editPortions.base ? `Receptet är skrivet för ${yieldText(editPortions.base, editPortions.unit)}` : undefined} />
           <span style={{ fontSize: 13, color: 'var(--color-neutral-700)' }}>Inköpslistan räknar med det här antalet, t.ex. dubbla mängder för dubbelt recept.</span>
           <button className="btn btn-primary btn-block" onClick={() => setEditPortions(null)} style={{ height: 50 }}>Klar</button>
         </Sheet>
