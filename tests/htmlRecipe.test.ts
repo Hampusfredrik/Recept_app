@@ -162,3 +162,16 @@ test('steg som slås ihop skrivs tillbaka så att de läses likadant', async () 
   const back = stepsFromText(toText(steps));
   assert.deepEqual(back, steps);
 });
+
+// Påhittade exempel som efterliknar text från kamerans textfunktion (radbrytningar som i boken).
+test('stegen delas rätt: numrering, avstavning och brutna rader', async () => {
+  const { stepsFromText } = await import('../supabase/functions/_shared/parse.ts');
+  const t = (x: string) => stepsFromText(x).map((s) => s.text);
+  assert.deepEqual(t('1. Sätt ugnen på 200 grader.\nSkala pumpan och dela den i bitar.\n2. Rosta pumpan i ugnen i\n20 minuter. Låt svalna.\n3. Mixa slätt.'),
+    ['Sätt ugnen på 200 grader. Skala pumpan och dela den i bitar.', 'Rosta pumpan i ugnen i 20 minuter. Låt svalna.', 'Mixa slätt.']);
+  assert.deepEqual(t('1. Hacka löken och fräs den i smö-\nret tills den mjuknat.\n2. Tillsätt riset.'),
+    ['Hacka löken och fräs den i smöret tills den mjuknat.', 'Tillsätt riset.']);
+  assert.deepEqual(t('1 Sätt ugnen på 200 grader.\nSkala pumpan.\n2 Rosta pumpan.'), ['Sätt ugnen på 200 grader. Skala pumpan.', 'Rosta pumpan.']);
+  assert.deepEqual(t('Lägg på en plåt och rosta\ni ugnen. Låt svalna\nhelt.\nStek löken.'), ['Lägg på en plåt och rosta i ugnen. Låt svalna helt.', 'Stek löken.']);
+  assert.deepEqual(t('Tårtbotten\n1. Vispa ägg.\n2. Grädda.\nFrosting\n1. Vispa smör.'), ['Vispa ägg.', 'Grädda.', 'Vispa smör.']);
+});

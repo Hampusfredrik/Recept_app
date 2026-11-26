@@ -382,23 +382,65 @@ export function ingredientsFromText(text: string): (ParsedIngredient & { section
 const sectionName = (t: string) => t.replace(/:$/, '').trim().replace(/^./, (c) => c.toUpperCase());
 
 /**
- * Ett steg per stycke. Numrerade rader ("1. Skär …") börjar ett nytt steg; en rad utan
- * avslutande punkt fortsätter i nästa (radbrytning mitt i en mening). Rubriker hoppas över,
- * och korta delrubriker ("Frosting") blir en del av receptet för stegen under dem.
+ * Stegen i en text. Två lägen:
+ * - Numrerat ("1. Skär …", "1) Skär …", "1 Skär …", "Steg 1"): bara numren börjar nya steg; allt mellan
+ *   två nummer hör till samma steg, även meningar som slutar med punkt mitt i.
+ * - Utan nummer: en tom rad börjar ett nytt steg, och en rad som slutar med punkt avslutar steget,
+ *   utom när nästa rad börjar med liten bokstav (då fortsätter samma mening).
+ * Ord som avstavats vid radslut ("smö-" + "ret") sätts ihop. Korta rader utan punkt före ett steg
+ * ("Sås", "Frosting:") blir delar av receptet.
  */
 export function stepsFromText(text: string): { text: string; section: string | null }[] {
   const rows = text.split(/\r?\n/).map((l) => l.replace(/\s+/g, ' ').replace(BULLET, '').trim());
+  const NUM = /^(?:[Ss]teg\s*|[Ss]tep\s*)?(\d{1,2})(?:\s*[.):]\s*|\s+(?=[A-ZÅÄÖ]))/;
+  const numOf = (t: string) => { const m = NUM.exec(t); return m && t.length > m[0].length ? Number(m[1]) : null; };
+  // Numren måste komma i ordning (1, 2, 3 …), så att "20 minuter" eller "2 dl" inte tas för steg.
+  let expect = 1;
+  // Efter en delrubrik ("Sås:") får numreringen börja om på 1.
+  const headLike = (t: string) => !!t && t.length < 30 && !/[.!?,;]$/.test(t) && /^\p{Lu}/u.test(t) && numOf(t) == null;
+  const order = rows.map((t, k) => {
+    const n = numOf(t);
+    if (n == null) return false;
+    const prev = rows.slice(0, k).reverse().find(Boolean) ?? '';
+    if (n === 1 && expect > 1 && headLike(prev)) expect = 1;
+    if (n === expect) { expect++; return true; }
+    return false;
+  });
+  const isNum = (t: string, k: number) => order[k] && numOf(t) != null;
+  const numbered = order.filter(Boolean).length >= 2;
   const steps: { text: string; section: string | null }[] = [];
   let open = false;
+  let gap = false;
   let section: string | null = null;
-  for (const t of rows) {
-    if (!t) { open = false; continue; }
+  const add = (t: string) => {
+    const last = steps[steps.length - 1];
+    // "smö-" + "ret" → "smöret"; annars ett mellanslag.
+    if (/\p{L}-$/u.test(last.text) && /^\p{Ll}/u.test(t)) last.text = last.text.slice(0, -1) + t;
+    else last.text += ' ' + t;
+  };
+  for (let k = 0; k < rows.length; k++) {
+    const t = rows[k];
+    if (!t) { open = false; gap = true; continue; }
     if (STEP_HEAD.test(t) || /^(steg|step)\s*\d+\s*:?$/i.test(t)) { open = false; continue; }
-    const numbered = /^\d+[.)]\s+/.test(t);
-    const clean = t.replace(/^(?:steg|step)?\s*\d+[.):]\s*/i, '');
-    // Kort rad utan punkt: delrubrik ("Frosting").
-    if (!numbered && clean.length < 30 && !/[.!?]$/.test(clean) && !open) { section = sectionName(clean); continue; }
-    if (open && !numbered && steps.length) steps[steps.length - 1].text += ' ' + clean;
+    const isStep = numbered && isNum(t, k);
+    const clean = isStep ? t.replace(NUM, '') : t;
+    const nk = rows.findIndex((x, j) => j > k && !!x);
+    const nextIsStep = nk > 0 && isNum(rows[nk], nk);
+    // Delrubrik: kort rad utan punkt som inte fortsätter en mening (i numrerat läge: följd av ett nummer).
+    const head = !isStep && clean.length < 30 && !/[.!?,;]$/.test(clean) && /^[\p{Lu}]/u.test(clean)
+      && clean.split(' ').length <= 4 && !(nk > 0 && /^\p{Ll}/u.test(rows[nk]))
+      && (numbered ? nextIsStep : !open);
+    if (head) { section = sectionName(clean); open = false; continue; }
+    if (numbered) {
+      // En tom rad före en rad utan nummer börjar också ett nytt steg ("Servera direkt.").
+      if (isStep || !steps.length || gap) steps.push({ text: clean, section });
+      else add(clean);
+      gap = false;
+      continue;
+    }
+    gap = false;
+    const continues = steps.length && (open || /^\p{Ll}/u.test(clean));
+    if (continues) add(clean);
     else steps.push({ text: clean, section });
     open = !/[.!?)]$/.test(clean);
   }
