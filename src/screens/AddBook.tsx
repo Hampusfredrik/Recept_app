@@ -5,7 +5,7 @@ import { Spinner, TopBar, useToast, YieldField } from '../components/ui';
 import type { YieldUnit } from '../lib/types';
 import { BookSuggestions, useSaveFields } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
-import { StepPreview } from '../components/StepPreview';
+import { IngredientPreview, StepPreview } from '../components/StepPreview';
 import { ingredientsFromText, stepsFromText } from '../../supabase/functions/_shared/parse';
 
 /** Skriv in ett recept för hand. Bok och sida är valfria. */
@@ -61,6 +61,7 @@ export function AddBook() {
         <div className="field"><label>Ingredienser · en per rad</label>
           <textarea className="input" value={ingr} onChange={(e) => setIngr(e.target.value)} placeholder={'400 g kycklingfilé\n1 gul lök\n4 dl kokosmjölk'} style={box} />
         </div>
+        <IngredientPreview text={ingr} onChange={setIngr} />
         <div className="field"><label>Gör så här · alla steg</label>
           <textarea className="input" value={steps} onChange={(e) => setSteps(e.target.value)} placeholder={'1. Skär kycklingen i bitar.\n2. Fräs löken.'} style={box} />
         </div>
