@@ -6,6 +6,7 @@ import { Ico, Spinner, TopBar, useToast, YieldField } from '../components/ui';
 import type { YieldUnit } from '../lib/types';
 import { BookSuggestions, useSaveFields } from '../components/SaveFields';
 import { useBack } from '../components/useBack';
+import { StepPreview } from '../components/StepPreview';
 import { ingredientsFromText, stepsFromText } from '../../supabase/functions/_shared/parse';
 
 const PASTE_STEPS = ['Öppna Kamera och rikta den mot ingredienserna (eller stegen).', 'Tryck på textikonen nere till höger och välj Kopiera allt.', 'Kom tillbaka hit och klistra in i rätt ruta.'];
@@ -175,6 +176,7 @@ export function Scan() {
           onCamera={() => openCamera('ingr')} placeholder={'400 g kycklingfilé\n1 gul lök\n4 dl kokosmjölk'} />
         <PasteBox label="Gör så här" count={stepList.length ? `${stepList.length} steg` : ''} value={steps} onChange={setSteps} onAppend={(t) => append('steps', t)}
           onCamera={() => openCamera('steps')} placeholder={'1. Skär kycklingen i bitar.\n2. Fräs löken.'} />
+        <StepPreview text={steps} onChange={setSteps} />
         <span style={{ fontSize: 12, color: 'var(--color-neutral-700)', marginTop: -8 }}>Två spalter? Klistra in en i taget, texten läggs till efter den förra. Delrubriker som ”Sås:” blir delar av receptet.</span>
 
         {fields}

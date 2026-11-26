@@ -149,3 +149,16 @@ test('delar för schema.org-ingredienser följer sidans ordning, även med komme
     ['Chicken', 'Chicken', 'Sauce', 'Sauce', 'Salad']);
   assert.deepEqual(sectionsForIngredients('<ul><li>1 lök</li></ul>', ['1 lök']), [null]);
 });
+
+test('steg som slås ihop skrivs tillbaka så att de läses likadant', async () => {
+  const { stepsFromText } = await import('../supabase/functions/_shared/parse.ts');
+  // Samma regler som StepPreview.stepsToText (komponenten kräver React och testas inte direkt).
+  const toText = (steps: { text: string; section: string | null }[]) => {
+    const out: string[] = []; let sec: string | null = null; let n = 0;
+    for (const s of steps) { if (s.section !== sec) { sec = s.section; n = 0; if (sec) out.push(`${sec}:`); } out.push(`${++n}. ${s.text}`); }
+    return out.join('\n');
+  };
+  const steps = [{ text: 'Hacka löken', section: null }, { text: 'och fräs den.', section: null }, { text: 'Vispa grädden.', section: 'Sås' }];
+  const back = stepsFromText(toText(steps));
+  assert.deepEqual(back, steps);
+});
